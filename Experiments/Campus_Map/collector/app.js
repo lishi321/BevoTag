@@ -19,6 +19,8 @@ const FLOORS = [
   { id: '8', name: 'Eighth', fit: [300, 1158, 2387, 2909] },
 ];
 // Plans were rendered from the UT PDF at 250 dpi; drawing scale is 1/32" = 1'-0" (1 in = 32 ft).
+// Checked against the real building: the tower (floors 4-8) measures 265-267 ft wide on the PDF vs
+// 265.8 ft for the EER footprint in OpenStreetMap, so the stated scale holds to ~0.5%.
 const PLAN_DPI = 250;
 const FT_PER_PX = 32 / PLAN_DPI;           // 0.128 ft per image pixel
 const floorImg = id => `floors/EER_${id}.png`;
@@ -32,6 +34,7 @@ const S = {
   point: null,            // {x, y} in image px
   samples: [],            // all samples (loaded from IndexedDB)
   view: { s: 0.2, tx: 0, ty: 0 },
+  needFit: false,         // a fit was requested while the viewport had no size (hidden tab etc.)
   img: { w: 1, h: 1 },
   mode: 'none',           // 'none' | 'serial' | 'sim'
   device: null,           // hello info
@@ -111,9 +114,19 @@ function applyView() {
   const { s, tx, ty } = S.view;
   stage.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
   renderOverlay();
+  renderScaleBar();
+}
+function renderScaleBar() {
+  // pick a round length that draws as roughly 60-150 screen px
+  const ftPerScreenPx = FT_PER_PX / S.view.s;
+  const ft = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500].find(n => n / ftPerScreenPx >= 60) || 500;
+  $('scalebarLine').style.width = (ft / ftPerScreenPx) + 'px';
+  $('scalebarText').textContent = `${ft} ft`;
 }
 function fitView() {
   const r = vp.getBoundingClientRect();
+  if (!r.width || !r.height) { S.needFit = true; return; }   // retried by the ResizeObserver
+  S.needFit = false;
   const f = FLOORS.find(x => x.id === S.floor);
   const [x0, y0, x1, y1] = (f && f.fit) || [0, 0, S.img.w, S.img.h];
   const s = Math.min(r.width / (x1 - x0), r.height / (y1 - y0)) * 0.95;
@@ -136,6 +149,7 @@ function centerOn(x, y, s) {
 
 function setFloor(id, keepView = false) {
   if (S.collecting) { toast('Stop collecting before switching floors'); return; }
+  if (!FLOORS.some(f => f.id === id)) { toast(`Unknown floor "${id}"`); return; }
   const changed = id !== S.floor;
   S.floor = id; prefs.set('floor', id);
   if (changed) S.point = null;
@@ -257,7 +271,7 @@ function renderOverlay() {
   $('zoomIn').onclick = () => { const r = vp.getBoundingClientRect(); zoomAt(1.4, r.width / 2, r.height / 2); };
   $('zoomOut').onclick = () => { const r = vp.getBoundingClientRect(); zoomAt(1 / 1.4, r.width / 2, r.height / 2); };
   $('zoomFit').onclick = fitView;
-  window.addEventListener('resize', () => applyView());
+  new ResizeObserver(() => (S.needFit ? fitView() : applyView())).observe(vp);
 })();
 
 function setPoint(x, y) {
@@ -329,7 +343,13 @@ if ('serial' in navigator) {
 
 // ---------------------------------------------------------------- device: simulator
 const Sim = {
-  aps: null, seq: 0,
+  aps: null, seq: 0, streamTimer: null,
+  // mimic a device that scans on its own when "Device streams scans" is ticked
+  syncStream() {
+    const on = S.mode === 'sim' && $('streamMode').checked;
+    if (on && !this.streamTimer) this.streamTimer = setInterval(() => this.handle({ cmd: 'scan' }), 1500);
+    if (!on && this.streamTimer) { clearInterval(this.streamTimer); this.streamTimer = null; }
+  },
   build() {
     // deterministic fake APs: ~24 per floor, 3 SSIDs each, over the middle of the sheet
     let seed = 12345;
@@ -390,6 +410,10 @@ function onMsg(msg, alreadyLogged) {
     const scan = normalizeScan(msg);
     if (!scan) return;
     showScan(scan);
+    // a reply that arrives after its request timed out must not be saved as the next request's scan
+    if (S.waiter && S.waiter.id != null && scan.id != null && +scan.id !== S.waiter.id) {
+      log(`Late reply for scan ${scan.id} ignored (waiting for ${S.waiter.id})`, 'errl'); return;
+    }
     if (S.waiter) { const w = S.waiter; S.waiter = null; clearTimeout(w.timer); w.resolve(scan); }
   } else if (msg.type === 'err') {
     toast('Device error: ' + msg.msg, 3500);
@@ -405,10 +429,10 @@ function normalizeScan(m) {
   }
   return { id: m.id ?? null, seq: m.seq ?? null, ms: m.ms ?? null, dur_ms: m.dur_ms ?? null, aps };
 }
-function waitScan(ms) {
+function waitScan(ms, id = null) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => { S.waiter = null; reject(new Error('timeout')); }, ms);
-    S.waiter = { resolve, reject, timer };
+    S.waiter = { resolve, reject, timer, id };
   });
 }
 
@@ -426,6 +450,7 @@ function setMode(mode) {
   bc.disabled = mode === 'sim';
   bs.textContent = mode === 'sim' ? 'Stop simulator' : 'Simulator';
   bs.disabled = mode === 'serial';
+  Sim.syncStream();
   updateCollectState();
 }
 
@@ -459,8 +484,9 @@ async function collect() {
   while (ok < n && !S.stop && S.mode !== 'none') {
     $('collectMsg').textContent = `Scan ${ok + 1} / ${n}…`;
     try {
-      const wait = waitScan(SCAN_TIMEOUT_MS);
-      if (!stream) await send({ cmd: 'scan', id: ++cmdId });
+      const id = stream ? null : ++cmdId;
+      const wait = waitScan(SCAN_TIMEOUT_MS, id);
+      if (!stream) await send({ cmd: 'scan', id });
       const scan = await wait;
       const sample = {
         id: uuid(), schema: SCHEMA, batch, session: S.session, t: new Date().toISOString(),
@@ -576,7 +602,7 @@ function exportJson() {
 }
 function exportCsv() {
   if (!S.samples.length) return toast('Nothing to export');
-  const q = v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const q = v => { const s = String(v ?? ''); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const head = ['sample_id', 'batch', 'session', 'time', 'building', 'floor', 'room', 'x_ft', 'y_ft', 'operator', 'note',
     'device_mac', 'sim', 'scan_seq', 'n_aps', 'bssid', 'ssid', 'rssi', 'channel'];
   const lines = [head.join(',')];
@@ -594,7 +620,8 @@ async function importJson(file) {
     const list = Array.isArray(doc) ? doc : doc.samples;
     if (!Array.isArray(list)) throw new Error('no samples[] found');
     const have = new Set(S.samples.map(x => x.id));
-    const fresh = list.filter(x => x && x.id && x.scan && Array.isArray(x.scan.aps) && x.floor && !have.has(x.id));
+    const fresh = list.filter(x => x && x.id && x.scan && Array.isArray(x.scan.aps) && x.floor &&
+      !have.has(x.id) && have.add(x.id));   // also drops duplicates inside the file itself
     await DB.put(fresh);
     S.samples.push(...fresh);
     refreshDataset();
@@ -616,9 +643,9 @@ function init() {
   };
   $('btnCollect').onclick = collect;
   $('room').addEventListener('input', updateCollectState);
-  $('room').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('btnCollect').disabled) collect(); });
+  $('room').addEventListener('keydown', e => { if (e.key === 'Enter' && !S.collecting && !$('btnCollect').disabled) collect(); });
   $('nScans').addEventListener('input', () => { prefs.set('nScans', $('nScans').value); updateCollectState(); });
-  $('streamMode').addEventListener('change', () => prefs.set('stream', $('streamMode').checked));
+  $('streamMode').addEventListener('change', () => { prefs.set('stream', $('streamMode').checked); Sim.syncStream(); });
   $('operator').addEventListener('input', () => prefs.set('operator', $('operator').value));
   $('baud').addEventListener('change', () => prefs.set('baud', $('baud').value));
   $('btnUndo').onclick = undoLast;
@@ -648,7 +675,8 @@ function init() {
   setMode('none');
   await DB.open();
   S.samples = await DB.all();
-  setFloor(prefs.get('floor', '2'));
+  const floor = prefs.get('floor', '2');
+  setFloor(FLOORS.some(f => f.id === floor) ? floor : '2');
   refreshDataset();
 })();
 

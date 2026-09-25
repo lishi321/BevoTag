@@ -8,17 +8,13 @@ Works offline, needs no build step, and keeps the data in the browser until you 
 
 ## Quick start
 
-1. **Floor plans** (one time). The PNGs aren't committed (see *Floor plans* below). Render them from the UT PDF:
-   ```bash
-   ./make_floors.sh "path/to/EER Floor Plan.pdf"     # needs poppler: apt/brew install poppler
-   ```
-2. **Serve it** (Web Serial only works on `localhost`/https, in **desktop Chrome or Edge**):
+1. **Serve it** (Web Serial only works on `localhost`/https, in **desktop Chrome or Edge**):
    ```bash
    cd Experiments/Campus_Map/collector
    python3 -m http.server 8000
    ```
    Then open <http://localhost:8000>.
-3. Click **Connect ESP32** and pick the board's port. To try things without hardware, click **Simulator**.
+2. Click **Connect ESP32** and pick the board's port. To try things without hardware, click **Simulator**.
 
 ## Collecting
 
@@ -50,9 +46,15 @@ Works offline, needs no build step, and keeps the data in the browser until you 
 `df.pivot_table(index="sample_id", columns="bssid", values="rssi")` gives the fingerprint matrix.
 
 **Coordinates:** `x_ft`/`y_ft` are measured from the top-left of that floor's PDF sheet
-(1/32" = 1'-0", rendered at 250 dpi → 0.128 ft/px). Sheets are **not yet aligned to each other or
-to lat/long**. That's a later step for the 3D map (control points per floor). Room labels are the
-ground truth for now.
+(1/32" = 1'-0", rendered at 250 dpi → 0.128 ft/px). A scale bar on the map shows the current zoom.
+
+- **Scale is real.** The PDF is vector CAD output. At the stated scale, the tower (floors 4–8) measures
+  265–267 ft wide; the EER footprint in OpenStreetMap is 265.8 ft. So distances within a floor are good to ~0.5%.
+- **Floors 4–8 share one frame.** Their outlines sit at the same place on each sheet, so x/y on
+  those floors are directly comparable. **B, 1, 2 and 3 are placed differently** and need registering
+  (e.g. on the stair/elevator cores) before comparing coordinates across floors.
+- **Not yet tied to lat/long.** That needs a few control points per floor (building corners from
+  OSM or survey). It's a later step for the 3D map. Room labels are the ground truth for now.
 
 Records from the simulator have `device.sim: true`. Filter them out before training.
 
@@ -63,8 +65,9 @@ It includes a minimal Arduino sketch the DAQ team can start from.
 
 ## Floor plans
 
-`floors/*.png` are rendered from UT's EER floor-plan PDF (Basement + floors 1–8) and are
-git-ignored because this repo is public. Check whether UT is OK with publishing them before committing them.
+`plans/EER_floor_plan.pdf` is UT's EER floor-plan set (Basement + floors 1–8, one page each).
+`floors/*.png` are rendered from it and committed, so the app works right after cloning.
+If the PDF changes, re-render with `pip install pymupdf && python make_floors.py`.
 
 ## Files
 
@@ -72,4 +75,6 @@ git-ignored because this repo is public. Check whether UT is OK with publishing 
 |---|---|
 | `index.html`, `style.css`, `app.js` | the app (plain JS, no dependencies) |
 | `PROTOCOL.md` | serial contract with the DAQ module |
-| `make_floors.sh` | PDF → `floors/EER_<B,1..8>.png` |
+| `plans/EER_floor_plan.pdf` | source floor plans (vector, 1/32" = 1'-0") |
+| `floors/EER_<B,1..8>.png` | plans rendered at 250 dpi (used by the app) |
+| `make_floors.py` | PDF → `floors/*.png` |
