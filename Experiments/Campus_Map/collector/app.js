@@ -1,36 +1,21 @@
-/* BevoTag EER survey collector
- * Plain script (no build step, no modules) so it also runs from file://.
+/* BevoTag survey collector
+ * Plain script (no build step, no modules). Serve it over http (see README): buildings are loaded with fetch.
+ * Buildings: buildings/index.json lists ids; each buildings/<ID>/building.json holds that building's
+ * plans, floors and coordinate frame. Adding a building needs no code changes.
  * Serial protocol: see PROTOCOL.md
  */
 'use strict';
 
 // ---------------------------------------------------------------- config
-const BUILDING = 'EER';
-// fit: drawing bounding box on the 250-dpi sheet [x0, y0, x1, y1] so "fit" skips the blank margins
-const FLOORS = [
-  { id: 'B', name: 'Basement', fit: [240, 290, 2469, 3789] },
-  { id: '1', name: 'First', fit: [240, 295, 2469, 3771] },
-  { id: '2', name: 'Second', fit: [240, 290, 2447, 3789] },
-  { id: '3', name: 'Third', fit: [361, 1653, 2448, 3419] },
-  { id: '4', name: 'Fourth', fit: [300, 1153, 2387, 2913] },
-  { id: '5', name: 'Fifth', fit: [300, 1153, 2387, 2913] },
-  { id: '6', name: 'Sixth', fit: [300, 1153, 2387, 2913] },
-  { id: '7', name: 'Seventh', fit: [300, 1153, 2387, 2913] },
-  { id: '8', name: 'Eighth', fit: [300, 1158, 2387, 2909] },
-];
-// Plans were rendered from the UT PDF at 250 dpi; drawing scale is 1/32" = 1'-0" (1 in = 32 ft).
-// Checked against the real building: the tower (floors 4-8) measures 265-267 ft wide on the PDF vs
-// 265.8 ft for the EER footprint in OpenStreetMap, so the stated scale holds to ~0.5%.
-const PLAN_DPI = 250;
-const FT_PER_PX = 32 / PLAN_DPI;           // 0.128 ft per image pixel
-const floorImg = id => `floors/EER_${id}.png`;
 const SCAN_TIMEOUT_MS = 20000;
-const SCHEMA = 'bevotag.survey.v1';
+const SCHEMA = 'bevotag.survey.v2';
 const ACCENT = '#bf5700', SAMPLE_COLOR = '#2563eb';   // map is always light, so fixed colors
 
 // ---------------------------------------------------------------- state
 const S = {
-  floor: '2',
+  buildings: {},          // id -> building.json
+  building: null,         // current building id
+  floor: null,
   point: null,            // {x, y} in image px
   samples: [],            // all samples (loaded from IndexedDB)
   view: { s: 0.2, tx: 0, ty: 0 },
@@ -54,6 +39,30 @@ const prefs = {
   get(k, d) { try { const v = localStorage.getItem('bevotag.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem('bevotag.' + k, JSON.stringify(v)); } catch { /* ignore */ } },
 };
+
+// ---------------------------------------------------------------- buildings
+const bld = (id = S.building) => S.buildings[id];
+const floorsOf = (id = S.building) => bld(id)?.floors || [];
+const floorCfg = (fid = S.floor, bid = S.building) => floorsOf(bid).find(f => f.id === fid);
+// every building's plans are at a true drawing scale; this converts image px to feet on the sheet
+const ftPerPx = (id = S.building) => bld(id).plan.ft_per_in / bld(id).plan.dpi;
+const floorImg = (fid = S.floor, bid = S.building) => `buildings/${bid}/${floorCfg(fid, bid).image}`;
+
+// Building frame: shared across a building's floors, y up. Floors with to_frame = null aren't
+// registered yet. Computed at export time from the current config, so fixing a registration
+// later also fixes old samples.
+function toFrame(x) {
+  const m = floorCfg(x.floor, x.building)?.to_frame;
+  if (!m) return null;
+  const [a, b, c, d, e, f] = m;
+  return { x: +(a * x.x_px + b * x.y_px + c).toFixed(2), y: +(d * x.x_px + e * x.y_px + f).toFixed(2) };
+}
+
+async function loadBuildings() {
+  const get = async url => { const r = await fetch(url); if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`); return r.json(); };
+  const ids = await get('buildings/index.json');
+  for (const id of ids) S.buildings[id] = await get(`buildings/${id}/building.json`);
+}
 
 function toast(msg, ms = 2200) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
@@ -118,7 +127,8 @@ function applyView() {
 }
 function renderScaleBar() {
   // pick a round length that draws as roughly 60-150 screen px
-  const ftPerScreenPx = FT_PER_PX / S.view.s;
+  if (!S.building) return;
+  const ftPerScreenPx = ftPerPx() / S.view.s;
   const ft = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500].find(n => n / ftPerScreenPx >= 60) || 500;
   $('scalebarLine').style.width = (ft / ftPerScreenPx) + 'px';
   $('scalebarText').textContent = `${ft} ft`;
@@ -127,8 +137,8 @@ function fitView() {
   const r = vp.getBoundingClientRect();
   if (!r.width || !r.height) { S.needFit = true; return; }   // retried by the ResizeObserver
   S.needFit = false;
-  const f = FLOORS.find(x => x.id === S.floor);
-  const [x0, y0, x1, y1] = (f && f.fit) || [0, 0, S.img.w, S.img.h];
+  // fit: the drawing's bounding box on the sheet image [x0, y0, x1, y1], so "fit" skips blank margins
+  const [x0, y0, x1, y1] = floorCfg()?.fit || [0, 0, S.img.w, S.img.h];
   const s = Math.min(r.width / (x1 - x0), r.height / (y1 - y0)) * 0.95;
   S.view = { s, tx: r.width / 2 - (x0 + x1) / 2 * s, ty: r.height / 2 - (y0 + y1) / 2 * s };
   applyView();
@@ -147,14 +157,27 @@ function centerOn(x, y, s) {
   applyView();
 }
 
-function setFloor(id, keepView = false) {
+function setBuilding(bid) {
+  if (S.collecting) { toast('Stop collecting before switching buildings'); return false; }
+  if (!bld(bid)) { toast(`Unknown building "${bid}"`); return false; }
+  if (bid === S.building) return true;
+  S.building = bid; S.floor = null; S.point = null; prefs.set('building', bid);
+  $('building').value = bid;
+  $('floorTabs').innerHTML = floorsOf().map(f => `<button data-id="${esc(f.id)}" title="${esc(f.name)} floor">${esc(f.id)}</button>`).join('');
+  refreshDataset();
+  return true;
+}
+
+// bid: switch building first (e.g. jumping to a room from the dataset table)
+function setFloor(id, keepView = false, bid = S.building) {
   if (S.collecting) { toast('Stop collecting before switching floors'); return; }
-  if (!FLOORS.some(f => f.id === id)) { toast(`Unknown floor "${id}"`); return; }
+  if (!setBuilding(bid)) return;
+  if (!floorCfg(id)) { toast(`Unknown floor "${id}" in ${bid}`); return; }
   const changed = id !== S.floor;
-  S.floor = id; prefs.set('floor', id);
+  S.floor = id; prefs.set('floor.' + bid, id);
   if (changed) S.point = null;
   document.querySelectorAll('#floorTabs button').forEach(b => b.classList.toggle('active', b.dataset.id === id));
-  $('floorOut').value = `${id} (${FLOORS.find(f => f.id === id).name})`;
+  $('floorOut').value = `${bid} ${id} (${floorCfg(id).name})`;
   const src = floorImg(id);
   if (img.getAttribute('src') !== src) {
     img.onload = () => {
@@ -163,7 +186,7 @@ function setFloor(id, keepView = false) {
       svg.setAttribute('viewBox', `0 0 ${S.img.w} ${S.img.h}`);
       if (!keepView) fitView(); else applyView();
     };
-    img.onerror = () => toast(`Missing ${src}. Run make_floors.sh (see README)`, 5000);
+    img.onerror = () => toast(`Missing ${src}. Run make_floors.py ${bid} (see README)`, 5000);
     img.src = src;
   } else applyView();
   updatePointUI();
@@ -176,7 +199,7 @@ function renderOverlay() {
   // collected points on this floor, grouped by position
   const groups = new Map();
   for (const x of S.samples) {
-    if (x.floor !== S.floor) continue;
+    if (x.building !== S.building || x.floor !== S.floor) continue;
     const k = x.x_px + ',' + x.y_px;
     const g = groups.get(k) || { x: x.x_px, y: x.y_px, n: 0, room: x.room };
     g.n++; groups.set(k, g);
@@ -282,8 +305,12 @@ function setPoint(x, y) {
   $('room').focus();
 }
 function updatePointUI() {
-  $('xOut').value = S.point ? (S.point.x * FT_PER_PX).toFixed(1) : '';
-  $('yOut').value = S.point ? (S.point.y * FT_PER_PX).toFixed(1) : '';
+  const p = S.point;
+  $('xOut').value = p ? (p.x * ftPerPx()).toFixed(1) : '';
+  $('yOut').value = p ? (p.y * ftPerPx()).toFixed(1) : '';
+  const fr = p && toFrame({ building: S.building, floor: S.floor, x_px: p.x, y_px: p.y });
+  $('frameOut').textContent = !p ? '' : fr ? `Building frame: ${fr.x.toFixed(1)}, ${fr.y.toFixed(1)} ft`
+    : 'This floor is not registered to the building frame yet.';
   updateCollectState();
 }
 
@@ -343,40 +370,42 @@ if ('serial' in navigator) {
 
 // ---------------------------------------------------------------- device: simulator
 const Sim = {
-  aps: null, seq: 0, streamTimer: null,
+  aps: {}, seq: 0, streamTimer: null,     // aps: building id -> fake APs
   // mimic a device that scans on its own when "Device streams scans" is ticked
   syncStream() {
     const on = S.mode === 'sim' && $('streamMode').checked;
     if (on && !this.streamTimer) this.streamTimer = setInterval(() => this.handle({ cmd: 'scan' }), 1500);
     if (!on && this.streamTimer) { clearInterval(this.streamTimer); this.streamTimer = null; }
   },
-  build() {
-    // deterministic fake APs: ~24 per floor, 3 SSIDs each, over the middle of the sheet
-    let seed = 12345;
+  build(bid) {
+    // deterministic fake APs per building: 24 per floor, 3 SSIDs each, inside each floor's fit box
+    const bi = Object.keys(S.buildings).indexOf(bid);
+    let seed = 12345 + bi;
     const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
     const aps = [];
-    FLOORS.forEach((f, fi) => {
+    floorsOf(bid).forEach((f, fi) => {
+      const [x0, y0, x1, y1] = f.fit || [0, 0, 2750, 4250];
       for (let i = 0; i < 24; i++) {
-        const x = 2750 * (0.15 + 0.7 * rnd()), y = 4250 * (0.15 + 0.6 * rnd());
-        const base = [0x70, 0x10, 0x5c, fi, i].map(b => b.toString(16).padStart(2, '0')).join(':');
+        const x = x0 + (x1 - x0) * rnd(), y = y0 + (y1 - y0) * rnd();
+        const base = [0x70, bi, fi, i].map(b => b.toString(16).padStart(2, '0')).join(':') + ':00';
         const ch = [1, 6, 11][Math.floor(rnd() * 3)];
         ['utexas', 'utexas-iot', 'eduroam'].forEach((ssid, k) =>
           aps.push({ fi, x, y, ch, ssid, bssid: `${base}:${(k + 1).toString(16).padStart(2, '0')}` }));
       }
     });
-    this.aps = aps;
+    return aps;
   },
   gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); },
   handle(cmd) {
     if (cmd.cmd === 'hello') return setTimeout(() => onMsg({ type: 'hello', v: 1, fw: 'sim-0.1', chip: 'SIMULATOR', mac: 'de:ad:be:ef:00:01' }), 50);
     if (cmd.cmd !== 'scan') return;
-    if (!this.aps) this.build();
-    const fi = FLOORS.findIndex(f => f.id === S.floor);
+    const all = (this.aps[S.building] ||= this.build(S.building));
+    const fi = floorsOf().findIndex(f => f.id === S.floor);
     const p = S.point || { x: 1375, y: 2000 };
     const aps = [];
-    for (const a of this.aps) {
+    for (const a of all) {
       const df = Math.abs(a.fi - fi); if (df > 1) continue;
-      const dm = Math.max(1, Math.hypot(a.x - p.x, a.y - p.y) * FT_PER_PX * 0.3048);
+      const dm = Math.max(1, Math.hypot(a.x - p.x, a.y - p.y) * ftPerPx() * 0.3048);
       const rssi = Math.round(-38 - 28 * Math.log10(dm) - 15 * df + 4 * this.gauss());
       if (rssi > -92) aps.push({ bssid: a.bssid, ssid: a.ssid, rssi, ch: a.ch });
     }
@@ -464,7 +493,7 @@ function updateCollectState() {
     : !S.point ? 'Click the map where the DAQ module is.'
     : !room ? 'Enter the room number.' : '';
   b.disabled = !!why;
-  m.textContent = why || `Ready: ${$('nScans').value} scans at ${BUILDING} ${room}.`;
+  m.textContent = why || `Ready: ${$('nScans').value} scans at ${S.building} ${S.floor} · ${room}.`;
 }
 
 async function collect() {
@@ -472,9 +501,9 @@ async function collect() {
   const n = Math.max(1, Math.min(100, parseInt($('nScans').value, 10) || 1));
   const stream = $('streamMode').checked;
   const label = {
-    building: BUILDING, floor: S.floor, room: $('room').value.trim(),
-    x_px: S.point.x, y_px: S.point.y,
-    x_ft: +(S.point.x * FT_PER_PX).toFixed(2), y_ft: +(S.point.y * FT_PER_PX).toFixed(2),
+    building: S.building, floor: S.floor, room: $('room').value.trim(),
+    x_px: S.point.x, y_px: S.point.y,       // raw click on the floor image; everything else derives from these
+    x_ft: +(S.point.x * ftPerPx()).toFixed(2), y_ft: +(S.point.y * ftPerPx()).toFixed(2),
     note: $('note').value.trim(), operator: $('operator').value.trim(),
   };
   const batch = uuid();
@@ -505,7 +534,7 @@ async function collect() {
   }
   S.collecting = false; S.waiter = null;
   updateCollectState(); renderOverlay();
-  $('collectMsg').textContent = `Saved ${ok} scan${ok === 1 ? '' : 's'} for ${label.room} (floor ${label.floor}). Click the next point.`;
+  $('collectMsg').textContent = `Saved ${ok} scan${ok === 1 ? '' : 's'} for ${label.room} (${label.building} floor ${label.floor}). Click the next point.`;
   if (ok) toast(`Saved ${ok} × ${label.room}`);
   setTimeout(() => { if (!S.collecting) bar.style.width = '0%'; }, 1500);
 }
@@ -523,8 +552,8 @@ function refreshDataset() {
   const byRoom = new Map(), bssids = new Set(), points = new Set();
   let apSum = 0;
   for (const x of S.samples) {
-    const k = x.floor + '|' + x.room;
-    const g = byRoom.get(k) || { floor: x.floor, room: x.room, n: 0, sx: 0, sy: 0 };
+    const k = x.building + '|' + x.floor + '|' + x.room;
+    const g = byRoom.get(k) || { building: x.building, floor: x.floor, room: x.room, n: 0, sx: 0, sy: 0 };
     g.n++; g.sx += x.x_px; g.sy += x.y_px; byRoom.set(k, g);
     points.add(x.batch);
     for (const a of x.scan.aps) bssids.add(a.bssid);
@@ -535,17 +564,19 @@ function refreshDataset() {
     `<div><b>${points.size}</b><span>points</span></div>` +
     `<div><b>${byRoom.size}</b><span>rooms</span></div>` +
     `<div><b>${bssids.size}</b><span>BSSIDs</span></div>`;
-  const order = f => FLOORS.findIndex(x => x.id === f);
-  const groups = [...byRoom.values()].sort((a, b) => order(a.floor) - order(b.floor) || a.room.localeCompare(b.room, undefined, { numeric: true }));
+  const order = g => floorsOf(g.building).findIndex(f => f.id === g.floor);
+  const groups = [...byRoom.values()].sort((a, b) => a.building.localeCompare(b.building) || order(a) - order(b) ||
+    a.room.localeCompare(b.room, undefined, { numeric: true }));
   $('roomTable').tBodies[0].innerHTML = groups.map(g =>
-    `<tr class="clickable" data-floor="${esc(g.floor)}" data-room="${esc(g.room)}" data-x="${g.sx / g.n}" data-y="${g.sy / g.n}">` +
-    `<td>${esc(g.floor)}</td><td>${esc(g.room)}</td><td>${g.n}</td>` +
+    `<tr class="clickable" data-building="${esc(g.building)}" data-floor="${esc(g.floor)}" data-room="${esc(g.room)}" data-x="${g.sx / g.n}" data-y="${g.sy / g.n}">` +
+    `<td>${esc(g.building)} ${esc(g.floor)}</td><td>${esc(g.room)}</td><td>${g.n}</td>` +
     `<td><button class="x" title="Delete this room's samples" data-del="1">✕</button></td></tr>`).join('') ||
     '<tr><td colspan="4" class="muted">No data yet</td></tr>';
-  $('roomList').innerHTML = [...new Set(S.samples.map(x => x.room))].map(r => `<option value="${esc(r)}">`).join('');
-  // floor tab counts
+  const here = S.samples.filter(x => x.building === S.building);
+  $('roomList').innerHTML = [...new Set(here.map(x => x.room))].map(r => `<option value="${esc(r)}">`).join('');
+  // floor tab counts (current building)
   const perFloor = {};
-  for (const x of S.samples) perFloor[x.floor] = (perFloor[x.floor] || 0) + 1;
+  for (const x of here) perFloor[x.floor] = (perFloor[x.floor] || 0) + 1;
   document.querySelectorAll('#floorTabs button').forEach(b => {
     const c = perFloor[b.dataset.id];
     b.innerHTML = esc(b.dataset.id) + (c ? `<span class="cnt">${c}</span>` : '');
@@ -556,16 +587,17 @@ function refreshDataset() {
 
 $('roomTable').addEventListener('click', async e => {
   const tr = e.target.closest('tr[data-room]'); if (!tr) return;
-  const { floor, room } = tr.dataset;
+  const { building, floor, room } = tr.dataset;
+  const inRoom = x => x.building === building && x.floor === floor && x.room === room;
   if (e.target.dataset.del) {
-    const ids = S.samples.filter(x => x.floor === floor && x.room === room).map(x => x.id);
-    if (!confirm(`Delete ${ids.length} scans for ${room} (floor ${floor})?`)) return;
+    const ids = S.samples.filter(inRoom).map(x => x.id);
+    if (!confirm(`Delete ${ids.length} scans for ${room} (${building} floor ${floor})?`)) return;
     await DB.del(ids);
-    S.samples = S.samples.filter(x => !(x.floor === floor && x.room === room));
+    S.samples = S.samples.filter(x => !inRoom(x));
     refreshDataset(); return;
   }
   if (S.collecting) return;
-  setFloor(floor, true);
+  setFloor(floor, true, building);
   $('room').value = room; updateCollectState();
   const go = () => centerOn(+tr.dataset.x, +tr.dataset.y);
   img.complete ? go() : img.addEventListener('load', go, { once: true });
@@ -575,7 +607,7 @@ async function undoLast() {
   if (!S.samples.length || S.collecting) return;
   const last = S.samples.reduce((a, b) => (a.t > b.t ? a : b));
   const ids = S.samples.filter(x => x.batch === last.batch).map(x => x.id);
-  if (!confirm(`Remove the last point (${ids.length} scans in ${last.room}, floor ${last.floor})?`)) return;
+  if (!confirm(`Remove the last point (${ids.length} scans in ${last.room}, ${last.building} floor ${last.floor})?`)) return;
   await DB.del(ids);
   S.samples = S.samples.filter(x => x.batch !== last.batch);
   refreshDataset(); toast('Removed last point');
@@ -588,31 +620,33 @@ function download(name, text, type) {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+const usedBuildings = () => [...new Set(S.samples.map(x => x.building))].sort();
 const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 
 function exportJson() {
   if (!S.samples.length) return toast('Nothing to export');
   const doc = {
-    schema: SCHEMA, exported_at: new Date().toISOString(), building: BUILDING,
-    coord_frame: { units: 'ft', origin: 'top-left of floor-plan sheet', ft_per_px: FT_PER_PX, plan_dpi: PLAN_DPI,
-      note: 'x/y are relative to each floor\'s PDF page; floors are not yet registered to each other' },
-    samples: S.samples,
+    schema: SCHEMA, exported_at: new Date().toISOString(),
+    // snapshot of each building's config, so the file can be interpreted without this repo
+    buildings: Object.fromEntries(usedBuildings().map(id => [id, bld(id) || null])),
+    samples: S.samples.map(x => { const fr = toFrame(x); return { ...x, fx_ft: fr?.x ?? null, fy_ft: fr?.y ?? null }; }),
   };
-  download(`bevotag_${BUILDING}_${stamp()}.json`, JSON.stringify(doc, null, 1), 'application/json');
+  download(`bevotag_${usedBuildings().join('-')}_${stamp()}.json`, JSON.stringify(doc, null, 1), 'application/json');
 }
 function exportCsv() {
   if (!S.samples.length) return toast('Nothing to export');
   const q = v => { const s = String(v ?? ''); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-  const head = ['sample_id', 'batch', 'session', 'time', 'building', 'floor', 'room', 'x_ft', 'y_ft', 'operator', 'note',
+  const head = ['sample_id', 'batch', 'session', 'time', 'building', 'floor', 'room', 'x_ft', 'y_ft', 'fx_ft', 'fy_ft', 'operator', 'note',
     'device_mac', 'sim', 'scan_seq', 'n_aps', 'bssid', 'ssid', 'rssi', 'channel'];
   const lines = [head.join(',')];
   for (const x of S.samples) {
-    const base = [x.id, x.batch, x.session, x.t, x.building, x.floor, x.room, x.x_ft, x.y_ft, x.operator, x.note,
+    const fr = toFrame(x);
+    const base = [x.id, x.batch, x.session, x.t, x.building, x.floor, x.room, x.x_ft, x.y_ft, fr?.x, fr?.y, x.operator, x.note,
       x.device?.mac, x.device?.sim ? 1 : 0, x.scan.seq, x.scan.aps.length];
     if (!x.scan.aps.length) lines.push([...base, '', '', '', ''].map(q).join(','));
     for (const a of x.scan.aps) lines.push([...base, a.bssid, a.ssid, a.rssi, a.ch].map(q).join(','));
   }
-  download(`bevotag_${BUILDING}_${stamp()}.csv`, lines.join('\n'), 'text/csv');
+  download(`bevotag_${usedBuildings().join('-')}_${stamp()}.csv`, lines.join('\n'), 'text/csv');
 }
 async function importJson(file) {
   try {
@@ -620,7 +654,7 @@ async function importJson(file) {
     const list = Array.isArray(doc) ? doc : doc.samples;
     if (!Array.isArray(list)) throw new Error('no samples[] found');
     const have = new Set(S.samples.map(x => x.id));
-    const fresh = list.filter(x => x && x.id && x.scan && Array.isArray(x.scan.aps) && x.floor &&
+    const fresh = list.filter(x => x && x.id && x.scan && Array.isArray(x.scan.aps) && x.building && x.floor &&
       !have.has(x.id) && have.add(x.id));   // also drops duplicates inside the file itself
     await DB.put(fresh);
     S.samples.push(...fresh);
@@ -631,7 +665,8 @@ async function importJson(file) {
 
 // ---------------------------------------------------------------- wiring
 function init() {
-  $('floorTabs').innerHTML = FLOORS.map(f => `<button data-id="${f.id}" title="${f.name} floor">${f.id}</button>`).join('');
+  $('building').innerHTML = Object.values(S.buildings).map(b => `<option value="${esc(b.id)}" title="${esc(b.name)}">${esc(b.id)}</option>`).join('');
+  $('building').onchange = e => { if (setBuilding(e.target.value)) openFloor(); else e.target.value = S.building; };
   $('floorTabs').onclick = e => { const b = e.target.closest('button'); if (b) setFloor(b.dataset.id); };
 
   $('btnConnect').onclick = async () => {
@@ -670,15 +705,25 @@ function init() {
   log(`Session ${S.session}`);
 }
 
+// open the remembered floor of the current building, else its default
+function openFloor() {
+  const f = prefs.get('floor.' + S.building, null);
+  setFloor(floorCfg(f) ? f : (bld().default_floor || floorsOf()[0].id));
+}
+
 (async () => {
+  try { await loadBuildings(); } catch (e) {
+    toast('Could not load buildings. Serve this folder over http (see README).', 8000);
+    log('Loading buildings failed: ' + e, 'errl'); return;
+  }
   init();
   setMode('none');
   await DB.open();
   S.samples = await DB.all();
-  const floor = prefs.get('floor', '2');
-  setFloor(FLOORS.some(f => f.id === floor) ? floor : '2');
-  refreshDataset();
+  const b = prefs.get('building', null);
+  setBuilding(bld(b) ? b : Object.keys(S.buildings)[0]);
+  openFloor();
 })();
 
 // exposed for debugging / automated tests
-window.BevoTag = { S, Sim, DB, setPoint, setFloor, collect, exportCsv, exportJson };
+window.BevoTag = { S, Sim, DB, setPoint, setFloor, setBuilding, toFrame, collect, exportCsv, exportJson };

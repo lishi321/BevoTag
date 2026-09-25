@@ -1,0 +1,28 @@
+{
+  "id": "EER",
+  "name": "Engineering Education and Research Center",
+  "osm_way": 516282867,
+  "default_floor": "2",
+  "plan": {
+    "pdf": "plan.pdf",
+    "dpi": 250,
+    "ft_per_in": 32,
+    "note": "UT floor-plan set, 1/32\" = 1'-0\". Tower (floors 4-8) measures 265-267 ft wide vs 265.8 ft in OSM."
+  },
+  "frame": {
+    "units": "ft",
+    "origin": "sheet point (87 pt, 785 pt) on floors 4-8, about the lower-left corner of the tower's outer walls",
+    "axes": "x = right on the sheet, y = up on the sheet (not yet rotated to true north)"
+  },
+  "floors": [
+    { "id": "B", "name": "Basement", "page": 1, "image": "floors/B.png", "fit": [240, 290, 2469, 3789], "to_frame": null },
+    { "id": "1", "name": "First",    "page": 2, "image": "floors/1.png", "fit": [240, 295, 2469, 3771], "to_frame": null },
+    { "id": "2", "name": "Second",   "page": 3, "image": "floors/2.png", "fit": [240, 290, 2447, 3789], "to_frame": null },
+    { "id": "3", "name": "Third",    "page": 4, "image": "floors/3.png", "fit": [361, 1653, 2448, 3419], "to_frame": null },
+    { "id": "4", "name": "Fourth",   "page": 5, "image": "floors/4.png", "fit": [300, 1153, 2387, 2913], "to_frame": [0.128, 0, -38.667, 0, -0.128, 348.889] },
+    { "id": "5", "name": "Fifth",    "page": 6, "image": "floors/5.png", "fit": [300, 1153, 2387, 2913], "to_frame": [0.128, 0, -38.667, 0, -0.128, 348.889] },
+    { "id": "6", "name": "Sixth",    "page": 7, "image": "floors/6.png", "fit": [300, 1153, 2387, 2913], "to_frame": [0.128, 0, -38.667, 0, -0.128, 348.889] },
+    { "id": "7", "name": "Seventh",  "page": 8, "image": "floors/7.png", "fit": [300, 1153, 2387, 2913], "to_frame": [0.128, 0, -38.667, 0, -0.128, 348.889] },
+    { "id": "8", "name": "Eighth",   "page": 9, "image": "floors/8.png", "fit": [300, 1158, 2387, 2909], "to_frame": [0.128, 0, -38.667, 0, -0.128, 348.889] }
+  ]
+}

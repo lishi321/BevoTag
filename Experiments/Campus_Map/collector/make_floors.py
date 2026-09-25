@@ -1,29 +1,26 @@
-"""Render the EER floor-plan PDF (9 pages: Basement, 1-8) into floors/EER_<floor>.png.
+"""Render a building's floor-plan PDF into the per-floor PNGs the app loads.
 
-The PNGs are committed, so you only need this if the PDF changes.
+Reads buildings/<ID>/building.json: plan.pdf, plan.dpi, and each floor's page and image path.
     pip install pymupdf
-    python make_floors.py [path/to/plan.pdf]      # default: plans/EER_floor_plan.pdf
-
-DPI must match PLAN_DPI in app.js (x/y in feet depend on it).
+    python make_floors.py EER
 """
+import json
 import sys
 from pathlib import Path
 
 import pymupdf
 
-DPI = 250
-FLOORS = ["B", "1", "2", "3", "4", "5", "6", "7", "8"]  # PDF page order
+if len(sys.argv) != 2:
+    sys.exit("usage: python make_floors.py <BUILDING_ID>")
 
-here = Path(__file__).resolve().parent
-pdf = Path(sys.argv[1]) if len(sys.argv) > 1 else here / "plans" / "EER_floor_plan.pdf"
-doc = pymupdf.open(pdf)
-if doc.page_count != len(FLOORS):
-    sys.exit(f"expected {len(FLOORS)} pages, got {doc.page_count}")
+bdir = Path(__file__).resolve().parent / "buildings" / sys.argv[1]
+cfg = json.loads((bdir / "building.json").read_text(encoding="utf-8"))
+doc = pymupdf.open(bdir / cfg["plan"]["pdf"])
 
-out = here / "floors"
-out.mkdir(exist_ok=True)
-for page, floor in zip(doc, FLOORS):
-    pix = page.get_pixmap(dpi=DPI, colorspace=pymupdf.csGRAY)
-    path = out / f"EER_{floor}.png"
-    pix.save(path)
-    print(f"{path.name}: {pix.width}x{pix.height}")
+for floor in cfg["floors"]:
+    page = doc[floor["page"] - 1]  # pages are 1-based in building.json
+    pix = page.get_pixmap(dpi=cfg["plan"]["dpi"], colorspace=pymupdf.csGRAY)
+    out = bdir / floor["image"]
+    out.parent.mkdir(parents=True, exist_ok=True)
+    pix.save(out)
+    print(f"{cfg['id']} floor {floor['id']}: page {floor['page']} -> {out.relative_to(bdir)} ({pix.width}x{pix.height})")

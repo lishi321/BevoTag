@@ -37,6 +37,9 @@ input[readonly] { color: var(--muted); }
 .mapcol { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .floors { display: flex; gap: 4px; padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--line); overflow-x: auto; }
 .floors button { min-width: 44px; }
+.floors select { font-weight: 700; }
+.floortabs { display: flex; gap: 4px; }
+.frame { margin: -2px 0 8px; min-height: 1em; }
 .floors button.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
 .floors .cnt { font-size: 10px; margin-left: 4px; padding: 0 4px; border-radius: 8px; background: var(--bg); color: var(--muted); font-weight: 600; }
 .floors button.active .cnt { background: rgba(255,255,255,.3); color: inherit; }

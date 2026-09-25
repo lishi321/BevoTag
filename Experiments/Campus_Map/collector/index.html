@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BevoTag EER Survey</title>
+<title>BevoTag Survey</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><span class="logo">◉</span> BevoTag <span class="muted">EER survey collector</span></div>
+  <div class="brand"><span class="logo">◉</span> BevoTag <span class="muted">survey collector</span></div>
   <div class="conn">
     <span id="connDot" class="dot off"></span>
     <span id="connText">Not connected</span>
@@ -22,10 +22,10 @@
 
 <main class="layout">
   <section class="mapcol">
-    <nav class="floors" id="floorTabs"></nav>
+    <nav class="floors"><select id="building" title="Building"></select><div id="floorTabs" class="floortabs"></div></nav>
     <div id="viewport" class="viewport">
       <div id="stage" class="stage">
-        <img id="planImg" alt="EER floor plan" draggable="false">
+        <img id="planImg" alt="Floor plan" draggable="false">
         <svg id="overlay" class="overlay"></svg>
       </div>
       <div class="zoomctl">
@@ -47,9 +47,10 @@
       </div>
       <datalist id="roomList"></datalist>
       <div class="grid2">
-        <label>x (ft)<input id="xOut" readonly></label>
-        <label>y (ft)<input id="yOut" readonly></label>
+        <label>Sheet x (ft)<input id="xOut" readonly></label>
+        <label>Sheet y (ft)<input id="yOut" readonly></label>
       </div>
+      <div id="frameOut" class="small muted frame"></div>
       <label>Note<input id="note" placeholder="optional (e.g. doorway, tag on desk)"></label>
       <label>Operator<input id="operator" placeholder="your name / EID"></label>
     </div>
