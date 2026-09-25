@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BevoTag EER Survey</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="logo">◉</span> BevoTag <span class="muted">EER survey collector</span></div>
+  <div class="conn">
+    <span id="connDot" class="dot off"></span>
+    <span id="connText">Not connected</span>
+    <select id="baud" title="Baud rate">
+      <option>115200</option><option>230400</option><option>460800</option><option>921600</option>
+    </select>
+    <button id="btnConnect" class="primary">Connect ESP32</button>
+    <button id="btnSim" title="Fake device for testing without hardware">Simulator</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="mapcol">
+    <nav class="floors" id="floorTabs"></nav>
+    <div id="viewport" class="viewport">
+      <div id="stage" class="stage">
+        <img id="planImg" alt="EER floor plan" draggable="false">
+        <svg id="overlay" class="overlay"></svg>
+      </div>
+      <div class="zoomctl">
+        <button id="zoomIn" title="Zoom in">+</button>
+        <button id="zoomOut" title="Zoom out">−</button>
+        <button id="zoomFit" title="Fit">⤢</button>
+      </div>
+      <div class="hint" id="hint">Click the map to set where you're standing · drag to pan · scroll to zoom</div>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <div class="card">
+      <h2>1 · Location</h2>
+      <div class="grid2">
+        <label>Floor<input id="floorOut" readonly></label>
+        <label>Room #<input id="room" list="roomList" placeholder="e.g. 2.610" autocomplete="off"></label>
+      </div>
+      <datalist id="roomList"></datalist>
+      <div class="grid2">
+        <label>x (ft)<input id="xOut" readonly></label>
+        <label>y (ft)<input id="yOut" readonly></label>
+      </div>
+      <label>Note<input id="note" placeholder="optional (e.g. doorway, tag on desk)"></label>
+      <label>Operator<input id="operator" placeholder="your name / EID"></label>
+    </div>
+
+    <div class="card">
+      <h2>2 · Collect</h2>
+      <div class="grid2">
+        <label>Scans per point<input id="nScans" type="number" min="1" max="100" value="5"></label>
+        <label class="check"><input id="streamMode" type="checkbox"> Device streams scans</label>
+      </div>
+      <button id="btnCollect" class="primary wide" disabled>Collect</button>
+      <div class="progress"><div id="progBar"></div></div>
+      <div id="collectMsg" class="small muted">Connect a device and pick a point.</div>
+    </div>
+
+    <div class="card">
+      <h2>Last scan <span id="lastMeta" class="muted small"></span></h2>
+      <div class="tablewrap short">
+        <table id="apTable"><thead><tr><th>RSSI</th><th>SSID</th><th>BSSID</th><th>Ch</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Dataset</h2>
+      <div id="stats" class="stats"></div>
+      <div class="tablewrap">
+        <table id="roomTable"><thead><tr><th>Floor</th><th>Room</th><th>Samples</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="btnrow">
+        <button id="btnUndo">Undo last point</button>
+        <button id="btnExportJson">Export JSON</button>
+        <button id="btnExportCsv">Export CSV</button>
+        <label class="btn">Import JSON<input id="importFile" type="file" accept=".json,application/json" hidden></label>
+        <button id="btnClear" class="danger">Clear all</button>
+      </div>
+    </div>
+
+    <details class="card">
+      <summary><h2>Serial log</h2></summary>
+      <pre id="log" class="log"></pre>
+      <div class="btnrow">
+        <input id="rawCmd" placeholder='{"cmd":"hello"}'>
+        <button id="btnSend">Send</button>
+      </div>
+    </details>
+  </aside>
+</main>
+
+<div id="toast" class="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
