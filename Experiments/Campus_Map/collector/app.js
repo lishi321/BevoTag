@@ -3,12 +3,16 @@
  * Buildings: buildings/index.json lists ids; each buildings/<ID>/building.json holds that building's
  * plans, floors and coordinate frame. Adding a building needs no code changes.
  * Serial protocol: see PROTOCOL.md
+ * Storage: CSV only. Every serial line in either direction becomes one row of the CSV log file,
+ * tagged with the current location; nothing is filtered by message type (see README).
  */
 'use strict';
 
 // ---------------------------------------------------------------- config
 const SCAN_TIMEOUT_MS = 20000;
-const SCHEMA = 'bevotag.survey.v2';
+const FLUSH_MS = 2000;      // how often buffered rows are committed to the CSV file
+const CSV_HEAD = ['host_time', 'session', 'building', 'floor', 'room', 'x_px', 'y_px', 'x_ft', 'y_ft', 'fx_ft', 'fy_ft',
+  'operator', 'note', 'collecting', 'batch', 'dir', 'type', 'line'];
 const ACCENT = '#bf5700', SAMPLE_COLOR = '#2563eb';   // map is always light, so fixed colors
 
 // ---------------------------------------------------------------- state
@@ -17,7 +21,8 @@ const S = {
   building: null,         // current building id
   floor: null,
   point: null,            // {x, y} in image px
-  samples: [],            // all samples (loaded from IndexedDB)
+  samples: [],            // scans collected since the page opened (display only: the CSV file is the record)
+  label: null,            // location frozen for the point being collected
   view: { s: 0.2, tx: 0, ty: 0 },
   needFit: false,         // a fit was requested while the viewport had no size (hidden tab etc.)
   img: { w: 1, h: 1 },
@@ -81,39 +86,99 @@ function log(text, cls = 'sys') {
   el.scrollTop = el.scrollHeight;
 }
 
-// ---------------------------------------------------------------- storage (IndexedDB, memory fallback)
-const DB = {
-  db: null,
-  async open() {
+// ---------------------------------------------------------------- storage: CSV log file
+const csvq = v => { const t = String(v ?? ''); return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+
+// location the next row is tagged with: frozen while collecting, otherwise whatever is selected now
+function currentLabel() {
+  if (S.label) return S.label;
+  const p = S.point;
+  return {
+    building: S.building, floor: S.floor, room: $('room').value.trim(),
+    x_px: p?.x ?? null, y_px: p?.y ?? null,
+    x_ft: p ? +(p.x * ftPerPx()).toFixed(2) : null, y_ft: p ? +(p.y * ftPerPx()).toFixed(2) : null,
+    note: $('note').value.trim(), operator: $('operator').value.trim(), batch: null,
+  };
+}
+
+const RawLog = {
+  handle: null,   // file picked with showSaveFilePicker (Chrome/Edge); rows are appended every FLUSH_MS
+  mem: null,      // fallback without the File System Access API: rows kept in memory, downloaded on stop
+  buf: [], rows: 0, name: '', timer: null, chain: Promise.resolve(), failed: false,
+  on() { return !!(this.handle || this.mem); },
+  async start() {
+    const name = `bevotag_${S.session}.csv`;
+    if (window.showSaveFilePicker) {
+      let handle;
+      try {
+        handle = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: 'CSV', accept: { 'text/csv': ['.csv'] } }] });
+        const w = await handle.createWritable();       // truncates an existing file
+        await w.write(CSV_HEAD.join(',') + '\n'); await w.close();
+      } catch (e) { if (e.name !== 'AbortError') toast('Could not create the file: ' + e.message, 4000); return; }
+      this.handle = handle; this.name = handle.name;
+    } else {
+      this.mem = [CSV_HEAD.join(',')]; this.name = name;
+      toast('This browser can\'t write files directly: the CSV downloads when you stop logging', 5000);
+    }
+    this.buf = []; this.rows = 0; this.failed = false;
+    this.timer = setInterval(() => { this.flush(); renderLogState(); }, FLUSH_MS);
+    log(`CSV log started: ${this.name}`);
+    renderLogState();
+  },
+  // dir: 'in' device -> laptop, 'out' laptop -> device, 'app' a note from the app itself (e.g. discard)
+  add(dir, line, type = '', batch) {
+    if (!this.on()) return;
+    const L = currentLabel();
+    const fr = L.x_px == null ? null : toFrame(L);
+    const row = [new Date().toISOString(), S.session, L.building, L.floor, L.room, L.x_px, L.y_px, L.x_ft, L.y_ft,
+      fr?.x, fr?.y, L.operator, L.note, S.collecting ? 1 : 0, batch ?? L.batch, dir, type, line].map(csvq).join(',');
+    (this.mem || this.buf).push(row);
+    this.rows++;
+    if (this.rows % 50 === 0) renderLogState();
+  },
+  flush() { this.chain = this.chain.then(() => this.write()); return this.chain; },
+  async write() {
+    if (!this.handle || !this.buf.length) return;
+    const rows = this.buf; this.buf = [];
     try {
-      this.db = await new Promise((res, rej) => {
-        const r = indexedDB.open('bevotag', 1);
-        r.onupgradeneeded = () => r.result.createObjectStore('samples', { keyPath: 'id' });
-        r.onsuccess = () => res(r.result);
-        r.onerror = () => rej(r.error);
-      });
-      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+      // keepExistingData + seek to the end appends; close() commits, so a crash loses at most FLUSH_MS of rows
+      const size = (await this.handle.getFile()).size;
+      const w = await this.handle.createWritable({ keepExistingData: true });
+      await w.seek(size); await w.write(rows.join('\n') + '\n'); await w.close();
+      if (this.failed) { this.failed = false; renderLogState(); }
     } catch (e) {
-      this.db = null;
-      log('IndexedDB unavailable, data kept in memory only: ' + e, 'errl');
-      toast('Storage unavailable: export often!', 4000);
+      this.buf = rows.concat(this.buf);              // keep them for the next try
+      if (!this.failed) { log('CSV write failed: ' + e, 'errl'); toast('Writing the CSV failed, retrying: ' + e.message, 4000); }
+      this.failed = true; renderLogState();
     }
   },
-  tx(mode, fn) {
-    if (!this.db) return Promise.resolve([]);
-    return new Promise((res, rej) => {
-      const t = this.db.transaction('samples', mode);
-      const store = t.objectStore('samples');
-      const out = fn(store);
-      t.oncomplete = () => res(out && out.result !== undefined ? out.result : undefined);
-      t.onerror = () => rej(t.error);
-    });
+  async stop() {
+    clearInterval(this.timer); this.timer = null;
+    await this.flush();
+    if (this.mem) download(this.name, this.mem.join('\n') + '\n', 'text/csv');
+    if (this.handle && this.buf.length) toast(`${this.buf.length} rows could not be written to ${this.name}`, 6000);
+    log(`CSV log stopped: ${this.rows} rows in ${this.name}`);
+    this.handle = null; this.mem = null; this.buf = [];
+    renderLogState(); updateCollectState();
   },
-  all() { return this.tx('readonly', s => s.getAll()).then(r => r || []); },
-  put(list) { return this.tx('readwrite', s => { list.forEach(x => s.put(x)); }); },
-  del(ids) { return this.tx('readwrite', s => { ids.forEach(id => s.delete(id)); }); },
-  clear() { return this.tx('readwrite', s => s.clear()); },
 };
+
+function renderLogState() {
+  const b = $('btnRawLog'), m = $('rawLogMsg'), on = RawLog.on();
+  b.textContent = on ? 'Stop CSV log' : 'Start CSV log…';
+  b.classList.toggle('on', on);
+  m.classList.toggle('on', on && !RawLog.failed);
+  m.textContent = !on ? 'Pick a CSV file to log to. Every line the device sends is saved there.'
+    : RawLog.failed ? `Write to ${RawLog.name} failed, retrying (${RawLog.buf.length} rows waiting)`
+    : `Logging to ${RawLog.name} · ${RawLog.rows} rows${RawLog.mem ? ' (downloads on stop)' : ''}`;
+}
+
+function download(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 // ---------------------------------------------------------------- map view
 const vp = $('viewport'), stage = $('stage'), img = $('planImg'), svg = $('overlay');
@@ -370,13 +435,23 @@ if ('serial' in navigator) {
 
 // ---------------------------------------------------------------- device: simulator
 const Sim = {
-  aps: {}, seq: 0, streamTimer: null,     // aps: building id -> fake APs
+  aps: {}, seq: 0, streamTimer: null, imuTimer: null,     // aps: building id -> fake APs
   // mimic a device that scans on its own when "Device streams scans" is ticked
   syncStream() {
     const on = S.mode === 'sim' && $('streamMode').checked;
     if (on && !this.streamTimer) this.streamTimer = setInterval(() => this.handle({ cmd: 'scan' }), 1500);
     if (!on && this.streamTimer) { clearInterval(this.streamTimer); this.streamTimer = null; }
+    // fake IMU lines, so the CSV log has non-scan data to record. The format is made up: the real one is up to the firmware
+    const imu = S.mode === 'sim';
+    if (imu && !this.imuTimer) this.imuTimer = setInterval(() => this.emit({
+      type: 'imu', ms: Math.round(performance.now()),
+      ax: +(0.01 * this.gauss()).toFixed(3), ay: +(0.01 * this.gauss()).toFixed(3), az: +(1 + 0.01 * this.gauss()).toFixed(3),
+      gx: +(0.2 * this.gauss()).toFixed(2), gy: +(0.2 * this.gauss()).toFixed(2), gz: +(0.2 * this.gauss()).toFixed(2),
+      mx: +(0.22 + 0.005 * this.gauss()).toFixed(3), my: +(-0.05 + 0.005 * this.gauss()).toFixed(3), mz: +(0.41 + 0.005 * this.gauss()).toFixed(3),
+    }), 100);
+    if (!imu && this.imuTimer) { clearInterval(this.imuTimer); this.imuTimer = null; }
   },
+  emit(msg) { if (S.mode === 'sim') onLine(JSON.stringify(msg)); },
   build(bid) {
     // deterministic fake APs per building: 24 per floor, 3 SSIDs each, inside each floor's fit box
     const bi = Object.keys(S.buildings).indexOf(bid);
@@ -397,7 +472,7 @@ const Sim = {
   },
   gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); },
   handle(cmd) {
-    if (cmd.cmd === 'hello') return setTimeout(() => onMsg({ type: 'hello', v: 1, fw: 'sim-0.1', chip: 'SIMULATOR', mac: 'de:ad:be:ef:00:01' }), 50);
+    if (cmd.cmd === 'hello') return setTimeout(() => this.emit({ type: 'hello', v: 1, fw: 'sim-0.1', chip: 'SIMULATOR', mac: 'de:ad:be:ef:00:01' }), 50);
     if (cmd.cmd !== 'scan') return;
     const all = (this.aps[S.building] ||= this.build(S.building));
     const fi = floorsOf().findIndex(f => f.id === S.floor);
@@ -411,7 +486,7 @@ const Sim = {
     }
     aps.sort((a, b) => b.rssi - a.rssi);
     const dur = 700 + Math.round(Math.random() * 300);
-    setTimeout(() => onMsg({ type: 'scan', v: 1, id: cmd.id, seq: ++this.seq, ms: Math.round(performance.now()), dur_ms: dur, aps }), dur);
+    setTimeout(() => this.emit({ type: 'scan', v: 1, id: cmd.id, seq: ++this.seq, ms: Math.round(performance.now()), dur_ms: dur, aps }), dur);
   },
 };
 
@@ -419,19 +494,26 @@ const Sim = {
 async function send(obj) {
   const text = typeof obj === 'string' ? obj : JSON.stringify(obj);
   log(text, 'outl');
+  RawLog.add('out', text, jsonType(text));
   if (S.mode === 'serial') { try { await Serial.write(text); } catch (e) { log('Write failed: ' + e, 'errl'); } }
   else if (S.mode === 'sim') { try { Sim.handle(JSON.parse(text)); } catch { /* */ } }
   else toast('No device connected');
 }
+// "type" (or "cmd") of a JSON line, or '' for anything else. Only fills the CSV's type column; it never decides what's logged.
+const msgType = m => (m && typeof m === 'object' ? String(m.type ?? m.cmd ?? '') : '');
+function jsonType(line) {
+  if (line[0] !== '{') return '';
+  try { return msgType(JSON.parse(line)); } catch { return ''; }
+}
+// every line from the device: logged to the CSV as is, then handled if it's a message the app understands
 function onLine(line) {
   log(line, 'in');
-  if (line[0] !== '{') return;
-  let msg;
-  try { msg = JSON.parse(line); } catch { log('Unparseable JSON line (ignored)', 'errl'); return; }
-  onMsg(msg, true);
+  let msg = null;
+  if (line[0] === '{') { try { msg = JSON.parse(line); } catch { /* not JSON: logged as text */ } }
+  RawLog.add('in', line, msgType(msg));
+  if (msg && typeof msg === 'object') onMsg(msg);
 }
-function onMsg(msg, alreadyLogged) {
-  if (!alreadyLogged) log(JSON.stringify(msg), 'in');
+function onMsg(msg) {
   if (msg.type === 'hello') {
     S.device = { mac: msg.mac ?? null, fw: msg.fw ?? null, chip: msg.chip ?? null, v: msg.v ?? null };
     setMode(S.mode);
@@ -489,7 +571,8 @@ function updateCollectState() {
   if (S.collecting) { b.disabled = false; b.textContent = 'Stop'; return; }
   b.textContent = 'Collect';
   const room = $('room').value.trim();
-  const why = S.mode === 'none' ? 'Connect a device (or start the simulator).'
+  const why = !RawLog.on() ? 'Start the CSV log first.'
+    : S.mode === 'none' ? 'Connect a device (or start the simulator).'
     : !S.point ? 'Click the map where the DAQ module is.'
     : !room ? 'Enter the room number.' : '';
   b.disabled = !!why;
@@ -500,13 +583,9 @@ async function collect() {
   if (S.collecting) { S.stop = true; $('collectMsg').textContent = 'Stopping after current scan…'; return; }
   const n = Math.max(1, Math.min(100, parseInt($('nScans').value, 10) || 1));
   const stream = $('streamMode').checked;
-  const label = {
-    building: S.building, floor: S.floor, room: $('room').value.trim(),
-    x_px: S.point.x, y_px: S.point.y,       // raw click on the floor image; everything else derives from these
-    x_ft: +(S.point.x * ftPerPx()).toFixed(2), y_ft: +(S.point.y * ftPerPx()).toFixed(2),
-    note: $('note').value.trim(), operator: $('operator').value.trim(),
-  };
   const batch = uuid();
+  const label = { ...currentLabel(), batch };   // x_px/y_px: raw click on the floor image; everything else derives from these
+  S.label = label;
   S.collecting = true; S.stop = false; updateCollectState(); renderOverlay();
   let ok = 0, fails = 0, cmdId = Date.now() % 1e6;
   const bar = $('progBar'); bar.style.width = '0%';
@@ -517,12 +596,7 @@ async function collect() {
       const wait = waitScan(SCAN_TIMEOUT_MS, id);
       if (!stream) await send({ cmd: 'scan', id });
       const scan = await wait;
-      const sample = {
-        id: uuid(), schema: SCHEMA, batch, session: S.session, t: new Date().toISOString(),
-        ...label, device: { ...(S.device || {}), sim: S.mode === 'sim' }, scan,
-      };
-      S.samples.push(sample);
-      await DB.put([sample]);
+      S.samples.push({ ...label, t: new Date().toISOString(), scan });   // the scan itself is already in the CSV
       ok++; fails = 0;
       bar.style.width = (100 * ok / n) + '%';
       refreshDataset();
@@ -532,10 +606,10 @@ async function collect() {
       if (fails >= 3) { toast('3 scans in a row failed: stopping', 4000); break; }
     }
   }
-  S.collecting = false; S.waiter = null;
+  S.collecting = false; S.waiter = null; S.label = null;
   updateCollectState(); renderOverlay();
-  $('collectMsg').textContent = `Saved ${ok} scan${ok === 1 ? '' : 's'} for ${label.room} (${label.building} floor ${label.floor}). Click the next point.`;
-  if (ok) toast(`Saved ${ok} × ${label.room}`);
+  $('collectMsg').textContent = `Logged ${ok} scan${ok === 1 ? '' : 's'} for ${label.room} (${label.building} floor ${label.floor}). Click the next point.`;
+  if (ok) toast(`Logged ${ok} × ${label.room}`);
   setTimeout(() => { if (!S.collecting) bar.style.width = '0%'; }, 1500);
 }
 
@@ -569,9 +643,8 @@ function refreshDataset() {
     a.room.localeCompare(b.room, undefined, { numeric: true }));
   $('roomTable').tBodies[0].innerHTML = groups.map(g =>
     `<tr class="clickable" data-building="${esc(g.building)}" data-floor="${esc(g.floor)}" data-room="${esc(g.room)}" data-x="${g.sx / g.n}" data-y="${g.sy / g.n}">` +
-    `<td>${esc(g.building)} ${esc(g.floor)}</td><td>${esc(g.room)}</td><td>${g.n}</td>` +
-    `<td><button class="x" title="Delete this room's samples" data-del="1">✕</button></td></tr>`).join('') ||
-    '<tr><td colspan="4" class="muted">No data yet</td></tr>';
+    `<td>${esc(g.building)} ${esc(g.floor)}</td><td>${esc(g.room)}</td><td>${g.n}</td></tr>`).join('') ||
+    '<tr><td colspan="3" class="muted">No scans yet</td></tr>';
   const here = S.samples.filter(x => x.building === S.building);
   $('roomList').innerHTML = [...new Set(here.map(x => x.room))].map(r => `<option value="${esc(r)}">`).join('');
   // floor tab counts (current building)
@@ -581,21 +654,13 @@ function refreshDataset() {
     const c = perFloor[b.dataset.id];
     b.innerHTML = esc(b.dataset.id) + (c ? `<span class="cnt">${c}</span>` : '');
   });
-  $('btnUndo').disabled = !S.samples.length;
+  $('btnDiscard').disabled = !S.samples.length;
   renderOverlay();
 }
 
-$('roomTable').addEventListener('click', async e => {
+$('roomTable').addEventListener('click', e => {
   const tr = e.target.closest('tr[data-room]'); if (!tr) return;
   const { building, floor, room } = tr.dataset;
-  const inRoom = x => x.building === building && x.floor === floor && x.room === room;
-  if (e.target.dataset.del) {
-    const ids = S.samples.filter(inRoom).map(x => x.id);
-    if (!confirm(`Delete ${ids.length} scans for ${room} (${building} floor ${floor})?`)) return;
-    await DB.del(ids);
-    S.samples = S.samples.filter(x => !inRoom(x));
-    refreshDataset(); return;
-  }
   if (S.collecting) return;
   setFloor(floor, true, building);
   $('room').value = room; updateCollectState();
@@ -603,64 +668,17 @@ $('roomTable').addEventListener('click', async e => {
   img.complete ? go() : img.addEventListener('load', go, { once: true });
 });
 
-async function undoLast() {
+// the CSV is append-only, so "undo" writes a discard row carrying the last point's batch id; drop that batch in analysis
+function discardLast() {
   if (!S.samples.length || S.collecting) return;
   const last = S.samples.reduce((a, b) => (a.t > b.t ? a : b));
-  const ids = S.samples.filter(x => x.batch === last.batch).map(x => x.id);
-  if (!confirm(`Remove the last point (${ids.length} scans in ${last.room}, ${last.building} floor ${last.floor})?`)) return;
-  await DB.del(ids);
+  const n = S.samples.filter(x => x.batch === last.batch).length;
+  if (!RawLog.on()) return toast('Start the CSV log first: the discard row goes into it');
+  if (!confirm(`Discard the last point (${n} scans in ${last.room}, ${last.building} floor ${last.floor})?\n` +
+    'Its rows stay in the CSV, plus a discard row with its batch id to filter them out.')) return;
+  RawLog.add('app', JSON.stringify({ type: 'discard', batch: last.batch }), 'discard', last.batch);
   S.samples = S.samples.filter(x => x.batch !== last.batch);
-  refreshDataset(); toast('Removed last point');
-}
-
-// ---------------------------------------------------------------- import / export
-function download(name, text, type) {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const a = document.createElement('a'); a.href = url; a.download = name;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-const usedBuildings = () => [...new Set(S.samples.map(x => x.building))].sort();
-const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-
-function exportJson() {
-  if (!S.samples.length) return toast('Nothing to export');
-  const doc = {
-    schema: SCHEMA, exported_at: new Date().toISOString(),
-    // snapshot of each building's config, so the file can be interpreted without this repo
-    buildings: Object.fromEntries(usedBuildings().map(id => [id, bld(id) || null])),
-    samples: S.samples.map(x => { const fr = toFrame(x); return { ...x, fx_ft: fr?.x ?? null, fy_ft: fr?.y ?? null }; }),
-  };
-  download(`bevotag_${usedBuildings().join('-')}_${stamp()}.json`, JSON.stringify(doc, null, 1), 'application/json');
-}
-function exportCsv() {
-  if (!S.samples.length) return toast('Nothing to export');
-  const q = v => { const s = String(v ?? ''); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-  const head = ['sample_id', 'batch', 'session', 'time', 'building', 'floor', 'room', 'x_ft', 'y_ft', 'fx_ft', 'fy_ft', 'operator', 'note',
-    'device_mac', 'sim', 'scan_seq', 'n_aps', 'bssid', 'ssid', 'rssi', 'channel'];
-  const lines = [head.join(',')];
-  for (const x of S.samples) {
-    const fr = toFrame(x);
-    const base = [x.id, x.batch, x.session, x.t, x.building, x.floor, x.room, x.x_ft, x.y_ft, fr?.x, fr?.y, x.operator, x.note,
-      x.device?.mac, x.device?.sim ? 1 : 0, x.scan.seq, x.scan.aps.length];
-    if (!x.scan.aps.length) lines.push([...base, '', '', '', ''].map(q).join(','));
-    for (const a of x.scan.aps) lines.push([...base, a.bssid, a.ssid, a.rssi, a.ch].map(q).join(','));
-  }
-  download(`bevotag_${usedBuildings().join('-')}_${stamp()}.csv`, lines.join('\n'), 'text/csv');
-}
-async function importJson(file) {
-  try {
-    const doc = JSON.parse(await file.text());
-    const list = Array.isArray(doc) ? doc : doc.samples;
-    if (!Array.isArray(list)) throw new Error('no samples[] found');
-    const have = new Set(S.samples.map(x => x.id));
-    const fresh = list.filter(x => x && x.id && x.scan && Array.isArray(x.scan.aps) && x.building && x.floor &&
-      !have.has(x.id) && have.add(x.id));   // also drops duplicates inside the file itself
-    await DB.put(fresh);
-    S.samples.push(...fresh);
-    refreshDataset();
-    toast(`Imported ${fresh.length} new scans (${list.length - fresh.length} skipped)`, 3500);
-  } catch (e) { toast('Import failed: ' + e.message, 4000); }
+  refreshDataset(); toast('Discarded last point');
 }
 
 // ---------------------------------------------------------------- wiring
@@ -683,19 +701,17 @@ function init() {
   $('streamMode').addEventListener('change', () => { prefs.set('stream', $('streamMode').checked); Sim.syncStream(); });
   $('operator').addEventListener('input', () => prefs.set('operator', $('operator').value));
   $('baud').addEventListener('change', () => prefs.set('baud', $('baud').value));
-  $('btnUndo').onclick = undoLast;
-  $('btnExportJson').onclick = exportJson;
-  $('btnExportCsv').onclick = exportCsv;
-  $('importFile').onchange = e => { if (e.target.files[0]) importJson(e.target.files[0]); e.target.value = ''; };
-  $('btnClear').onclick = async () => {
-    if (!S.samples.length) return;
-    if (!confirm(`Delete ALL ${S.samples.length} scans from this browser? Export first!`)) return;
-    if (prompt('Type DELETE to confirm') !== 'DELETE') return;
-    await DB.clear(); S.samples = []; refreshDataset(); toast('Cleared');
+  $('btnDiscard').onclick = discardLast;
+  $('btnRawLog').onclick = async () => {
+    if (!RawLog.on()) { await RawLog.start(); updateCollectState(); return; }
+    if (S.collecting) return toast('Stop collecting before stopping the log');
+    await RawLog.stop();
   };
   $('btnSend').onclick = () => { const t = $('rawCmd').value.trim(); if (t) send(t); };
   $('rawCmd').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnSend').click(); });
-  window.addEventListener('beforeunload', e => { if (S.collecting) { e.preventDefault(); e.returnValue = ''; } });
+  window.addEventListener('beforeunload', e => {
+    if (S.collecting || RawLog.on()) { RawLog.flush(); e.preventDefault(); e.returnValue = ''; }
+  });
 
   $('operator').value = prefs.get('operator', '');
   $('nScans').value = prefs.get('nScans', '5');
@@ -718,12 +734,11 @@ function openFloor() {
   }
   init();
   setMode('none');
-  await DB.open();
-  S.samples = await DB.all();
+  renderLogState();
   const b = prefs.get('building', null);
   setBuilding(bld(b) ? b : Object.keys(S.buildings)[0]);
   openFloor();
 })();
 
 // exposed for debugging / automated tests
-window.BevoTag = { S, Sim, DB, setPoint, setFloor, setBuilding, toFrame, collect, exportCsv, exportJson };
+window.BevoTag = { S, Sim, RawLog, setPoint, setFloor, setBuilding, toFrame, collect, onLine };

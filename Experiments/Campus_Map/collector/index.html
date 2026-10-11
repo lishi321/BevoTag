@@ -57,6 +57,8 @@
 
     <div class="card">
       <h2>2 · Collect</h2>
+      <button id="btnRawLog" class="wide">Start CSV log…</button>
+      <div id="rawLogMsg" class="small muted">Pick a CSV file to log to. Every line the device sends is saved there.</div>
       <div class="grid2">
         <label>Scans per point<input id="nScans" type="number" min="1" max="100" value="5"></label>
         <label class="check"><input id="streamMode" type="checkbox"> Device streams scans</label>
@@ -74,17 +76,13 @@
     </div>
 
     <div class="card">
-      <h2>Dataset</h2>
+      <h2>This session <span class="muted small">(the CSV file is the record)</span></h2>
       <div id="stats" class="stats"></div>
       <div class="tablewrap">
-        <table id="roomTable"><thead><tr><th>Floor</th><th>Room</th><th>Samples</th><th></th></tr></thead><tbody></tbody></table>
+        <table id="roomTable"><thead><tr><th>Floor</th><th>Room</th><th>Scans</th></tr></thead><tbody></tbody></table>
       </div>
       <div class="btnrow">
-        <button id="btnUndo">Undo last point</button>
-        <button id="btnExportJson">Export JSON</button>
-        <button id="btnExportCsv">Export CSV</button>
-        <label class="btn">Import JSON<input id="importFile" type="file" accept=".json,application/json" hidden></label>
-        <button id="btnClear" class="danger">Clear all</button>
+        <button id="btnDiscard" title="Writes a discard row for the last point's batch; drop it in analysis">Discard last point</button>
       </div>
     </div>
 

@@ -7,8 +7,8 @@ It's a proposal: change it if the DAQ team needs to, but bump `v` and update `ap
 
 - USB serial (CDC or USB-UART bridge), **115200 baud, 8N1**
 - UTF-8 text, **one JSON object per line**, terminated by `\n` (`\r\n` is fine too)
-- Any line that isn't valid JSON is shown in the app's serial log and otherwise ignored,
-  so ordinary debug `printf`s are OK. Just don't start a debug line with `{`.
+- Every line is saved to the CSV log. Lines that aren't `hello`/`scan`/`err` JSON are not
+  acted on, so ordinary debug `printf`s are OK.
 
 ## Host → device commands
 
@@ -22,6 +22,17 @@ While collecting, it sends one `scan` command, waits for the reply (timeout 20 s
 
 **Streaming mode:** if the device just scans continuously on its own, tick "Device streams scans"
 in the app. It will then stop sending `scan` commands and save each incoming `scan` message while collecting.
+
+## Other data (IMU, CSI, …)
+
+The app saves **every line** the device sends to its CSV log, raw, whatever the format. So the firmware can
+stream IMU readings, CSI or anything else without app changes. Two suggestions to make analysis easier:
+- Send JSON objects with a `"type"` field (e.g. `{"type":"imu","ms":…,"ax":…}`). The app copies it to
+  the CSV's `type` column, so filtering is one line in pandas.
+- Include a device timestamp (`ms`). The laptop timestamp (`host_time`) includes USB buffering delay.
+
+Mind the link bandwidth: 115200 baud is about 11 KB/s, shared with scan replies. Native-USB boards
+(ESP32-C3/C6/S3) aren't limited by the baud rate.
 
 ## Device → host messages
 
