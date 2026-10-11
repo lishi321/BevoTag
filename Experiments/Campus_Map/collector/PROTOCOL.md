@@ -1,46 +1,36 @@
-# BevoTag DAQ ↔ Collector serial protocol (v1)
+# BevoTag DAQ ↔ collector serial protocol (v1)
 
-This is the contract between the ESP32 DAQ module and the EER survey collector web app.
-It's a proposal: change it if the DAQ team needs to, but bump `v` and update `app.js` when you do.
+The contract between the ESP32 DAQ module and the survey collector web app. It's a proposal: the DAQ team
+can change it, but bump `v` and update `app.js` to match.
 
 ## Transport
 
-- USB serial (CDC or USB-UART bridge), **115200 baud, 8N1**
-- UTF-8 text, **one JSON object per line**, terminated by `\n` (`\r\n` is fine too)
-- Every line is saved to the CSV log. Lines that aren't `hello`/`scan`/`err` JSON are not
-  acted on, so ordinary debug `printf`s are OK.
+- USB serial (native USB CDC or a USB-UART bridge), **115200 baud, 8N1**
+- UTF-8 text, one line per message, ending in `\n` (`\r\n` is fine)
+- **The app saves every line to its CSV log**, whatever the format. It only acts on the
+  `hello`, `scan` and `err` messages below, so debug prints are fine.
 
-## Host → device commands
+## Commands (app → device)
 
-| Command | Meaning | Expected reply |
+| Command | Meaning | Reply |
 |---|---|---|
-| `{"cmd":"hello"}` | Identify yourself | one `hello` message |
-| `{"cmd":"scan","id":17}` | Do one full WiFi scan now | one `scan` message echoing `id` |
+| `{"cmd":"hello"}` | identify yourself | one `hello` |
+| `{"cmd":"scan","id":17}` | do one full WiFi scan now | one `scan` echoing `id` |
 
-The app sends `hello` about 1.5 s after it opens the port (the board may reset on open).
-While collecting, it sends one `scan` command, waits for the reply (timeout 20 s), and repeats.
+The app sends `hello` about 1.5 s after opening the port, because the board may reset on open. During
+Collect it sends `scan`, waits for the reply (20 s timeout) and repeats.
 
-**Streaming mode:** if the device just scans continuously on its own, tick "Device streams scans"
-in the app. It will then stop sending `scan` commands and save each incoming `scan` message while collecting.
+**Streaming mode:** if the device scans continuously on its own, tick "Device streams scans" in the app.
+It then stops sending `scan` commands and uses each incoming `scan` message while collecting.
 
-## Other data (IMU, CSI, …)
-
-The app saves **every line** the device sends to its CSV log, raw, whatever the format. So the firmware can
-stream IMU readings, CSI or anything else without app changes. Two suggestions to make analysis easier:
-- Send JSON objects with a `"type"` field (e.g. `{"type":"imu","ms":…,"ax":…}`). The app copies it to
-  the CSV's `type` column, so filtering is one line in pandas.
-- Include a device timestamp (`ms`). The laptop timestamp (`host_time`) includes USB buffering delay.
-
-Mind the link bandwidth: 115200 baud is about 11 KB/s, shared with scan replies. Native-USB boards
-(ESP32-C3/C6/S3) aren't limited by the baud rate.
-
-## Device → host messages
+## Messages the app reads (device → app)
 
 ### `hello`
 ```json
 {"type":"hello","v":1,"fw":"0.1.0","chip":"ESP32-C6","mac":"a0:b1:c2:d3:e4:f5"}
 ```
-`mac` is the station MAC. It's recorded with every sample so we know which radio took the data.
+`mac` is the station MAC, so the data shows which radio took it. Extra fields (scan settings, sensors
+fitted…) are welcome. They end up in the CSV with the rest of the line.
 
 ### `scan`
 ```json
@@ -52,7 +42,7 @@ Mind the link bandwidth: 115200 baud is about 11 KB/s, shared with scan replies.
  ]}
 ```
 
-| Field | Req. | Notes |
+| Field | Required | Notes |
 |---|---|---|
 | `type` | yes | `"scan"` |
 | `aps` | yes | array, may be empty |
@@ -60,16 +50,25 @@ Mind the link bandwidth: 115200 baud is about 11 KB/s, shared with scan replies.
 | `aps[].rssi` | yes | integer dBm |
 | `aps[].ssid` | no | `""` for hidden networks |
 | `aps[].ch` | no | primary channel |
-| `id` | no | echo of the command `id`, if one was sent |
+| `id` | no | echo of the command's `id` |
 | `seq` | no | device-side scan counter |
 | `ms` | no | `millis()` when the scan finished |
 | `dur_ms` | no | how long the scan took |
 
-### `err` (optional)
+### `err`
 ```json
 {"type":"err","msg":"scan failed: -2"}
 ```
-The app logs it. During collection it also retries that scan.
+Optional. The app shows it, and during Collect it retries that scan.
+
+## Everything else (IMU, CSI, …)
+
+Send whatever you like; it lands in the CSV untouched. To make analysis easy:
+- Send one JSON object per line with a `"type"` field, e.g. `{"type":"imu","ms":…,"ax":…}`.
+  The app copies `type` into its own CSV column, so filtering by it is one line in pandas.
+- Include a device timestamp (`ms`). The laptop's `host_time` includes USB buffering delay.
+- Watch the bandwidth: 115200 baud is about 11 KB/s, shared with scan replies. Boards with native
+  USB (ESP32-C3/C6/S3) aren't limited by the baud rate.
 
 ## Scanning guidance (important for fingerprint quality)
 

@@ -1,42 +1,113 @@
 # BevoTag survey collector
 
-A browser app for collecting labeled WiFi fingerprints inside campus buildings (EER for now). You pick
-the building and floor, click your spot on the floor plan and type the room number. The ESP32 DAQ module (plugged in over USB) then takes N scans, and each
-scan is saved with that label.
+A browser app for collecting labeled data inside campus buildings (EER for now). You click your spot on
+the floor plan and type the room number. The app tells the ESP32 DAQ module, plugged in over USB, to take N
+WiFi scans at that spot.
 
-**Everything the device sends is logged raw to a CSV file on your laptop**: WiFi scans, IMU readings, CSI,
-debug prints, anything. Lines aren't checked against a format, so the firmware can send new kinds of data
-without any app changes.
+**Every line the device sends is saved raw to a CSV file on your laptop.** That includes WiFi scans, IMU
+readings, CSI and debug prints. The app doesn't check the format, so the firmware can send new kinds of
+data without app changes.
 
-Works offline and needs no build step.
+Plain HTML/JS: no build step, works offline.
 
 ## Quick start
 
-1. **Serve it** (Web Serial only works on `localhost`/https, in **desktop Chrome or Edge**):
+1. Serve the folder. Web Serial needs **desktop Chrome or Edge** on `localhost` or https:
    ```bash
    cd Experiments/Campus_Map/collector
    python3 -m http.server 8000
    ```
-   Then open <http://localhost:8000>.
-2. Click **Connect ESP32** and pick the board's port. To try things without hardware, click **Simulator**
-   (it also sends fake IMU lines at 10 Hz).
+   Open <http://localhost:8000>.
+2. Click **Connect ESP32** and pick the board's port. To try it without hardware, click **Simulator**
+   (fake WiFi scans plus fake IMU lines at 10 Hz).
 3. Click **Start CSV log…** and choose where to save the file. Collect stays disabled until a log is running.
 
 ## Collecting
 
-1. Pick the building and floor tab, then **click where the DAQ module is** (drag to pan, scroll or pinch to zoom).
-2. Type the **room number** as printed on the plan, e.g. `2.610`. Corridors have numbers too (e.g. `2.817`).
-3. Set **scans per point** (5 is a reasonable start), then press **Collect** (or Enter in the room box).
-4. Move and repeat. Aim for **several points per room** (corners and center) rather than many scans at one spot.
-   Room-level accuracy depends on covering the whole room.
+1. Pick the building and floor, then **click where the DAQ module is**. Drag to pan; scroll or pinch to zoom.
+2. Type the **room number** as printed on the plan, e.g. `2.610`. Corridors have numbers too, e.g. `2.817`.
+3. Set **scans per point** (5 is a good start) and press **Collect**, or Enter in the room box.
+4. Move and repeat. Take **several points per room** (corners and center) rather than many scans at one spot.
 
-- **Discard last point** marks the last batch as bad (see *Data format*). Rows are never deleted from the CSV.
-- Clicking a room row jumps to it on the map. The room table and map dots only show this page session; the CSV is the record.
-- **Stop CSV log** closes the file. Start a new log for each session; each file starts with its own header.
+- **Discard last point** flags the last point as bad. The CSV is append-only, so this adds a row; see below.
+- **Stop CSV log** closes the file. Use one log per session.
+- The room table and map dots only show the current page session. The CSV file is the record.
+
+## CSV format
+
+One row per serial line, in both directions, committed to the file every 2 s. A crash loses at most
+the last 2 s. Browsers without direct file writing (Firefox, Safari) keep the log in memory and download
+it when you press Stop.
+
+| Column | Meaning |
+|---|---|
+| `host_time` | laptop time (ISO, UTC) |
+| `session` | id of the page session |
+| `building`, `floor`, `room` | location label |
+| `x_px`, `y_px`, `x_ft`, `y_ft`, `fx_ft`, `fy_ft` | position, see [Coordinates](#coordinates) |
+| `operator`, `note` | from the Location card |
+| `collecting` | `1` during Collect. Only these rows have a trustworthy location: at other times it's just whatever was last selected |
+| `batch` | id of the point being collected |
+| `dir` | `in` device → laptop · `out` laptop → device · `app` note from the app |
+| `type` | the JSON `"type"` (or `"cmd"`) field, empty for non-JSON lines. A convenience only; nothing is filtered on it |
+| `line` | the raw line, exactly as received |
+
+**Discarded points:** rows with `type` = `discard` name a `batch`. Drop every row with that batch.
+**Simulator logs** contain a `hello` row with `"chip":"SIMULATOR"`. Don't train on them.
+
+### Loading in pandas
+
+Files from several laptops and sessions simply concatenate.
+
+```python
+import glob, json
+import pandas as pd
+
+df = pd.concat([pd.read_csv(f, dtype={"floor": str, "room": str}) for f in glob.glob("bevotag_*.csv")],
+               ignore_index=True)
+bad = set(df.loc[df.type == "discard", "batch"])
+lab = df[(df.collecting == 1) & (df.dir == "in") & ~df.batch.isin(bad)]
+
+# WiFi fingerprints: one row per scan, one column per BSSID
+scans = lab[lab.type == "scan"]
+aps = [dict(sample=i, floor=r.floor, room=r.room, **a)
+       for i, r in scans.iterrows() for a in json.loads(r.line)["aps"]]
+fp = pd.DataFrame(aps).pivot_table(index=["sample", "floor", "room"], columns="bssid", values="rssi")
+
+# IMU, or any other JSON type: one column per field the firmware sends
+imu_rows = df[df.type == "imu"]
+imu = imu_rows[["host_time", "room", "collecting", "batch"]].join(
+    pd.json_normalize(imu_rows.line.map(json.loads).tolist()).set_index(imu_rows.index))
+```
+
+Non-JSON lines are in `line` as is. Parse them however the firmware formats them.
+
+## Coordinates
+
+| Fields | Frame |
+|---|---|
+| `x_px`, `y_px` | the click: pixel on that floor's image, origin top-left, y down |
+| `x_ft`, `y_ft` | the same point in feet (`px × ft_per_in / dpi`) |
+| `fx_ft`, `fy_ft` | building frame in feet, shared by all floors, y up. Empty if the floor isn't registered |
+
+`fx_ft`/`fy_ft` are computed when the row is written. If a floor's registration changes later, recompute
+them from `x_px`, `y_px` and the floor's new `to_frame`.
+
+**EER:** all floors (B–8) are registered. The origin is the lower-left corner of the tower's outer walls,
+x right and y up on the sheet; sheet up is about 5° east of true north. Distances are good to about an
+inch plus click precision. See [buildings/EER/VERIFICATION.md](buildings/EER/VERIFICATION.md) for how
+this was checked. Not built yet: converting the building frame to latitude/longitude.
+
+## Device protocol
+
+[PROTOCOL.md](PROTOCOL.md) has the serial contract and a starter Arduino sketch. In short: newline-delimited
+JSON at 115200 baud, `{"cmd":"scan"}` → `{"type":"scan","aps":[…]}`. Only `hello`, `scan` and `err` need that
+exact format, because Collect and the last-scan table use them. Everything else is just logged.
 
 ## Buildings
 
-Each building is a folder of data. Adding one needs no code changes:
+Each building is a folder of data, and adding one needs no code changes. The floor PNGs are committed,
+so the app works right after cloning.
 
 ```
 buildings/
@@ -66,107 +137,12 @@ To add a building `XYZ`:
 | `frame` | human description of the building frame (origin, axes) |
 | `default_floor`, `osm_way` | optional: floor shown first, OpenStreetMap footprint id |
 
-## Data format
-
-One CSV file per logging session. **One row per serial line**, in either direction, written as it arrives:
-
-| Column | Meaning |
-|---|---|
-| `host_time` | laptop time (ISO, UTC) when the line arrived or was sent |
-| `session` | id of this page session |
-| `building`, `floor`, `room`, `x_px`, `y_px`, `x_ft`, `y_ft`, `fx_ft`, `fy_ft` | location at that moment (see *Coordinates*) |
-| `operator`, `note` | from the Location card |
-| `collecting` | `1` while Collect is running: the location is the clicked point for that batch. `0` otherwise: the location is just whatever was last selected, so don't treat it as a label |
-| `batch` | id of the point being collected (empty when `collecting` = 0) |
-| `dir` | `in` device → laptop, `out` laptop → device, `app` a note from the app (discard) |
-| `type` | the `"type"` (or `"cmd"`) field if the line is JSON, else empty. Only a convenience, nothing is filtered on it |
-| `line` | the raw line, exactly as received |
-
-Rows are committed to the file every 2 s, so a crash loses at most the last 2 s.
-Without the File System Access API (Firefox, Safari: only the simulator works there anyway) the
-log is kept in memory and downloaded when you press Stop.
-
-**Discards.** The file is append-only. **Discard last point** writes a row with `type` = `discard` and
-that point's `batch`; drop every row with that batch.
-
-**Loading in pandas** (several files from several laptops just concatenate):
-```python
-import glob, json
-import pandas as pd
-
-df = pd.concat([pd.read_csv(f, dtype={"floor": str, "room": str}) for f in glob.glob("bevotag_*.csv")],
-               ignore_index=True)
-bad = set(df.loc[df.type == "discard", "batch"])
-lab = df[(df.collecting == 1) & (df.dir == "in") & ~df.batch.isin(bad)]
-
-# WiFi fingerprints: one row per scan, one column per BSSID
-scans = lab[lab.type == "scan"]
-aps = [dict(sample=i, floor=r.floor, room=r.room, **a)
-       for i, r in scans.iterrows() for a in json.loads(r.line)["aps"]]
-fp = pd.DataFrame(aps).pivot_table(index=["sample", "floor", "room"], columns="bssid", values="rssi")
-
-# IMU (or any other JSON type): one column per field the firmware sends
-imu_rows = df[df.type == "imu"]
-imu = imu_rows[["host_time", "room", "collecting", "batch"]].join(
-    pd.json_normalize(imu_rows.line.map(json.loads).tolist()).set_index(imu_rows.index))
-```
-Lines that aren't JSON (plain-text debug output, a CSV-style IMU format…) are in `line` as is;
-parse them however the firmware formats them.
-
-**Coordinates.** Three levels, each derived from the one before:
-
-| Fields | Frame | Status |
-|---|---|---|
-| `x_px`, `y_px` | pixel on that floor's image, origin top-left, y down | raw click, always stored |
-| `x_ft`, `y_ft` | same, in feet (`px × ft_per_in / dpi`) | always valid |
-| `fx_ft`, `fy_ft` | building frame: shared by all floors, y up | empty for unregistered floors |
-
-The building frame is computed when the row is written. If a floor's registration changes later,
-recompute it from `x_px`, `y_px` and the new `to_frame` in `building.json`. Next step (not built yet): a per-building
-`georef` (origin lat/long + rotation) to turn the building frame into lat/long.
-
-**EER frame:** origin at the lower-left corner of the tower's outer walls, x right and y up on the
-sheet. All floors (B–8) are registered.
-
-### EER geometry verification (2026-09-25)
-
-Checked against independent sources. The PDF is vector CAD output, so it can be measured directly.
-
-| What | Source | Result |
-|---|---|---|
-| Scale | Column grid in the PDF | 11 bays of **21.00 ft** (±0.01) and an 18.00 ft bay: the sheets are at true 1/32" scale (±0.05%) |
-| Scale | Satellite imagery (Esri World Imagery), floor 4 outline fitted with free scale | 1.005 (0.5% off), outline RMS 0.6 ft |
-| Scale | OpenStreetMap footprint (way 516282867) | overall width 265.8 ft vs 266–268 ft on the plan; edge fit 1.02 (OSM trace is coarse) |
-| Scale | TxGIO statewide footprints (2017 imagery) | edge fit ~1.05; the coarsest source, least weight |
-| Rotation | imagery / OSM / TxGIO | 4.96° / 4.83° / ~5.0°: sheet up points about **5° east of true north** |
-| Floor registration | Structural columns matched floor to floor | floors 4–8 identical placement; B, 1, 2, 3 shifted by (−21.64, −19.32), (−20.31, −103.91), (−7.88, −65.90), (−7.87, −65.90) ft; residual ~0.01 ft |
-| Registration cross-check | floor outlines; loop closure (B→1→2→4 vs B→4) | agree within 0.4 ft (outline) and 0.04 ft (loop) |
-| App pipeline | the same column clicked on floors B, 1, 2, 3, 5, 7 vs floor 4, through the app's own click handling | same building-frame position within **0.09 ft** (36 columns) |
-| Absolute position | frame origin placed via OSM vs via imagery | 7.7 ft apart: lat/long is good to roughly ±10 ft |
-
-Takeaways: distances within and across floors are reliable to about an inch plus click precision.
-Latitude/longitude isn't wired into the app yet; from the fits above, the frame origin is near
-30.28805 N, 97.73577 W with sheet-up ≈ 5° east of north (±10 ft, ±0.2°).
-
-Logs made with the simulator have a `hello` row with `"chip":"SIMULATOR"`. Don't train on them.
-
-## Device protocol
-
-See [PROTOCOL.md](PROTOCOL.md): newline-delimited JSON at 115200 baud, `{"cmd":"scan"}` → `{"type":"scan","aps":[…]}`.
-It includes a minimal Arduino sketch the DAQ team can start from. The app only needs `hello` and `scan`
-to be in that format (for Collect and the last-scan table). Anything else the firmware prints is logged as is.
-
-## Floor plans
-
-`buildings/EER/plan.pdf` is UT's EER floor-plan set (Basement + floors 1–8, one page each).
-The PNGs are rendered from it and committed, so the app works right after cloning.
-If a PDF changes, re-render with `python make_floors.py <ID>`.
-
 ## Files
 
 | File | What |
 |---|---|
-| `index.html`, `style.css`, `app.js` | the app (plain JS, no dependencies) |
+| `index.html`, `style.css`, `app.js` | the app |
 | `PROTOCOL.md` | serial contract with the DAQ module |
-| `buildings/` | one folder per building (see *Buildings*) |
-| `make_floors.py` | `building.json` + PDF → floor PNGs |
+| `buildings/` | one folder per building: config, floor-plan PDF, rendered PNGs |
+| `buildings/EER/VERIFICATION.md` | how the EER plan geometry was checked |
+| `make_floors.py` | renders a building's PDF into floor PNGs |
