@@ -3,11 +3,17 @@
 
 uint32_t seq = 0;
 
+// Structure to track channel signal strengths across the 50 scans
+struct ChannelStats {
+  int channel;
+  int32_t max_rssi;
+  uint32_t hits;
+};
+
 // Callback function triggered whenever a packet containing CSI is received
 void csi_cb(void *ctx, wifi_csi_info_t *info) {
   if (!info || !info->buf || info->len == 0) return;
 
-  // Print the CSI data as a JSON object
   Serial.printf("{\"type\":\"csi\",\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"rssi\":%d,\"len\":%d,\"data\":[",
                 info->mac[0], info->mac[1], info->mac[2], info->mac[3], info->mac[4], info->mac[5],
                 info->rx_ctrl.rssi, info->len);
@@ -26,55 +32,97 @@ void sendHello() {
 
 void doScan(long id) {
   uint32_t t0 = millis();
-  
-  // Phase 1: Standard Active Scan
-  int n = WiFi.scanNetworks(false, true); // blocking, include hidden
-  if (n < 0) { 
-    Serial.printf("{\"type\":\"err\",\"msg\":\"scan failed: %d\"}\n", n); 
-    return; 
+  const int TOTAL_SCANS = 50;
+
+  // Track channels 1 to 14 in 2.4 GHz
+  ChannelStats ch_stats[15];
+  for (int c = 0; c <= 14; c++) {
+    ch_stats[c].channel = c;
+    ch_stats[c].max_rssi = -120;
+    ch_stats[c].hits = 0;
   }
-  
-  Serial.printf("{\"type\":\"scan\",\"v\":1,\"id\":%ld,\"seq\":%lu,\"ms\":%lu,\"dur_ms\":%lu,\"aps\":[",
-                id, ++seq, millis(), millis() - t0);
-  
-  // Array to hold up to 4 unique channels
+
+  Serial.printf("{\"type\":\"info\",\"msg\":\"Starting 50 RSSI scan iterations...\",\"id\":%ld}\n", id);
+
+  // Phase 1: 50 Scan Iterations
+  for (int scan_idx = 0; scan_idx < TOTAL_SCANS; scan_idx++) {
+    uint32_t scan_start = millis();
+    int n = WiFi.scanNetworks(false, true); // blocking active scan, include hidden
+
+    if (n < 0) {
+      Serial.printf("{\"type\":\"err\",\"msg\":\"scan iteration %d failed: %d\"}\n", scan_idx, n);
+      delay(50);
+      continue;
+    }
+
+    Serial.printf("{\"type\":\"scan_iter\",\"id\":%ld,\"iter\":%d,\"seq\":%lu,\"ms\":%lu,\"dur_ms\":%lu,\"aps\":[",
+                  id, scan_idx + 1, ++seq, millis(), millis() - scan_start);
+
+    for (int i = 0; i < n; i++) {
+      String ssid = WiFi.SSID(i); 
+      ssid.replace("\\", "\\\\"); 
+      ssid.replace("\"", "\\\"");
+      int ch = WiFi.channel(i);
+      int rssi = WiFi.RSSI(i);
+
+      Serial.printf("%s{\"bssid\":\"%s\",\"ssid\":\"%s\",\"rssi\":%d,\"ch\":%d}",
+                    i ? "," : "", WiFi.BSSIDstr(i).c_str(), ssid.c_str(), rssi, ch);
+
+      // Track channel metrics
+      if (ch >= 1 && ch <= 14) {
+        ch_stats[ch].hits++;
+        if (rssi > ch_stats[ch].max_rssi) {
+          ch_stats[ch].max_rssi = rssi;
+        }
+      }
+    }
+    Serial.print("]}\n");
+    WiFi.scanDelete();
+
+    delay(20); // brief yield to feed watchdog
+  }
+
+  // Find the top 4 strongest unique channels based on max observed RSSI
   int target_channels[4] = {0};
   int channel_count = 0;
 
-  for (int i = 0; i < n; i++) {
-    String ssid = WiFi.SSID(i); ssid.replace("\\", "\\\\"); ssid.replace("\"", "\\\"");
-    int ch = WiFi.channel(i);
-    
-    Serial.printf("%s{\"bssid\":\"%s\",\"ssid\":\"%s\",\"rssi\":%d,\"ch\":%d}",
-                  i ? "," : "", WiFi.BSSIDstr(i).c_str(), ssid.c_str(), WiFi.RSSI(i), ch);
-                  
-    // Check if we already added this channel to our list
-    bool is_duplicate = false;
-    for (int j = 0; j < channel_count; j++) {
-      if (target_channels[j] == ch) {
-        is_duplicate = true;
-        break;
+  for (int slot = 0; slot < 4; slot++) {
+    int best_ch = -1;
+    int32_t best_rssi = -128;
+
+    for (int c = 1; c <= 14; c++) {
+      if (ch_stats[c].hits > 0 && ch_stats[c].max_rssi > best_rssi) {
+        // Ensure channel wasn't already picked
+        bool already_selected = false;
+        for (int s = 0; s < slot; s++) {
+          if (target_channels[s] == c) {
+            already_selected = true;
+            break;
+          }
+        }
+        if (!already_selected) {
+          best_rssi = ch_stats[c].max_rssi;
+          best_ch = c;
+        }
       }
     }
-    // If it's a new channel and we haven't hit our limit of 4, save it
-    if (!is_duplicate && channel_count < 4) {
-      target_channels[channel_count] = ch;
-      channel_count++;
+
+    if (best_ch != -1) {
+      target_channels[channel_count++] = best_ch;
     }
   }
-  Serial.print("]}\n");
-  WiFi.scanDelete();
 
   if (channel_count == 0) {
-     Serial.printf("{\"type\":\"err\",\"msg\":\"No APs found to sniff\"}\n");
-     return;
+    Serial.printf("{\"type\":\"err\",\"msg\":\"No APs found during 50 scans\"}\n");
+    return;
   }
 
-  // Phase 2: Lock and Sniff
-  Serial.printf("{\"type\":\"info\",\"msg\":\"Starting CSI sniff on %d channels for 2 mins each\"}\n", channel_count);
-  
+  // Phase 2: Lock and Sniff CSI
+  Serial.printf("{\"type\":\"info\",\"msg\":\"50 scans completed in %lums. Starting CSI sniff on %d channels (2 min each)\"}\n",
+                millis() - t0, channel_count);
+
   WiFi.disconnect();
-  esp_wifi_set_promiscuous(true); // Must be enabled to capture raw packets
+  esp_wifi_set_promiscuous(true);
 
   // Configure CSI collection
   wifi_csi_config_t csi_config;
@@ -86,28 +134,26 @@ void doScan(long id) {
   csi_config.manu_scale = false;
   csi_config.shift = false;
   esp_wifi_set_csi_config(&csi_config);
-  
+
   esp_wifi_set_csi_rx_cb(&csi_cb, NULL);
   esp_wifi_set_csi(true);
 
-  // Loop through target channels
+  // Dwell 2 minutes per channel
   for (int i = 0; i < channel_count; i++) {
     int ch = target_channels[i];
     esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
     Serial.printf("{\"type\":\"info\",\"msg\":\"Sniffing channel %d...\"}\n", ch);
-    
-    // Dwell for 2 minutes (120,000 milliseconds)
-    // We use a while loop with a small delay so the hardware watchdog doesn't crash the ESP
+
     uint32_t dwell_start = millis();
     while (millis() - dwell_start < 120000) {
-      delay(10); 
+      delay(10);
     }
   }
 
-  // Clean up: Disable CSI and Promiscuous mode to prepare for the next command
+  // Cleanup
   esp_wifi_set_csi(false);
   esp_wifi_set_promiscuous(false);
-  Serial.printf("{\"type\":\"info\",\"msg\":\"Sniffing complete. Waiting for next command.\"}\n");
+  Serial.printf("{\"type\":\"info\",\"msg\":\"Scan sequence complete. Waiting for next command.\"}\n");
 }
 
 void setup() {
