@@ -1,6 +1,6 @@
 # BevoTag survey collector
 
-A browser app for collecting labeled data inside campus buildings (EER for now). You click your spot on
+A browser app for collecting labeled data inside campus buildings (EER, ASE, ECJ). You click your spot on
 the floor plan and type the room number. The app tells the ESP32 DAQ module, plugged in over USB, to take N
 WiFi scans at that spot.
 
@@ -87,7 +87,7 @@ Non-JSON lines are in `line` as is. Parse them however the firmware formats them
 | Fields | Frame |
 |---|---|
 | `x_px`, `y_px` | the click: pixel on that floor's image, origin top-left, y down |
-| `x_ft`, `y_ft` | the same point in feet (`px × ft_per_in / dpi`) |
+| `x_ft`, `y_ft` | the same point in feet (`px × ft_per_in / dpi`, using the floor's `ft_per_in` if it has one) |
 | `fx_ft`, `fy_ft` | building frame in feet, shared by all floors, y up. Empty if the floor isn't registered |
 
 `fx_ft`/`fy_ft` are computed when the row is written. If a floor's registration changes later, recompute
@@ -97,6 +97,11 @@ them from `x_px`, `y_px` and the floor's new `to_frame`.
 x right and y up on the sheet; sheet up is about 5° east of true north. Distances are good to about an
 inch plus click precision. See [buildings/EER/VERIFICATION.md](buildings/EER/VERIFICATION.md) for how
 this was checked. Not built yet: converting the building frame to latitude/longitude.
+
+**ASE, ECJ:** floor plans imported, no floor registered yet, so `fx_ft`/`fy_ft` are empty and only
+`x_ft`/`y_ft` (sheet feet) are filled. Drawing scales were checked on the structural column grid: ASE is
+1/16" on every sheet; ECJ's sub-basement, basement and first floor are 1/32" and floors 2 and up are
+1/16", so those three floors set their own `ft_per_in`.
 
 ## Device protocol
 
@@ -133,6 +138,7 @@ To add a building `XYZ`:
 |---|---|
 | `plan.dpi`, `plan.ft_per_in` | render resolution and drawing scale; sheet feet per px = `ft_per_in / dpi` |
 | `floors[].page` | 1-based PDF page for that floor |
+| `floors[].ft_per_in` | optional: this sheet's drawing scale when it differs from `plan.ft_per_in` |
 | `floors[].to_frame` | affine `[a, b, c, d, e, f]` from image px to the building frame in ft: `X = a·x + b·y + c`, `Y = d·x + e·y + f`. `null` = not registered yet |
 | `frame` | human description of the building frame (origin, axes) |
 | `default_floor`, `osm_way` | optional: floor shown first, OpenStreetMap footprint id |

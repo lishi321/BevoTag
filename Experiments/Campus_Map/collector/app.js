@@ -49,8 +49,10 @@ const prefs = {
 const bld = (id = S.building) => S.buildings[id];
 const floorsOf = (id = S.building) => bld(id)?.floors || [];
 const floorCfg = (fid = S.floor, bid = S.building) => floorsOf(bid).find(f => f.id === fid);
-// every building's plans are at a true drawing scale; this converts image px to feet on the sheet
-const ftPerPx = (id = S.building) => bld(id).plan.ft_per_in / bld(id).plan.dpi;
+// every building's plans are at a true drawing scale; this converts image px to feet on the sheet.
+// A floor can override the building's ft_per_in when its sheet is drawn at a different scale.
+const ftPerPx = (fid = S.floor, bid = S.building) =>
+  (floorCfg(fid, bid)?.ft_per_in ?? bld(bid).plan.ft_per_in) / bld(bid).plan.dpi;
 const floorImg = (fid = S.floor, bid = S.building) => `buildings/${bid}/${floorCfg(fid, bid).image}`;
 
 // Building frame: shared across a building's floors, y up. Floors with to_frame = null aren't

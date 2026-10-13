@@ -1,0 +1,34 @@
+{
+  "id": "ECJ",
+  "name": "Ernest Cockrell Jr. Hall",
+  "osm_way": 38625301,
+  "default_floor": "1",
+  "plan": {
+    "pdf": "ECJ.pdf",
+    "dpi": 250,
+    "ft_per_in": 16,
+    "note": "UT floor-plan set (bldg 0227). Sub-basement, basement and first floor are drawn at 1/32\" = 1'-0\" (per-floor ft_per_in), floors 2 and up at 1/16\". Checked on the column grid: 22.0 x 26.0 ft bays on both scales."
+  },
+  "frame": {
+    "units": "ft",
+    "origin": "not registered yet",
+    "axes": "x = right on the sheet, y = up on the sheet; sheet up is north"
+  },
+  "floors": [
+    {"id": "SB", "name": "Sub-basement", "page": 1, "image": "floors/SB.png", "fit": [972, 660, 3130, 1967], "ft_per_in": 32, "to_frame": null},
+    {"id": "B", "name": "Basement", "page": 2, "image": "floors/B.png", "fit": [1018, 624, 3175, 2047], "ft_per_in": 32, "to_frame": null},
+    {"id": "1", "name": "First", "page": 3, "image": "floors/1.png", "fit": [1004, 559, 3161, 2005], "ft_per_in": 32, "to_frame": null},
+    {"id": "2", "name": "Second", "page": 4, "image": "floors/2.png", "fit": [1480, 430, 3760, 2400], "to_frame": null},
+    {"id": "3", "name": "Third", "page": 5, "image": "floors/3.png", "fit": [982, 407, 3198, 2125], "to_frame": null},
+    {"id": "4", "name": "Fourth", "page": 6, "image": "floors/4.png", "fit": [991, 449, 3193, 2166], "to_frame": null},
+    {"id": "5", "name": "Fifth", "page": 7, "image": "floors/5.png", "fit": [989, 431, 3207, 2149], "to_frame": null},
+    {"id": "6", "name": "Sixth", "page": 8, "image": "floors/6.png", "fit": [1022, 400, 3239, 2119], "to_frame": null},
+    {"id": "7", "name": "Seventh", "page": 9, "image": "floors/7.png", "fit": [1022, 418, 3239, 2134], "to_frame": null},
+    {"id": "8", "name": "Eighth", "page": 10, "image": "floors/8.png", "fit": [991, 432, 3207, 2149], "to_frame": null},
+    {"id": "9", "name": "Ninth", "page": 11, "image": "floors/9.png", "fit": [1022, 400, 3239, 2119], "to_frame": null},
+    {"id": "10", "name": "Tenth", "page": 12, "image": "floors/10.png", "fit": [986, 417, 3203, 2133], "to_frame": null},
+    {"id": "11", "name": "Eleventh", "page": 13, "image": "floors/11.png", "fit": [1117, 585, 3177, 2128], "to_frame": null},
+    {"id": "11M", "name": "Eleventh mezzanine", "page": 14, "image": "floors/11M.png", "fit": [991, 432, 3207, 2149], "to_frame": null},
+    {"id": "R", "name": "Roof", "page": 15, "image": "floors/R.png", "fit": [1185, 615, 3004, 2134], "to_frame": null}
+  ]
+}
