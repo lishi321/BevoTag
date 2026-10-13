@@ -98,10 +98,14 @@ x right and y up on the sheet; sheet up is about 5° east of true north. Distanc
 inch plus click precision. See [buildings/EER/VERIFICATION.md](buildings/EER/VERIFICATION.md) for how
 this was checked. Not built yet: converting the building frame to latitude/longitude.
 
-**ASE, ECJ:** floor plans imported, no floor registered yet, so `fx_ft`/`fy_ft` are empty and only
-`x_ft`/`y_ft` (sheet feet) are filled. Drawing scales were checked on the structural column grid: ASE is
-1/16" on every sheet; ECJ's sub-basement, basement and first floor are 1/32" and floors 2 and up are
-1/16", so those three floors set their own `ft_per_in`.
+**ASE:** all floors (B–6) are registered. The origin is the south-west outer corner of the exterior
+walls; sheet up is about 4.5–5° east of true north. Floors B–5 agree to a few hundredths of a foot; the
+floor 6 attic to about 0.3 ft. See [buildings/ASE/VERIFICATION.md](buildings/ASE/VERIFICATION.md).
+
+**ECJ:** all floors (SB–11, 11M, roof) are registered. The origin is the south-west outer corner of the
+tower's exterior walls; sheet up is about 5° east of true north. Tower floors agree to a few hundredths
+of a foot; SB, B and 1 (drawn at 1/32", so they set their own `ft_per_in`) and 11M to about 0.1–0.3 ft.
+See [buildings/ECJ/VERIFICATION.md](buildings/ECJ/VERIFICATION.md).
 
 ## Device protocol
 
@@ -150,5 +154,5 @@ To add a building `XYZ`:
 | `index.html`, `style.css`, `app.js` | the app |
 | `PROTOCOL.md` | serial contract with the DAQ module |
 | `buildings/` | one folder per building: config, floor-plan PDF, rendered PNGs |
-| `buildings/EER/VERIFICATION.md` | how the EER plan geometry was checked |
+| `buildings/*/VERIFICATION.md` | how each building's plan geometry was checked |
 | `make_floors.py` | renders a building's PDF into floor PNGs |
