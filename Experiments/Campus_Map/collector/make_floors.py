@@ -12,7 +12,7 @@ import pymupdf
 
 # The UT sheets draw thin light-grey lines (~204/255) that wash out when the map is zoomed out.
 # Darken the ink without moving any pixels; >1 darkens, 1 leaves the render as is.
-INK_GAMMA = 6
+INK_GAMMA = 20
 
 if len(sys.argv) != 2:
     sys.exit("usage: python make_floors.py <BUILDING_ID>")
