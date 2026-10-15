@@ -5,3 +5,8 @@
 *.fdb_latexmk
 *.synctex.gz
 *.toc
+
+# Course handouts and team notes: keep local, never push (public repo)
+resources/*.pdf
+resources/*.doc
+resources/feedback-and-notes.md
