@@ -1,0 +1,35 @@
+{
+  "id": "ECJ",
+  "name": "Ernest Cockrell Jr. Hall",
+  "osm_way": 38625301,
+  "default_floor": "1",
+  "plan": {
+    "pdf": "ECJ.pdf",
+    "dpi": 250,
+    "ft_per_in": 16,
+    "note": "UT floor-plan set (bldg 0227). Sub-basement, basement and first floor are drawn at 1/32\" = 1'-0\" (per-floor ft_per_in), floors 2 and up at 1/16\". Checked on the column grid: 22.0 x 26.0 ft bays on both scales."
+  },
+  "frame": {
+    "units": "ft",
+    "origin": "south-west outer corner of the tower's exterior walls",
+    "axes": "x = right on the sheet, y = up on the sheet; sheet up is about 5 deg east of true north",
+    "registration": "every floor placed onto floor 4 by structural columns and the tower's outer wall faces (residual <= 0.08 ft on tower floors, ~0.1-0.2 ft for SB/B/1 and 11M); see VERIFICATION.md"
+  },
+  "floors": [
+    {"id": "SB", "name": "Sub-basement", "page": 1, "image": "floors/SB.png", "fit": [972, 660, 3130, 1967], "ft_per_in": 32, "to_frame": [0.128, 0, -243.32, 0, -0.128, 213.724]},
+    {"id": "B", "name": "Basement", "page": 2, "image": "floors/B.png", "fit": [1018, 624, 3175, 2047], "ft_per_in": 32, "to_frame": [0.128, 0, -249.027, 0, -0.128, 220.794]},
+    {"id": "1", "name": "First", "page": 3, "image": "floors/1.png", "fit": [1004, 559, 3161, 2005], "ft_per_in": 32, "to_frame": [0.128, 0, -247.25, 0, -0.128, 215.484]},
+    {"id": "2", "name": "Second", "page": 4, "image": "floors/2.png", "fit": [1480, 430, 3760, 2400], "to_frame": [0.064, 0, -100.22, 0, -0.064, 136.4]},
+    {"id": "3", "name": "Third", "page": 5, "image": "floors/3.png", "fit": [982, 407, 3198, 2125], "to_frame": [0.064, 0, -65.413, 0, -0.064, 133.509]},
+    {"id": "4", "name": "Fourth", "page": 6, "image": "floors/4.png", "fit": [991, 449, 3193, 2166], "to_frame": [0.064, 0, -66.0, 0, -0.064, 136.147]},
+    {"id": "5", "name": "Fifth", "page": 7, "image": "floors/5.png", "fit": [989, 431, 3207, 2149], "to_frame": [0.064, 0, -65.947, 0, -0.064, 135.034]},
+    {"id": "6", "name": "Sixth", "page": 8, "image": "floors/6.png", "fit": [1022, 400, 3239, 2119], "to_frame": [0.064, 0, -67.995, 0, -0.064, 133.07]},
+    {"id": "7", "name": "Seventh", "page": 9, "image": "floors/7.png", "fit": [1022, 418, 3239, 2134], "to_frame": [0.064, 0, -67.993, 0, -0.064, 134.154]},
+    {"id": "8", "name": "Eighth", "page": 10, "image": "floors/8.png", "fit": [991, 432, 3207, 2149], "to_frame": [0.064, 0, -65.987, 0, -0.064, 135.079]},
+    {"id": "9", "name": "Ninth", "page": 11, "image": "floors/9.png", "fit": [1022, 400, 3239, 2119], "to_frame": [0.064, 0, -67.994, 0, -0.064, 133.066]},
+    {"id": "10", "name": "Tenth", "page": 12, "image": "floors/10.png", "fit": [986, 417, 3203, 2133], "to_frame": [0.064, 0, -65.7, 0, -0.064, 134.08]},
+    {"id": "11", "name": "Eleventh", "page": 13, "image": "floors/11.png", "fit": [1117, 585, 3177, 2128], "to_frame": [0.064, 0, -72.773, 0, -0.064, 135.08]},
+    {"id": "11M", "name": "Eleventh mezzanine", "page": 14, "image": "floors/11M.png", "fit": [991, 432, 3207, 2149], "to_frame": [0.064, 0, -66.03, 0, -0.064, 134.147]},
+    {"id": "R", "name": "Roof", "page": 15, "image": "floors/R.png", "fit": [1185, 615, 3004, 2134], "to_frame": [0.064, 0, -65.713, 0, -0.064, 134.08]}
+  ]
+}
