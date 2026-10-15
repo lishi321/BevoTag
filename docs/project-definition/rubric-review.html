@@ -2,64 +2,54 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BevoTag Project Definition: Rubric Review</title>
 <style>
   @page { size: letter landscape; margin: 0.55in 0.6in; }
-  body { font-family: "Segoe UI", Arial, sans-serif; font-size: 9.5pt; color: #1a1a1a; line-height: 1.38; }
-  h1 { font-size: 17pt; margin: 0 0 2pt; }
+  body { font-family: "Segoe UI", Arial, sans-serif; font-size: 10pt; color: #1a1a1a; line-height: 1.4;
+         max-width: 1150px; margin: 24px auto; padding: 0 16px; background: #fff; }
+  h1 { font-size: 18pt; margin: 0 0 2pt; }
   .byline { color: #555; margin: 0 0 12pt; }
-  h2 { font-size: 12.5pt; margin: 16pt 0 4pt; border-bottom: 1.5px solid #bf5700; padding-bottom: 2pt; break-after: avoid; }
-  h3 { font-size: 10.5pt; margin: 12pt 0 4pt; color: #bf5700; break-after: avoid; }
+  .hint { color: #555; font-size: 9pt; }
+  h2 { font-size: 13pt; margin: 18pt 0 4pt; border-bottom: 1.5px solid #bf5700; padding-bottom: 2pt; break-after: avoid; }
+  h3 { font-size: 11pt; margin: 12pt 0 4pt; color: #bf5700; break-after: avoid; }
   p { margin: 4pt 0; }
-  ul, ol { margin: 4pt 0 4pt 18pt; padding: 0; }
-  li { margin: 1.5pt 0; }
-  ul.check { list-style: none; margin-left: 4pt; }
-  ul.check li::before { content: "\2610\00a0\00a0"; font-size: 11pt; }
+  ul.check { list-style: none; margin: 4pt 0; padding: 0; }
+  ul.check li { margin: 3pt 0; }
   table { border-collapse: collapse; width: 100%; margin: 4pt 0 8pt; }
-  th, td { border: 1px solid #c9c9c9; padding: 3.5pt 5pt; text-align: left; vertical-align: top; }
+  th, td { border: 1px solid #c9c9c9; padding: 4pt 6pt; text-align: left; vertical-align: top; }
   th { background: #f2ebe4; font-weight: 600; }
+  thead { display: table-header-group; }
   tr { break-inside: avoid; }
   td.id { font-weight: 600; white-space: nowrap; }
-  td.decision { min-width: 1.6in; }
-  td.status { white-space: nowrap; }
-  thead { display: table-header-group; }
+  td.id label { cursor: pointer; }
+  input[type=checkbox] { width: 14px; height: 14px; margin: 0 5px 0 0; vertical-align: -2px; cursor: pointer; accent-color: #bf5700; }
+  tr.done td { color: #8a8a8a; background: #fafafa; }
+  li.done label { color: #8a8a8a; text-decoration: line-through; }
   code { font-family: Consolas, monospace; font-size: 9pt; }
-  .src { color: #555; font-size: 8.5pt; }
 </style>
 </head>
 <body>
 
 <h1>BevoTag Project Definition: Rubric Review</h1>
-<p class="byline">Oct 15, 2026 &middot; Li Shi &middot; Live version with status dropdowns: claude.ai/code/artifact/dfe24570-ae46-467c-b283-620e5008a698</p>
+<p class="byline">Oct 15, 2026 &middot; Li Shi</p>
+<p class="hint">Tick each item as it's settled or done. Ticks are saved in this browser only.</p>
 
-<h2>Verdict and how to use this doc</h2>
-<p>The revised Project Definition would most likely earn <strong>Complete: Meets Basic Expectations</strong> today. The formatting and structure problems from the Writing TA feedback are mostly fixed. What keeps it from <strong>Exceeds</strong> is content: missing specifications, a few citations that may not support their claims, and places where the doc commits to a specific design.</p>
-<p>This review covers <code>docs/project-definition/main.tex</code> as pushed to <code>main</code> (commit 9c0a6c9). It checks the draft against <code>Project Definition rubric.pdf</code>, the assignment description, and the ECE Style Guide. The ratings below are an estimate, not a TA's grade.</p>
-<p>Issues fall into three groups:</p>
-<ul>
-  <li><strong>Needs team discussion:</strong> decisions or numbers the group has to agree on, ideally at the next meeting. Each comes with a question and a suggested answer.</li>
-  <li><strong>Needs attention:</strong> real fixes that one person can make without a group decision. Assign an owner.</li>
-  <li><strong>Trivial fixes:</strong> a few minutes each, for anyone.</li>
-</ul>
-<p>Use the Status column to track progress, and comment on any row you disagree with.</p>
+<h2>Verdict</h2>
+<p>Today the draft would likely get <strong>Complete: Meets Basic Expectations</strong>. The formatting is fixed. What holds it back is content: missing specs, a few weak citations, and wording that commits to one design.</p>
+<p>The meeting only needs to settle the 11 decisions (D1&ndash;D11). The other fixes just need an owner.</p>
 
-<h2>Meeting agenda</h2>
-<p>A 40-minute meeting covers the 11 decisions. The other 19 fixes only need an owner and a deadline, not discussion.</p>
-<ol>
-  <li><strong>Verdict and scorecard</strong> (3 min): agree on the target of reaching Exceeds.</li>
-  <li><strong>Specification numbers</strong>, D1, D2, D3, D11 (10 min).</li>
-  <li><strong>Scope and framing</strong>, D4, D5, D6 (8 min).</li>
-  <li><strong>Standards and ethics</strong>, D7, D8 (8 min).</li>
-  <li><strong>Team roles and mentor input</strong>, D9, D10 (5 min).</li>
-  <li><strong>Owners and deadline</strong> (5 min): confirm owners for A1&ndash;A10 and T1&ndash;T9, and set the internal deadline. Team policy puts it 48 h before the course deadline.</li>
-</ol>
-<p>Write each outcome in the Decision column as you go, and set Status to Decided.</p>
-<p>Before the meeting:</p>
+<h2>Meeting agenda (40 min)</h2>
 <ul class="check">
-  <li>Everyone: read the Needs team discussion section and comment on any row you disagree with.</li>
-  <li>Ethan: bring notes from mentor meetings (D10) and the final due date (T1).</li>
-  <li>Esteban: bring rough ESP32 current-draw numbers for the battery-life estimate (D1).</li>
-  <li>Li: check whether UT floor plans may sit in a public repo (D8).</li>
+  <li><label><input type="checkbox" data-id="agenda-1">Decide D1&ndash;D11 (30 min), and write each outcome in the Decision column.</label></li>
+  <li><label><input type="checkbox" data-id="agenda-2">Assign owners for A1&ndash;A10 and T1&ndash;T9 (5 min).</label></li>
+  <li><label><input type="checkbox" data-id="agenda-3">Set the internal deadline, 48 h before the course deadline (5 min).</label></li>
+</ul>
+<p><strong>Bring:</strong></p>
+<ul class="check">
+  <li><label><input type="checkbox" data-id="bring-ethan">Ethan: mentor notes and the due date.</label></li>
+  <li><label><input type="checkbox" data-id="bring-esteban">Esteban: ESP32 power numbers.</label></li>
+  <li><label><input type="checkbox" data-id="bring-li">Li: whether UT floor plans can be in a public repo.</label></li>
 </ul>
 
 <h2>Rubric scorecard</h2>
@@ -82,87 +72,91 @@
 <h2 style="break-before: page">Needs team discussion</h2>
 <p>Eleven items need a group decision before anyone edits. Most are specification numbers that only the team, or Dr. Vikalo, can set. They are grouped in agenda order. The first group matters most for the rubric's &ldquo;thorough set of specifications&rdquo; criterion.</p>
 
-<div class="group">
 <h3>1. Specification numbers (10 min)</h3>
 <table>
-  <thead><tr><th>#</th><th style="width:20%">Issue</th><th style="width:15%">Question for the group</th><th style="width:27%">Suggested answer</th><th>Suggested owner</th><th style="width:17%">Decision</th><th>Status</th></tr></thead>
-  <tr><td class="id">D1</td><td>No power or battery-life spec, although power is the first design challenge and the conclusion stresses low power</td><td>What battery life and reporting interval can we promise?</td><td>Add two rows to Table 4: &ldquo;Battery life &ge; __ days at one report every __ min&rdquo; and &ldquo;Location update interval while moving &le; __ s.&rdquo; Estimate from the ESP32's measured current draw, then confirm with Dr. Vikalo.</td><td>Esteban</td><td class="decision"></td><td class="status">Open</td></tr>
-  <tr><td class="id">D2</td><td>No size, mass, or cost spec; the deliverables only say &ldquo;compact&rdquo;</td><td>How small, light, and cheap must the tag be?</td><td>Add rows for maximum dimensions (mm), mass (g), and unit parts cost ($).</td><td>Esteban</td><td class="decision"></td><td class="status">Open</td></tr>
-  <tr><td class="id">D3</td><td>Test buildings are multi-story, but no spec covers floor identification</td><td>Does &ldquo;room identification accuracy&rdquo; include getting the floor right?</td><td>Add &ldquo;Floor identification accuracy &gt; __%&rdquo; to Table 4, and state that room accuracy is measured across floors.</td><td>Andrew</td><td class="decision"></td><td class="status">Open</td></tr>
-  <tr><td class="id">D11</td><td>The revision proposed values for the draft's &ldquo;???&rdquo; cells (red in the PDF)</td><td>Accept 0&ndash;40 &deg;C, 0&ndash;2 m/s walking speed, and an IMU rate &ge; 100 Hz?</td><td>Confirm or change the values. Move the IMU rate out of the performance table (see A6).</td><td>Li</td><td class="decision"></td><td class="status">Open</td></tr>
+  <thead><tr><th>#</th><th style="width:22%">Issue</th><th style="width:17%">Question for the group</th><th style="width:30%">Suggested answer</th><th style="width:22%">Decision</th></tr></thead>
+  <tr><td class="id"><label><input type="checkbox" data-id="D1">D1</label></td><td>No power or battery-life spec, although power is the first design challenge and the conclusion stresses low power</td><td>What battery life and reporting interval can we promise?</td><td>Add two rows to Table 4: &ldquo;Battery life &ge; __ days at one report every __ min&rdquo; and &ldquo;Location update interval while moving &le; __ s.&rdquo; Estimate from the ESP32's measured current draw, then confirm with Dr. Vikalo.</td><td></td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="D2">D2</label></td><td>No size, mass, or cost spec; the deliverables only say &ldquo;compact&rdquo;</td><td>How small, light, and cheap must the tag be?</td><td>Add rows for maximum dimensions (mm), mass (g), and unit parts cost ($).</td><td></td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="D3">D3</label></td><td>Test buildings are multi-story, but no spec covers floor identification</td><td>Does &ldquo;room identification accuracy&rdquo; include getting the floor right?</td><td>Add &ldquo;Floor identification accuracy &gt; __%&rdquo; to Table 4, and state that room accuracy is measured across floors.</td><td></td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="D11">D11</label></td><td>The revision proposed values for the draft's &ldquo;???&rdquo; cells (red in the PDF)</td><td>Accept 0&ndash;40 &deg;C, 0&ndash;2 m/s walking speed, and an IMU rate &ge; 100 Hz?</td><td>Confirm or change the values. Move the IMU rate out of the performance table (see A6).</td><td></td></tr>
 </table>
-</div>
 
-<div class="group">
 <h3>2. Scope and framing (8 min)</h3>
 <table>
-  <thead><tr><th>#</th><th style="width:20%">Issue</th><th style="width:15%">Question for the group</th><th style="width:27%">Suggested answer</th><th>Suggested owner</th><th style="width:17%">Decision</th><th>Status</th></tr></thead>
-  <tr><td class="id">D4</td><td>No software, computational, or network environment; the assignment requires one for software-heavy projects</td><td>Where does the backend run, and which platforms must the app support?</td><td>Add Table 3 rows for the server host (UT VM, cloud, or a laptop for the demo), supported browsers or phone OS, and any device registration utexas-iot requires (ref [4]).</td><td>Abhirit</td><td class="decision"></td><td class="status">Open</td></tr>
-  <tr><td class="id">D5</td><td>The doc presents the EKF, ESP32-S3, and server-side estimation as decided; the guideline says &ldquo;do not provide a specific proposed design,&rdquo; and Design Challenges calls the tag-versus-server split open</td><td>Present the approach as a decided design, or as a technical premise?</td><td>Rename &ldquo;How BevoTag Determines Its Location&rdquo; to &ldquo;Technical Premise.&rdquo; Say estimation runs &ldquo;on the tag or the server,&rdquo; relabel Figure 1's server box &ldquo;Location processing,&rdquo; and keep ESP32-S3 only as an example.</td><td>Ethan</td><td class="decision"></td><td class="status">Open</td></tr>
-  <tr><td class="id">D6</td><td>Deliverables, Table 2, and Figure 2 promise a &ldquo;3D map,&rdquo; but the survey work uses 2D floor plans per floor</td><td>Will we deliver a true 3D map?</td><td>If not, change &ldquo;3D map&rdquo; to &ldquo;multi-floor campus map&rdquo; in all three places.</td><td>Andrew</td><td class="decision"></td><td class="status">Open</td></tr>
+  <thead><tr><th>#</th><th style="width:22%">Issue</th><th style="width:17%">Question for the group</th><th style="width:30%">Suggested answer</th><th style="width:22%">Decision</th></tr></thead>
+  <tr><td class="id"><label><input type="checkbox" data-id="D4">D4</label></td><td>No software, computational, or network environment; the assignment requires one for software-heavy projects</td><td>Where does the backend run, and which platforms must the app support?</td><td>Add Table 3 rows for the server host (UT VM, cloud, or a laptop for the demo), supported browsers or phone OS, and any device registration utexas-iot requires (ref [4]).</td><td></td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="D5">D5</label></td><td>The doc presents the EKF, ESP32-S3, and server-side estimation as decided; the guideline says &ldquo;do not provide a specific proposed design,&rdquo; and Design Challenges calls the tag-versus-server split open</td><td>Present the approach as a decided design, or as a technical premise?</td><td>Rename &ldquo;How BevoTag Determines Its Location&rdquo; to &ldquo;Technical Premise.&rdquo; Say estimation runs &ldquo;on the tag or the server,&rdquo; relabel Figure 1's server box &ldquo;Location processing,&rdquo; and keep ESP32-S3 only as an example.</td><td></td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="D6">D6</label></td><td>Deliverables, Table 2, and Figure 2 promise a &ldquo;3D map,&rdquo; but the survey work uses 2D floor plans per floor</td><td>Will we deliver a true 3D map?</td><td>If not, change &ldquo;3D map&rdquo; to &ldquo;multi-floor campus map&rdquo; in all three places.</td><td></td></tr>
 </table>
-</div>
 
-<div class="group">
 <h3>3. Standards and ethics (8 min)</h3>
 <table>
-  <thead><tr><th>#</th><th style="width:20%">Issue</th><th style="width:15%">Question for the group</th><th style="width:27%">Suggested answer</th><th>Suggested owner</th><th style="width:17%">Decision</th><th>Status</th></tr></thead>
-  <tr><td class="id">D7</td><td>IEEE 1451 is a weak fit (few IMUs or ESP32 projects follow it), and the cited &ldquo;1451.2-2014&rdquo; edition looks wrong</td><td>Keep IEEE 1451 or replace it?</td><td>Replace it with IEC 62133-2 (lithium battery safety), which also backs the battery-safety ethics paragraph. Consider the FCC RF exposure rules for portable devices (47 CFR &sect;2.1093) or the USB Type-C specification. Keep the appendix at about four standards.</td><td>Ethan</td><td class="decision"></td><td class="status">Open</td></tr>
-  <tr><td class="id">D8</td><td>Ethics only promises to &ldquo;evaluate safeguards&rdquo; against stalking, and it skips intellectual property (one of the guideline's four example topics)</td><td>What concrete anti-misuse measure do we commit to? How do we handle the UT floor plans in our public GitHub repo?</td><td>Commit to owner-only access plus one concrete safeguard, or declare it out of scope with a reason. Add an IP paragraph on floor-plan use rights and open-source licenses. Make the repo private, or remove the plan PDFs until UT Facilities clears them.</td><td>Li</td><td class="decision"></td><td class="status">Open</td></tr>
+  <thead><tr><th>#</th><th style="width:22%">Issue</th><th style="width:17%">Question for the group</th><th style="width:30%">Suggested answer</th><th style="width:22%">Decision</th></tr></thead>
+  <tr><td class="id"><label><input type="checkbox" data-id="D7">D7</label></td><td>IEEE 1451 is a weak fit (few IMUs or ESP32 projects follow it), and the cited &ldquo;1451.2-2014&rdquo; edition looks wrong</td><td>Keep IEEE 1451 or replace it?</td><td>Replace it with IEC 62133-2 (lithium battery safety), which also backs the battery-safety ethics paragraph. Consider the FCC RF exposure rules for portable devices (47 CFR &sect;2.1093) or the USB Type-C specification. Keep the appendix at about four standards.</td><td></td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="D8">D8</label></td><td>Ethics only promises to &ldquo;evaluate safeguards&rdquo; against stalking, and it skips intellectual property (one of the guideline's four example topics)</td><td>What concrete anti-misuse measure do we commit to? How do we handle the UT floor plans in our public GitHub repo?</td><td>Commit to owner-only access plus one concrete safeguard, or declare it out of scope with a reason. Add an IP paragraph on floor-plan use rights and open-source licenses. Make the repo private, or remove the plan PDFs until UT Facilities clears them.</td><td></td></tr>
 </table>
-</div>
 
-<div class="group">
 <h3>4. Team roles and mentor input (5 min)</h3>
 <table>
-  <thead><tr><th>#</th><th style="width:20%">Issue</th><th style="width:15%">Question for the group</th><th style="width:27%">Suggested answer</th><th>Suggested owner</th><th style="width:17%">Decision</th><th>Status</th></tr></thead>
-  <tr><td class="id">D9</td><td>Only one team-wide role (Project Lead); the guideline suggests others. The original draft also contradicted itself on Andrew's and Abhirit's roles</td><td>Who takes documentation lead, test lead, and repo maintainer? Is Andrew on localization and backend, with Abhirit on the app?</td><td>Name two or three roles beyond Project Lead. The documentation lead owns Style Guide checks before each submission. Confirm the Andrew/Abhirit split the revision assumed.</td><td>Ethan</td><td class="decision"></td><td class="status">Open</td></tr>
-  <tr><td class="id">D10</td><td>No mentor input recorded; the guideline says this section records what you learned from your mentor</td><td>What has Dr. Vikalo asked for (accuracy, demo buildings, deliverables)?</td><td>Add two or three sentences to Background or Deliverables stating the mentor's expectations, cited as an IEEE &ldquo;private communication.&rdquo;</td><td>Ethan</td><td class="decision"></td><td class="status">Open</td></tr>
+  <thead><tr><th>#</th><th style="width:22%">Issue</th><th style="width:17%">Question for the group</th><th style="width:30%">Suggested answer</th><th style="width:22%">Decision</th></tr></thead>
+  <tr><td class="id"><label><input type="checkbox" data-id="D9">D9</label></td><td>Only one team-wide role (Project Lead); the guideline suggests others. The original draft also contradicted itself on Andrew's and Abhirit's roles</td><td>Who takes documentation lead, test lead, and repo maintainer? Is Andrew on localization and backend, with Abhirit on the app?</td><td>Name two or three roles beyond Project Lead. The documentation lead owns Style Guide checks before each submission. Confirm the Andrew/Abhirit split the revision assumed.</td><td></td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="D10">D10</label></td><td>No mentor input recorded; the guideline says this section records what you learned from your mentor</td><td>What has Dr. Vikalo asked for (accuracy, demo buildings, deliverables)?</td><td>Add two or three sentences to Background or Deliverables stating the mentor's expectations, cited as an IEEE &ldquo;private communication.&rdquo;</td><td></td></tr>
 </table>
-</div>
 
 <h2 style="break-before: page">Needs attention</h2>
 <p>Ten fixes need real work but no group decision. At the meeting, only confirm each owner. A1&ndash;A3 carry the most risk: a citation that doesn't support its claim can cost credibility with both TAs.</p>
 <table>
-  <thead><tr><th>#</th><th style="width:38%">Issue</th><th style="width:38%">Suggested solution</th><th>Suggested owner</th><th>Status</th></tr></thead>
-  <tr><td class="id">A1</td><td>Three citations may not support the claims they back. [3] Jiang &amp; Yuan is a device-free positioning paper, used for &ldquo;RSSI-only error of 5&ndash;15 m.&rdquo; [5] Mukherjee covers radar-inertial odometry on ground robots, used for &ldquo;IMU error builds within seconds.&rdquo; [2] Yoder &amp; Humphreys is used for &ldquo;low-cost motion sensors drift.&rdquo;</td><td>Open each paper and find the exact passage. Where it doesn't match, replace the source or soften the claim. Add page numbers when citing a specific fact (Style Guide 3.1, rule 5). Keep [2] for multipath, where it fits.</td><td>Ethan</td><td class="status">Open</td></tr>
-  <tr><td class="id">A2</td><td>Uncited claims: tracking tags used for stalking, the Samsung SmartTag, and &ldquo;students routinely lose valuable items&rdquo;</td><td>Cite a news or industry source for misuse (Apple's and Google's unwanted-tracking alerts are documented). Cite Samsung's product page. Find UTPD lost-and-found or campus theft numbers to make the need concrete.</td><td>Abhirit</td><td class="status">Open</td></tr>
-  <tr><td class="id">A3</td><td>No CSI-localization research is cited; Existing Solutions covers only products</td><td>Cite two or three papers, such as SpotFi (Kotaru et al., SIGCOMM 2015) and published ESP32 CSI tools, and reuse them in the Prior Art Report.</td><td>Andrew</td><td class="status">Open</td></tr>
-  <tr><td class="id">A4</td><td>Table 1 doesn't set values: &ldquo;Device-dependent&rdquo; and &ldquo;N/A&rdquo; fill most cells, and &ldquo;Telemetry&rdquo; is internal to the system</td><td>Give an RSSI range (about &minus;100 to &minus;30 dBm), the CSI sub-carrier count the chip reports (check the ESP-IDF CSI docs), and IMU ranges (&plusmn;g, &plusmn;&deg;/s) from the chosen part. Drop the Telemetry row and mark GNSS optional.</td><td>Li</td><td class="status">Open</td></tr>
-  <tr><td class="id">A5</td><td>Two Table 2 criteria can't be tested: &ldquo;Display matches latest estimate&rdquo; and &ldquo;Standard map controls&rdquo;</td><td>Rewrite them as measurable criteria, e.g., &ldquo;Map shows a new estimate within 5 s&rdquo; (ties to Table 4), &ldquo;Pan and zoom work in Chrome and Safari,&rdquo; and &ldquo;Tracks at least __ tags.&rdquo;</td><td>Abhirit</td><td class="status">Open</td></tr>
-  <tr><td class="id">A6</td><td>Table 4 includes &ldquo;IMU sampling rate,&rdquo; a design parameter rather than a performance target, and lacks availability</td><td>Move the IMU rate to Table 1. Add &ldquo;Availability: percent of test time with a valid position &ge; __%.&rdquo;</td><td>Andrew</td><td class="status">Open</td></tr>
-  <tr><td class="id">A7</td><td>Repetition: the Problem Statement intro only previews topics, and GNSS trackers' indoor loss and power drain appear twice</td><td>Make the Problem Statement intro state the problem in two or three sentences. Cut the &ldquo;Dedicated GNSS trackers&rdquo; sentence from Limitations, since the GNSS subsection already covers it.</td><td>Documentation lead (D9)</td><td class="status">Open</td></tr>
-  <tr><td class="id">A8</td><td>Table 5 doesn't tell members apart: Esteban and Li have identical expertise, and four members list the same three courses</td><td>Each member rewrites their own row and paragraph with specific projects, internships, and the courses that set them apart.</td><td>Each member</td><td class="status">Open</td></tr>
-  <tr><td class="id">A9</td><td>The Introduction never states the current stage of development, which the memo template asks for</td><td>Add one sentence: firmware already logs Wi-Fi RSSI and CSI, and a browser survey collector maps EER, with ASE and ECJ floor plans imported.</td><td>Li</td><td class="status">Open</td></tr>
-  <tr><td class="id">A10</td><td>The Conclusion's next steps are out of date: it says the team will &ldquo;complete a data logger&rdquo; and survey EER, but both have already started</td><td>Replace them with the real next steps, such as collecting the EER survey, measuring a baseline accuracy, and selecting components.</td><td>Ethan</td><td class="status">Open</td></tr>
+  <thead><tr><th>#</th><th style="width:46%">Issue</th><th>Suggested solution</th></tr></thead>
+  <tr><td class="id"><label><input type="checkbox" data-id="A1">A1</label></td><td>Three citations may not support the claims they back. [3] Jiang &amp; Yuan is a device-free positioning paper, used for &ldquo;RSSI-only error of 5&ndash;15 m.&rdquo; [5] Mukherjee covers radar-inertial odometry on ground robots, used for &ldquo;IMU error builds within seconds.&rdquo; [2] Yoder &amp; Humphreys is used for &ldquo;low-cost motion sensors drift.&rdquo;</td><td>Open each paper and find the exact passage. Where it doesn't match, replace the source or soften the claim. Add page numbers when citing a specific fact (Style Guide 3.1, rule 5). Keep [2] for multipath, where it fits.</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="A2">A2</label></td><td>Uncited claims: tracking tags used for stalking, the Samsung SmartTag, and &ldquo;students routinely lose valuable items&rdquo;</td><td>Cite a news or industry source for misuse (Apple's and Google's unwanted-tracking alerts are documented). Cite Samsung's product page. Find UTPD lost-and-found or campus theft numbers to make the need concrete.</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="A3">A3</label></td><td>No CSI-localization research is cited; Existing Solutions covers only products</td><td>Cite two or three papers, such as SpotFi (Kotaru et al., SIGCOMM 2015) and published ESP32 CSI tools, and reuse them in the Prior Art Report.</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="A4">A4</label></td><td>Table 1 doesn't set values: &ldquo;Device-dependent&rdquo; and &ldquo;N/A&rdquo; fill most cells, and &ldquo;Telemetry&rdquo; is internal to the system</td><td>Give an RSSI range (about &minus;100 to &minus;30 dBm), the CSI sub-carrier count the chip reports (check the ESP-IDF CSI docs), and IMU ranges (&plusmn;g, &plusmn;&deg;/s) from the chosen part. Drop the Telemetry row and mark GNSS optional.</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="A5">A5</label></td><td>Two Table 2 criteria can't be tested: &ldquo;Display matches latest estimate&rdquo; and &ldquo;Standard map controls&rdquo;</td><td>Rewrite them as measurable criteria, e.g., &ldquo;Map shows a new estimate within 5 s&rdquo; (ties to Table 4), &ldquo;Pan and zoom work in Chrome and Safari,&rdquo; and &ldquo;Tracks at least __ tags.&rdquo;</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="A6">A6</label></td><td>Table 4 includes &ldquo;IMU sampling rate,&rdquo; a design parameter rather than a performance target, and lacks availability</td><td>Move the IMU rate to Table 1. Add &ldquo;Availability: percent of test time with a valid position &ge; __%.&rdquo;</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="A7">A7</label></td><td>Repetition: the Problem Statement intro only previews topics, and GNSS trackers' indoor loss and power drain appear twice</td><td>Make the Problem Statement intro state the problem in two or three sentences. Cut the &ldquo;Dedicated GNSS trackers&rdquo; sentence from Limitations, since the GNSS subsection already covers it.</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="A8">A8</label></td><td>Table 5 doesn't tell members apart: Esteban and Li have identical expertise, and four members list the same three courses</td><td>Each member rewrites their own row and paragraph with specific projects, internships, and the courses that set them apart.</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="A9">A9</label></td><td>The Introduction never states the current stage of development, which the memo template asks for</td><td>Add one sentence: firmware already logs Wi-Fi RSSI and CSI, and a browser survey collector maps EER, with ASE and ECJ floor plans imported.</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="A10">A10</label></td><td>The Conclusion's next steps are out of date: it says the team will &ldquo;complete a data logger&rdquo; and survey EER, but both have already started</td><td>Replace them with the real next steps, such as collecting the EER survey, measuring a baseline accuracy, and selecting components.</td></tr>
 </table>
 
 <h2>Trivial fixes</h2>
 <p>Nine small edits, each a few minutes. T1 and T7 must be done before submission, or the red placeholder text will show in the PDF.</p>
 <table>
-  <thead><tr><th>#</th><th style="width:38%">Issue</th><th style="width:38%">Fix</th><th>Suggested owner</th><th>Status</th></tr></thead>
-  <tr><td class="id">T1</td><td>The memo date and Writing TA name are red placeholders</td><td>Fill in the final due date and the Writing TA's name.</td><td>Ethan</td><td class="status">Open</td></tr>
-  <tr><td class="id">T2</td><td>Pronouns: Personnel uses &ldquo;he&rdquo; for Ethan (from the original draft) and for Abhirit (added in the revision without checking)</td><td>Confirm each member's pronouns, or rephrase those sentences without them.</td><td>Each member</td><td class="status">Open</td></tr>
-  <tr><td class="id">T3</td><td>&ldquo;Our team's&rdquo; in the Introduction's first sentence; the rest of the doc says &ldquo;the team&rdquo;</td><td>Change it to &ldquo;the team's.&rdquo;</td><td>Li</td><td class="status">Open</td></tr>
-  <tr><td class="id">T4</td><td>&ldquo;Wi-Fi&rdquo; breaks across lines in places (e.g., page 8)</td><td>Add a non-breaking Wi-Fi macro in main.tex.</td><td>Li</td><td class="status">Open</td></tr>
-  <tr><td class="id">T5</td><td>Figure 2's caption ends with &ldquo;(*optional)&rdquo;; a caption should be a title only</td><td>Move the note into the figure as a small legend line: &ldquo;* optional.&rdquo;</td><td>Li</td><td class="status">Open</td></tr>
-  <tr><td class="id">T6</td><td>Figure 2 is 1.8 pt wider than the text block</td><td>Shrink the diagram by about 1 mm.</td><td>Li</td><td class="status">Open</td></tr>
-  <tr><td class="id">T7</td><td>Red TBD text remains in the memo heading, Table 3, Table 4, and Appendix Table 8</td><td>Resolve D7, D11, and T1, then search main.tex for <code>\tbd</code> until none remain.</td><td>Documentation lead (D9)</td><td class="status">Open</td></tr>
-  <tr><td class="id">T8</td><td>Tables use 11 pt text; the Style Guide specifies 12 pt Times without mentioning tables</td><td>Ask the Writing TA. If 12 pt is required, remove <code>\small</code> from the table environment.</td><td>Ethan</td><td class="status">Open</td></tr>
-  <tr><td class="id">T9</td><td>Standards references [6]&ndash;[10] were written from memory</td><td>Check each title, number, and year against the actual document. For example, IEEE 802.11-2020 was published in 2021.</td><td>Ethan</td><td class="status">Open</td></tr>
+  <thead><tr><th>#</th><th style="width:46%">Issue</th><th>Fix</th></tr></thead>
+  <tr><td class="id"><label><input type="checkbox" data-id="T1">T1</label></td><td>The memo date and Writing TA name are red placeholders</td><td>Fill in the final due date and the Writing TA's name.</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="T2">T2</label></td><td>Pronouns: Personnel uses &ldquo;he&rdquo; for Ethan (from the original draft) and for Abhirit (added in the revision without checking)</td><td>Confirm each member's pronouns, or rephrase those sentences without them.</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="T3">T3</label></td><td>&ldquo;Our team's&rdquo; in the Introduction's first sentence; the rest of the doc says &ldquo;the team&rdquo;</td><td>Change it to &ldquo;the team's.&rdquo;</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="T4">T4</label></td><td>&ldquo;Wi-Fi&rdquo; breaks across lines in places (e.g., page 8)</td><td>Add a non-breaking Wi-Fi macro in main.tex.</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="T5">T5</label></td><td>Figure 2's caption ends with &ldquo;(*optional)&rdquo;; a caption should be a title only</td><td>Move the note into the figure as a small legend line: &ldquo;* optional.&rdquo;</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="T6">T6</label></td><td>Figure 2 is 1.8 pt wider than the text block</td><td>Shrink the diagram by about 1 mm.</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="T7">T7</label></td><td>Red TBD text remains in the memo heading, Table 3, Table 4, and Appendix Table 8</td><td>Resolve D7, D11, and T1, then search main.tex for <code>\tbd</code> until none remain.</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="T8">T8</label></td><td>Tables use 11 pt text; the Style Guide specifies 12 pt Times without mentioning tables</td><td>Ask the Writing TA. If 12 pt is required, remove <code>\small</code> from the table environment.</td></tr>
+  <tr><td class="id"><label><input type="checkbox" data-id="T9">T9</label></td><td>Standards references [6]&ndash;[10] were written from memory</td><td>Check each title, number, and year against the actual document. For example, IEEE 802.11-2020 was published in 2021.</td></tr>
 </table>
 
-<div style="break-inside: avoid"><h2>Course resources still needed</h2>
+<h2>Course resources still needed</h2>
 <p>The review used the rubric, assignment description, ECE Style Guide, memo template, IEEE citation reference, and the Discord summary of the Writing TA's feedback. Five more sources would sharpen it:</p>
-<table>
-  <thead><tr><th style="width:30%">Resource</th><th style="width:20%">Where</th><th>Why it matters</th></tr></thead>
-  <tr><td>Writing TA's inline comments on the preliminary submission</td><td>Canvas, on the submitted PDF</td><td>The rubric says those comments mark the specific places to fix. The Discord summary may miss some.</td></tr>
-  <tr><td>Technical TA feedback</td><td>Canvas or email</td><td>Likely covers specs and scope, which is where this draft is weakest (D1&ndash;D6).</td></tr>
-  <tr><td>Notes from meetings with Dr. Vikalo</td><td>Team Google Drive</td><td>Needed for D1 and D10: mentor expectations and spec targets.</td></tr>
-  <tr><td>EE 333T handouts on introductions and paragraph structure</td><td>Canvas or 333T notes</td><td>The TA said to &ldquo;remember 333T stuff&rdquo;; the rubric's paragraph criteria come from there.</td></tr>
-  <tr><td>An example Project Definition rated &ldquo;Exceeds&rdquo;</td><td>Canvas, if posted</td><td>Shows how deep and how long the TAs expect each section to be.</td></tr>
-</table>
+<ul class="check">
+  <li><label><input type="checkbox" data-id="R1"><strong>Writing TA's inline comments</strong> on the preliminary submission (Canvas). They mark the specific places to fix; the Discord summary may miss some.</label></li>
+  <li><label><input type="checkbox" data-id="R2"><strong>Technical TA feedback</strong> (Canvas or email). Likely covers specs and scope, where this draft is weakest.</label></li>
+  <li><label><input type="checkbox" data-id="R3"><strong>Notes from meetings with Dr. Vikalo</strong> (team Google Drive). Needed for D1 and D10.</label></li>
+  <li><label><input type="checkbox" data-id="R4"><strong>EE 333T handouts</strong> on introductions and paragraph structure. The TA said to &ldquo;remember 333T stuff.&rdquo;</label></li>
+  <li><label><input type="checkbox" data-id="R5"><strong>An example Project Definition rated &ldquo;Exceeds&rdquo;</strong> (Canvas, if posted). Shows the expected depth.</label></li>
+</ul>
 
-</div>
+<script>
+  // Remember ticks per browser; the page works the same if storage is unavailable.
+  document.querySelectorAll('input[type=checkbox][data-id]').forEach(function (cb) {
+    var key = 'bevotag-rubric-review:' + cb.dataset.id;
+    var row = cb.closest('tr') || cb.closest('li');
+    function paint() { if (row) row.classList.toggle('done', cb.checked); }
+    try { cb.checked = localStorage.getItem(key) === '1'; } catch (e) {}
+    paint();
+    cb.addEventListener('change', function () {
+      try { localStorage.setItem(key, cb.checked ? '1' : '0'); } catch (e) {}
+      paint();
+    });
+  });
+</script>
 </body>
 </html>
