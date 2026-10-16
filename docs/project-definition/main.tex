@@ -78,8 +78,8 @@
   \parbox[t]{\dimexpr\linewidth-1.1in\relax}{\setstretch{1.0}#2}\par}
 \begingroup
 \setlength{\parskip}{0.5\baselineskip}
-\memofield{DATE:}{\tbd{October XX, 2026}}
-\memofield{TO:}{Dr.\ Haris Vikalo\\ \tbd{Writing TA Name}}
+\memofield{DATE:}{October 15, 2026}
+\memofield{TO:}{Dr.\ Haris Vikalo\\ Michael Zhao}
 \memofield{FROM:}{Ethan Chua\\ Esteban Martinez\\ Li Shi\\ Andrew Yin\\ Abhirit Das}
 \memofield{SUBJECT:}{Project Definition for BevoTag, an Open Asset-Tracking Tag for the UT Austin
   Campus}
@@ -484,8 +484,8 @@ Deployment area & Surveyed indoor and outdoor zones on campus, beginning with EE
 Radio environment & Signals may arrive directly (line of sight) or only after reflection or obstruction & Indoor and outdoor; line of sight and blocked & N/A \\
 Wi-Fi band & Frequency band the tag must support & 2.4 & GHz \\
 Network access & Test zones must be covered by the \texttt{utexas-iot} network \cite{utiot} & IEEE 802.11 & N/A \\
-Temperature & Ambient temperature range for correct operation & \tbd{0 to 40} & \textdegree C \\
-User motion & Speed of the person carrying the tag & \tbd{0 to 2 (walking)} & m/s \\
+Temperature & Ambient temperature range for correct operation & 0 to 40 & \textdegree C \\
+User motion & Speed of the person carrying the tag & 0 to 5 & m/s \\
 \bottomrule
 \end{tabularx}
 \end{spectable}
@@ -514,7 +514,7 @@ conditions such as pedestrian traffic.
 \midrule
 Median position error & Median horizontal distance between estimated and true position during trials & $<5$ & m \\
 Room identification accuracy & Fraction of trials in which the tag is placed in the correct surveyed room or region & $>90$ & \% \\
-IMU sampling rate & Accelerometer and gyroscope sampling rate during active tracking & \tbd{$\geq 100$} & Hz \\
+IMU sampling rate & Accelerometer and gyroscope sampling rate during active tracking & $\geq 100$ & Hz \\
 End-to-end latency & Maximum time from a location estimate to its display in the application & $<5$ & s \\
 Time to first fix & Maximum time from startup to the first usable position estimate & $<30$ & s \\
 \bottomrule
