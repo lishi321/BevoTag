@@ -119,8 +119,8 @@ room in more than 90\% of trials.
 
 The design problem is to track an item continuously, indoors and outdoors, without new
 infrastructure. Wi-Fi measurements alone can mislocate a device by several meters because signals
-fluctuate as the environment changes, and a low-cost motion sensor alone drifts by tens of meters
-within a minute; combining the two lets each correct the other. The project will test this approach in surveyed areas beginning with
+fluctuate as the environment changes, and a low-cost motion sensor alone can drift by more than
+100~m within a minute; combining the two lets each correct the other. The project will test this approach in surveyed areas beginning with
 the Engineering Education and Research Center (EER). Wi-Fi, radio-emission, data-security, and
 battery-safety standards constrain the design, as does university network policy. The team
 commits to recording no one's network traffic, to encrypting and limiting location data, and to
@@ -197,7 +197,7 @@ periods but drifts. A fusion algorithm uses each source to correct the other. Th
 compute this estimate on the tag or on a server; the team will decide after measuring the
 prototype hardware, as the Design Challenges explain.
 
-Wi-Fi measurements locate the tag by matching them against a survey of each building. UT Austin
+The system locates the tag by matching its Wi-Fi measurements against a survey of each building. UT Austin
 operates campus Wi-Fi networks, including utexas-iot, which serves Internet of Things devices
 once their owners register each device's hardware address \cite{utiot}. In addition to RSSI, some
 Wi-Fi chips report channel state information (CSI), the frequency response of each of dozens of
@@ -305,7 +305,7 @@ measurements that never exactly repeat the survey. The team will therefore recor
 several times of day and test the matching method on data that it did not use to build the survey.
 
 The third challenge is correcting IMU drift before it grows large. Low-cost motion sensors
-accumulate tens of meters of position error within a minute \cite{imu}, so Wi-Fi fixes must arrive often enough, and
+can accumulate more than 100~m of position error within a minute \cite{imu}, so Wi-Fi fixes must arrive often enough, and
 be reliable enough, to keep the fused estimate from diverging from the true position. This
 requirement ties the Wi-Fi update rate directly to the accuracy targets in the Performance
 Specifications.
@@ -326,8 +326,9 @@ Federal Communications Commission (FCC) rules in Title 47 of the Code of Federal
 Part 15 \cite{fcc15}, lead the team to use a Wi-Fi module that already holds FCC certification.
 Part 15 limits both the intended Wi-Fi transmissions and the unintended electrical noise that the
 tag's processor and circuits emit, so that the tag does not interfere with campus communications.
-A module that already holds a modular grant can be used in a new product under its existing FCC ID
-\cite[\S15.212]{fcc15}, which makes it the most practical way to meet these limits.
+A product builder may use a module that already holds a modular grant under the module's existing
+FCC ID \cite[\S15.212]{fcc15}, which makes such a module the most practical way to meet these
+limits.
 
 IEEE 1451.0 \cite{std1451}, the base standard of the IEEE 1451 smart transducer family, leads the
 team to separate sensor drivers from the position-estimation code. The standard describes how
@@ -413,11 +414,11 @@ and it will confirm them with Dr.\ Vikalo before detailed design.
 The BevoTag system has three components, the tag, a backend server, and the user application, and
 its primary inputs are Wi-Fi signals and the tag's own motion. Its outputs are the tag's estimated
 position, the time of that estimate, and the tag's status, which the application shows to the
-user. Figure~\ref{fig:io}\vpageref[]{fig:io} shows how these inputs and outputs connect, and Table~\ref{tab:io}\vpageref[]{tab:io} sets
-their values.
+user. Figure~\ref{fig:io}\vpageref[]{fig:io} diagrams these connections, and
+Table~\ref{tab:io}\vpageref[]{tab:io} sets the value of each input and output.
 
-Figure~\ref{fig:io} shows that every measurement enters through the tag and every output leaves
-through the application. The tag measures Wi-Fi signals, motion, and, optionally, GNSS signals, and
+The diagram shows that every measurement enters through the tag and every output leaves through
+the application. The tag measures Wi-Fi signals, motion, and, optionally, GNSS signals, and
 it sends these measurements and its status to the server as telemetry. The server stores the
 building survey and map, produces or receives the position estimate, and exchanges location,
 status, and tag selections with the application. A USB-C connection charges the tag and lets a
@@ -718,7 +719,7 @@ an unavoidable absence. Members who miss a meeting read the notes and follow up 
 assigned to them.
 
 Every deliverable must meet the standard that the team would present to its mentor. A second
-member reviews every pull request before it is merged, checks every circuit board design before
+member reviews every pull request before the team merges it, checks every circuit board design before
 the team orders boards, and proofreads every written section against the ECE Style Guide. At the
 start of each meeting, members report what they completed, what they plan to do next, and any
 blockers, and the Project Lead records these updates and keeps the Projects board current.
