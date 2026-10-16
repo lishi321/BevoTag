@@ -20,6 +20,7 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,calc}
 \usepackage[nobottomtitles*]{titlesec}        % never leave a heading on the last line of a page
+\usepackage{varioref}
 \usepackage[hidelinks]{hyperref}
 \usepackage{url}
 \renewcommand{\UrlFont}{\normalfont}
@@ -59,7 +60,12 @@
 % One empty line between a graphic and the text around it.
 \setlength{\textfloatsep}{\baselineskip}
 \setlength{\floatsep}{\baselineskip}
-\setlength{\intextsep}{0.5\baselineskip}
+\setlength{\intextsep}{\baselineskip}
+% Tables pinned with [H] get one empty line below them, like tables LaTeX places in the text.
+% The zero skip keeps a following heading's \addvspace from cancelling the correction.
+\makeatletter
+\g@addto@macro\float@endH{\vskip-\parskip\vskip\z@}
+\makeatother
 \setlength{\emergencystretch}{3em}
 
 % Indented lists that continue the preceding paragraph (Style Guide 2.5).
@@ -74,6 +80,10 @@
 \pagestyle{plain}
 
 \pretocmd{\section}{\FloatBarrier}{}{}
+% Pointer to a graphic that does not share its first reference's page (Style Guide 2.4).
+\renewcommand{\reftextcurrent}{}
+\renewcommand{\reftextafter}{on the next page}
+\renewcommand{\reftextfaceafter}{on the next page}
 \begin{document}
 \thispagestyle{empty}
 
@@ -218,7 +228,7 @@ and motion measurements into a position on a campus map. The project covers a wo
 tested in surveyed areas starting with EER. It excludes cellular connectivity, a campus-wide
 survey, mass-production tooling, and the tracking of people.
 
-Figure~\ref{fig:overview} on the next page shows how the parts of the system work together. The tag measures nearby
+Figure~\ref{fig:overview}\vpageref[]{fig:overview} shows how the parts of the system work together. The tag measures nearby
 Wi-Fi signals and its own motion (step~1) and sends these measurements over the campus Wi-Fi
 network to the location server (step~2). The server combines them with a previously recorded
 survey of the building to estimate the tag's position, or it receives an estimate that the tag
@@ -403,7 +413,7 @@ and it will confirm them with Dr.\ Vikalo before detailed design.
 The BevoTag system has three components, the tag, a backend server, and the user application, and
 its primary inputs are Wi-Fi signals and the tag's own motion. Its outputs are the tag's estimated
 position, the time of that estimate, and the tag's status, which the application shows to the
-user. Figure~\ref{fig:io} on the next page shows how these inputs and outputs connect, and Table~\ref{tab:io}, which follows it, sets
+user. Figure~\ref{fig:io}\vpageref[]{fig:io} shows how these inputs and outputs connect, and Table~\ref{tab:io}\vpageref[]{tab:io} sets
 their values.
 
 Figure~\ref{fig:io} shows that every measurement enters through the tag and every output leaves
@@ -508,7 +518,7 @@ Display refresh output & Time to show a new estimate & At most 1~s \\
 \subsubsection{User Interface Specifications}
 The user application must let a user select a tag, see its estimated location and the time of
 that estimate on a 3D campus map, and check its status, and it must accept a direct USB-C
-connection to a tag for configuration and debugging. Table~\ref{tab:ui} sets a value for each of
+connection to a tag for configuration and debugging. Table~\ref{tab:ui}\vpageref[]{tab:ui} sets a value for each of
 these requirements. The most important is the location display, which must show each new estimate
 within 1~s of its arrival. The initial implementation may be either a web or a mobile application,
 provided that it meets every requirement in the table.
@@ -536,7 +546,7 @@ USB-C connection & Configure and debug a connected tag & Tag recognized within 5
 \subsubsection{Operating Environment Specifications}
 BevoTag must operate in the physical conditions of the surveyed campus zones and within the
 computing and network environment that the university and the team provide, and
-Table~\ref{tab:env} on the next page sets both. The test zones define the physical conditions: walls and floors that
+Table~\ref{tab:env}\vpageref[]{tab:env} sets both. The test zones define the physical conditions: walls and floors that
 block signals, pedestrian traffic, temperatures from 0 to 40~\textdegree C, and a carried tag that
 changes orientation and moves at up to 5~m/s. The computing and network environment matters because
 most of BevoTag's function is software. The tag must fit within a microcontroller's memory and join
@@ -571,7 +581,7 @@ Application platform & Devices that run the user application & Current Chrome, F
 \end{table}
 
 \subsubsection{Performance Specifications}
-Table~\ref{tab:perf} on the next page sets the targets that define useful tracking: accuracy, timeliness, battery
+Table~\ref{tab:perf}\vpageref[]{tab:perf} sets the targets that define useful tracking: accuracy, timeliness, battery
 life, and size and cost. Published Wi-Fi positioning systems show that meter-level accuracy is
 achievable but that results vary widely with the sensing method and the radio environment
 \cite{rssi}, so the team defines every target as a repeatable measurement. The team will measure
@@ -633,7 +643,7 @@ application. The two sub-teams will integrate the tag, the positioning software,
 application together, and all members will take part in system testing.
 
 \subsubsection{Personnel and Team-Wide Roles}
-Each member's assignment draws on specific coursework and experience, and Table~\ref{tab:roles} on the next page
+Each member's assignment draws on specific coursework and experience, and Table~\ref{tab:roles}\vpageref[]{tab:roles}
 summarizes these assignments. Two members also hold team-wide roles. Ethan Chua serves as Project
 Lead, and Andrew Yin serves as Documentation Lead, responsible for checking every submission
 against the ECE Style Guide before the team submits it.
@@ -871,7 +881,7 @@ Use Policy for University Students} [Online]. Available:
 \end{thebibliography}
 
 %----------------------------------------------------------------------------------------------------
-% APPENDIX A (Style Guide 2.7): divider page with the title one-third down, content on the next page.
+% APPENDIX A (Style Guide 2.7): divider page with the title one-third down, content.
 % Page numbers continue from the body.
 %----------------------------------------------------------------------------------------------------
 \clearpage
@@ -890,7 +900,7 @@ use to verify compliance.
 
 \subsection{IEEE 802.11: Wi-Fi Physical and MAC Layers}
 IEEE 802.11 \cite{std80211} determines both how BevoTag can measure CSI and how it may join campus
-networks. Table~\ref{tab:a80211} shows that the physical-layer clauses decide which chips can
+networks. Table~\ref{tab:a80211}\vpageref[]{tab:a80211} shows that the physical-layer clauses decide which chips can
 report CSI, whereas the frame, management, and security clauses decide how the tag listens and
 authenticates. The team will verify CSI capture by comparing recorded sub-channel data against
 known access-point beacons, confirm passive listening with a Wireshark capture showing no
@@ -917,7 +927,7 @@ Clause 12 (security) & Defines robust security network association, including pr
 
 \subsection{FCC 47 CFR Part 15: Radio Frequency Devices}
 Part 15 \cite{fcc15} limits both intentional transmissions and unintended emissions from the tag's
-digital circuits. As Table~\ref{tab:afcc} on the next page shows, a pre-certified Wi-Fi module already satisfies the
+digital circuits. As Table~\ref{tab:afcc}\vpageref[]{tab:afcc} shows, a pre-certified Wi-Fi module already satisfies the
 transmitter and restricted-band limits, which leaves the team responsible mainly for board layout
 and labeling. The team will verify conducted output power on a bench spectrum analyzer and check
 the board for unintended emissions with a near-field probe, rather than performing full
@@ -944,7 +954,7 @@ certification testing.
 
 \subsection{IEEE 1451: Smart Transducer Interface}
 IEEE 1451.0 \cite{std1451} guides how the firmware separates sensor hardware from the processing
-that uses its data. Table~\ref{tab:a1451} shows that the team will adopt the standard's data model
+that uses its data. Table~\ref{tab:a1451}\vpageref[]{tab:a1451} shows that the team will adopt the standard's data model
 and data sheet structure rather than its full command set, which would use more memory than the
 tag can spare. The team will check compliance through firmware review and unit tests confirming
 that calibration data load correctly at startup.
@@ -968,7 +978,7 @@ Common communication functions & Sensor data and status are exchanged through de
 
 \subsection{NIST SP 800-88 and FIPS 140-3: Data Sanitization and Cryptography}
 These federal guidelines \cite{nist80088}, \cite{fips1403} govern how the tag protects and erases
-the credentials and location history it stores. Table~\ref{tab:anist} shows that a factory reset
+the credentials and location history it stores. Table~\ref{tab:anist}\vpageref[]{tab:anist} shows that a factory reset
 will both overwrite stored data and destroy the encryption keys, and that telemetry and firmware
 will follow FIPS 140-3 practices by relying only on approved algorithms; the team will not seek
 formal module validation. The team will verify sanitization by reading back flash
@@ -995,7 +1005,7 @@ FIPS 140-3 software and firmware security & Check firmware integrity with an app
 
 \subsection{IEC 62133-2: Lithium Battery Safety}
 IEC 62133-2 \cite{iec62133} sets safety requirements for the lithium cell and battery that power
-the tag. Table~\ref{tab:aiec} on the next page shows that its tests target the same hazards that the Ethical
+the tag. Table~\ref{tab:aiec}\vpageref[]{tab:aiec} shows that its tests target the same hazards that the Ethical
 Considerations identify, so the team will buy a cell already certified to the standard and add
 charge and short-circuit protection on its own board. The team will verify that protection on the
 bench by checking the charge cutoff voltage, the short-circuit cutoff, and the charge current
@@ -1021,7 +1031,7 @@ Certified cells & Cells must pass the standard's type tests & Team buys only cel
 
 \subsection{UT Austin Acceptable Use Policy}
 The university's acceptable use policy \cite{utaup} and its registration rules for utexas-iot
-\cite{utiot} govern how the tag uses the campus network. Table~\ref{tab:aaup} on the next page shows that the
+\cite{utiot} govern how the tag uses the campus network. Table~\ref{tab:aaup}\vpageref[]{tab:aaup} shows that the
 policy's limits on probing and interference match the tag's design as a passive, ordinary network
 client. The team will verify
 compliance by reviewing the firmware's network functions against the policy and by confirming with
