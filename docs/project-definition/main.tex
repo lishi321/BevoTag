@@ -116,25 +116,26 @@ AirTag update an item's location only when a nearby phone from the same manufact
 \cite{airtag}. BevoTag is an open tag because it needs no manufacturer's phone network: it
 estimates the item's position from campus Wi-Fi and its own motion sensor and reports that position
 to its owner on a campus map. The team will build a tag, firmware, a building survey, and an
-application that together place an item in the correct room in more than 90\% of trials.
+application that together place an item in the correct room in more than 90\% of trials. Two
+sub-teams under a Project Lead will do this work; the team has chosen its technical approach and
+will next build a data logger for its first Wi-Fi and motion measurements.
 
 The design problem is to track an item continuously, indoors and outdoors, without new
 infrastructure. Wi-Fi measurements alone can mislocate a device by several meters because signals
 fluctuate as the environment changes \cite{hechan}, \cite[Table~4]{rssi}. A low-cost motion sensor
-alone drifts even faster, by more than 150~m within 60~s \cite{imu}. Combining the two lets each
-correct the other. The project will test this approach in surveyed areas beginning with the
-Engineering Education and Research Center (EER). Radio, data-security, and battery-safety
-standards constrain the design, as does university network policy, and the team commits to
-recording no one's network traffic, to encrypting and limiting location data, and to using the
-campus network only as an ordinary client.
+alone drifts even faster, by more than 150~m within 60~s \cite[Sec.~6.3]{imu}. Combining the two
+lets each correct the other. The project will test this approach in surveyed areas beginning with
+the Engineering Education and Research Center (EER).
 
-Measurable targets and a two-sub-team organization turn this approach into a plan. Beyond room
-identification, the system must keep its median position error under 5~m, update an item's
-location at least every 10~s while the item moves, and run at least 24~hours on one battery
-charge. Esteban Martinez and Li Shi will build the tag hardware and firmware, Andrew Yin and Abhirit
-Das will build the localization software and the user application, and Ethan Chua will coordinate
-the work as Project Lead. Shared policies for communication, review, and decisions govern every
-member.
+The design must meet measurable targets within limits that standards, ethics, and team policies
+set. Beyond room identification, the system must keep its median position error under 5~m, update
+an item's location at least every 10~s while the item moves, and run at least 24~hours on one
+battery charge. Radio, data-security, and battery-safety standards and university network policy
+constrain the design, and the team commits to recording no one's network traffic, to encrypting and
+limiting location data, and to using the campus network only as an ordinary client. Esteban
+Martinez and Li Shi will build the tag hardware and firmware, Andrew Yin and Abhirit Das will build
+the localization software and the user application, and Ethan Chua will coordinate the work as
+Project Lead.
 
 %----------------------------------------------------------------------------------------------------
 \section{Problem Statement}
@@ -142,17 +143,18 @@ member.
 BevoTag must locate a tagged item to within a few meters across indoor and outdoor areas of campus,
 using only existing campus Wi-Fi and its own motion sensor. Buildings block and reflect satellite
 signals \cite{yoder}, and low-cost motion sensors drift \cite{imu}, so no single source of position
-is reliable on its own. The Design Problem Description explains why fusing Wi-Fi fingerprints with
-motion sensing is the most promising approach and what that approach must overcome. The
-Requirements Specification then sets the measurable targets that a successful design must meet.
+is reliable on its own. Fusing Wi-Fi fingerprints, the signal patterns recorded at known locations,
+with motion sensing is the most promising approach, and a successful design must meet measurable
+targets for room accuracy, update rate, and battery life.
 
 \subsection{Design Problem Description}
 A successful BevoTag design must estimate an item's location indoors and outdoors without
 infrastructure the team cannot control, and it must show that location to the item's owner on a
 map. Existing trackers fail this need because satellite signals do not reach indoors and
 crowdsourced tags depend on passing phones. BevoTag addresses the need by fusing Wi-Fi fingerprints
-with motion sensing, an approach that brings three main challenges: limited power on the tag,
-radio signals that change from moment to moment, and sensor drift. Because the tag reports
+with motion sensing, an approach that brings three main challenges: computing the position within
+the tag's limited power, capturing CSI from radio signals that change from moment to moment, and
+correcting sensor drift. Because the tag reports
 location, the design must also satisfy radio, data-security, and battery-safety standards and
 protect the privacy of bystanders and owners.
 
@@ -173,14 +175,15 @@ wrong room.
 
 Satellite positioning fails indoors and degrades between tall buildings. Global Navigation
 Satellite Systems (GNSS), the family of satellite positioning systems that includes GPS, compute a
-receiver's position from faint signals that satellites broadcast from about 20,200~km above the
-Earth \cite{gps}. These signals do not penetrate well indoors \cite[Sec.~I]{hechan}. Between tall
-buildings, signal blockage and multipath, the arrival of signals only after they reflect off nearby
-walls, degrade GNSS so much that earlier precise receivers without inertial aiding reported
-root-mean-square position errors greater than 9~m \cite[Sec.~1.1.1]{yoder}.
+receiver's position from faint signals broadcast by satellites in medium Earth orbit; GPS
+satellites, for example, orbit about 20,200~km above the Earth \cite{gps}. These signals do not
+penetrate well indoors \cite[Sec.~I]{hechan}. Between tall buildings, signal blockage and multipath,
+the arrival of signals only after they reflect off nearby walls, degrade GNSS so much that one 2009
+experiment with a precise receiver lacking inertial aiding measured root-mean-square position errors
+greater than 9~m \cite[Sec.~1.1.1]{yoder}.
 
 Crowdsourced tags locate an item only when a compatible phone happens to pass nearby. The Apple
-AirTag and the Samsung Galaxy SmartTag broadcast a short-range Bluetooth signal, and nearby phones
+AirTag and the Samsung Galaxy SmartTag2 broadcast a short-range Bluetooth signal, and nearby phones
 from the same manufacturer detect that signal and report its location \cite{airtag},
 \cite{smarttag}. In an empty lab at night no such phone passes by, so the tag's location stops
 updating until one does.
@@ -195,13 +198,12 @@ place it in the wrong room.
 \subsubsection{Theory of Operation}
 BevoTag combines two sources of position information whose errors differ: campus Wi-Fi
 measurements, which are noisy but do not drift, and a motion sensor, which is smooth over short
-periods but drifts. A fusion algorithm uses each source to correct the other. The final design may
+periods but drifts. The final design may
 compute this estimate on the tag or on a server; the team will decide after measuring the
 prototype hardware, as the Design Challenges explain.
 
-The system locates the tag by matching its Wi-Fi measurements against a survey of each building.
-UT Austin operates campus Wi-Fi networks, including utexas-iot, which serves Internet of Things
-devices \cite{utiot}. In addition to RSSI, some Wi-Fi chips report channel state information
+The system locates the tag by matching its Wi-Fi measurements against a survey of the surrounding building.
+In addition to RSSI, some Wi-Fi chips report channel state information
 (CSI), the frequency response of each of dozens of narrow sub-carriers \cite{espcsi}, which shows
 how much the path weakens and delays the signal on each sub-carrier. Walls, furniture, and room
 geometry shape these values, so CSI acts as a detailed fingerprint of a location \cite{yangcsi}.
@@ -215,10 +217,10 @@ acceleration along three axes and rotation about them. Adding up these measureme
 starting point, a technique called dead reckoning, tracks the tag's movement many times per
 second. Small sensor errors accumulate, however, so the estimate drifts farther from the truth the
 longer it runs: a simple low-cost inertial system can accumulate more than 150~m of average
-position error within 60~s \cite{imu}.
+position error within 60~s \cite[Sec.~6.3]{imu}.
 
 A fusion algorithm combines the two sources so that the result neither jumps like Wi-Fi alone nor
-drifts like the IMU alone. A standard candidate is the extended Kalman filter (EKF) \cite{welch},
+drifts like the IMU alone. A standard candidate is the extended Kalman filter \cite{welch},
 which uses the IMU to predict how the tag has moved and uses each new Wi-Fi fix to correct the
 accumulated drift, weighting each source by how reliable it currently is. Outdoors, where
 satellite signals are available, the same algorithm can also accept a GNSS position as an optional
@@ -260,8 +262,8 @@ any BevoTag design must perform four functions:
   \node[blk] (tag) at (5.95,0)   {\textbf{BevoTag}\\Wi-Fi radio,\\motion sensor};
   \node[blk] (srv) at (10.55,0)  {\textbf{Location\\server}\\estimates or\\stores position};
   \node[blk] (app) at (15.15,0)  {\textbf{User app}\\campus map};
-  \node[blk, minimum height=1.2cm] (map) at (10.55,-3.6) {Wi-Fi survey of\\each building};
-  \draw[->, thick, dashed] (ap) -- node[stepnum, above=4pt] {1} node[lbl, below=4pt] {Wi-Fi\\signals} (tag);
+  \node[blk, minimum height=1.2cm] (map) at (10.55,-3.6) {Wi-Fi survey of\\test areas};
+  \draw[->, thick] (ap) -- node[stepnum, above=4pt] {1} node[lbl, below=4pt] {Wi-Fi\\signals} (tag);
   \draw[->, thick] (tag) -- node[stepnum, above=4pt] {2} node[lbl, below=4pt] {data via\\Wi-Fi} (srv);
   \draw[->, thick] (srv) -- node[stepnum, above=4pt] {4} node[lbl, below=4pt] {location,\\status} (app);
   \draw[->, thick] (map) -- node[pos=0.4, stepnum, right=4pt] {3}
@@ -271,15 +273,16 @@ any BevoTag design must perform four functions:
 \label{fig:overview}
 \end{figure}
 
-The project includes a working prototype tag, its firmware, a Wi-Fi survey of designated test
-areas, and a user application. The tag will combine a Wi-Fi chip that can report CSI, such as the
+Within that scope, the prototype will use available parts and start with one building. The tag
+will combine a Wi-Fi chip that can report CSI, such as the
 ESP32-S3 \cite{espcsi}, with a low-noise IMU on a development board or a custom circuit board. Its
 firmware will read the sensors and either process the measurements or send them to the server. The
 survey will begin with EER and its adjacent outdoor plazas, and the application will display the
 tag's position on a campus map.
 
 Four related capabilities fall outside the project's scope. The tag will not use a cellular
-Internet of Things connection such as LTE-M or NB-IoT, because these require a paid data plan and
+Internet of Things connection, such as Long-Term Evolution for Machines (LTE-M) or Narrowband
+Internet of Things (NB-IoT), because these require a paid data plan and
 a second radio that would raise cost and power consumption, and campus Wi-Fi serves the target
 areas; the survey will confirm that coverage. The team will not survey every building on campus,
 because a survey requires walking each floor and recording measurements at many points. It will
@@ -303,15 +306,14 @@ rates, IMU data rates, and power draw on the prototype.
 
 The second challenge is capturing reliable CSI from signals that vary from moment to moment. A
 receiver derives CSI from the training fields of frames that use orthogonal frequency-division
-multiplexing (OFDM) \cite{espcsi}, so the tag must capture it from OFDM frames that nearby access
+multiplexing (OFDM) \cite{espcsi}, \cite{std80211}, so the tag must capture it from OFDM frames that nearby access
 points send, not from every frame it hears. The measurements recorded at a given spot also
 fluctuate with noise and with changes in the environment, such as people walking through hallways
 \cite[Sec.~III-B]{hechan}. The team will therefore record survey measurements at several times of
 day and test the matching method on data that it did not use to build the survey.
 
-The third challenge is correcting IMU drift before it grows large. The drift described in the
-Theory of Operation grows to more than 150~m within 60~s \cite{imu}, so Wi-Fi fixes must arrive
-often enough, and be reliable enough, to keep the fused estimate from diverging from the true
+The third challenge is correcting IMU drift before it grows large. Because the drift described in
+the Theory of Operation grows quickly, Wi-Fi fixes must arrive often enough, and be reliable enough, to keep the fused estimate from diverging from the true
 position. This requirement ties the Wi-Fi update rate to the accuracy targets in the Performance
 Specifications.
 
@@ -323,18 +325,19 @@ drivers separate from its estimation code, encrypt its telemetry, use a certifie
 lithium battery, and act as an ordinary network client. Appendix~A lists the specific clauses of
 each standard, how each affects the design, and how the team will verify compliance.
 
-IEEE 802.11 \cite{std80211} limits BevoTag to Wi-Fi chips that expose CSI and governs how the tag
-joins campus networks. The standard defines how Wi-Fi devices format and exchange signals,
-including the training fields at the start of every OFDM frame from which a receiver derives CSI
-\cite{espcsi}.
+IEEE 802.11 \cite{std80211} defines the training fields from which BevoTag derives CSI and governs
+how the tag joins campus networks. The standard specifies how Wi-Fi devices format and exchange
+signals, including the training fields at the start of every OFDM frame, and the tag needs a chip
+that reports CSI from those fields \cite{espcsi}.
 
 Federal Communications Commission (FCC) rules in Title 47 of the Code of Federal Regulations
 (C.F.R.), Part 15 \cite{fcc15}, lead the team to use a Wi-Fi module that already holds FCC
 approval. Part 15 limits both the intended Wi-Fi transmissions and the unintended electrical noise
 that the tag's processor and circuits emit, so that the tag does not interfere with campus
-communications. Section 15.212 lets a radio module receive its own modular approval and requires
-the product that contains it to display a label referring to the module's FCC identifier (FCC ID)
-\cite[\S15.212]{fcc15}, which makes such a module the most practical way to meet these limits.
+communications. Section 15.212 lets a radio module receive its own modular approval and, when the
+installed module's FCC identifier (FCC ID) is not visible, requires the product to carry an outside
+label such as ``Contains FCC ID'' that refers to the module \cite[\S15.212]{fcc15}. Such a module is
+therefore the most practical way to meet these limits.
 
 IEEE 1451.0 \cite{std1451}, the base standard of the IEEE 1451 smart transducer family, leads the
 team to separate sensor drivers from the position-estimation code. The standard describes how
@@ -366,8 +369,10 @@ data the project uses.
 
 The firmware will record only signal measurements and packet header fields, never the content of
 anyone's network traffic. To capture CSI, the tag listens to Wi-Fi traffic that may come from other
-people's devices. It will keep only the fields needed for positioning, such as the access point
-address and signal strength, and it will not decode, store, or transmit the contents of any packet.
+people's devices. It will discard any frame whose transmitter is not an access point, so it never
+stores another person's device address. From access point frames it will keep only the fields
+needed for positioning, such as the access point address and signal strength, and it will not
+decode, store, or transmit the contents of any packet.
 
 The team will treat location history as personal information, because a history of where an item
 has been reveals where its owner has been. The team will encrypt data in transit between the tag
@@ -401,8 +406,8 @@ data and documentation needed to extend it. The delivery will consist of six ite
     measurement, monitors device status, and communicates over Wi-Fi.
   \item \textbf{Campus survey and map:} Wi-Fi survey data and a digital 3D map of the designated
     test areas that together let the system estimate, display, and evaluate the tag's location.
-  \item \textbf{Localization backend:} server software that receives data from each tag, produces
-    or stores its position estimate, and provides the result to the user application.
+  \item \textbf{Location server software:} software that receives data from each tag, produces or
+    stores its position estimate, and provides the result to the user application.
   \item \textbf{User application:} a web or mobile application in which a user can view a tag's
     estimated location and status on the campus map.
   \item \textbf{Documentation:} the source code, the survey procedure, and test results measured
@@ -419,16 +424,16 @@ set these targets from published Wi-Fi positioning results \cite{rssi} and its o
 makes a tracker useful, and it will confirm them with Dr.\ Vikalo before detailed design.
 
 \subsubsection{Input and Output Specifications}
-The BevoTag system has three components (the tag, a backend server, and the user application), and
+The BevoTag system has three components (the tag, a location server, and the user application), and
 its primary inputs are Wi-Fi signals and the tag's own motion. Its outputs are the tag's estimated
 position, the time of that estimate, and the tag's status, which the application shows to the
-user. Figure~\ref{fig:io}\vpageref[]{fig:io} diagrams these connections, and a table that follows
-it sets the value of each input and output.
+user. Figure~\ref{fig:io}\vpageref[]{fig:io} diagrams these connections, and the specification
+table after the diagram sets the value of each input and output.
 
-The diagram shows that every measurement enters through the tag and every output leaves through
-the application. The tag measures Wi-Fi signals, motion, and, optionally, GNSS signals, and it
+The diagram shows that every live measurement enters through the tag and every output leaves
+through the application. The tag measures Wi-Fi signals, motion, and, optionally, GNSS signals, and it
 sends these measurements and its status to the server as telemetry. The server holds the building
-survey and map, produces or receives the position estimate, and exchanges location, status, and tag
+survey and map, which the team records in advance, produces or receives the position estimate, and exchanges location, status, and tag
 selections with the application. A USB-C port charges the tag's battery and lets a computer running
 the application configure and debug the tag.
 
@@ -456,10 +461,12 @@ the application configure and debug the tag.
   \node[sub] (usb1) at (4.0,-5.3) {USB-C port};
   \draw[->, thick] (usb1.north) -- (bat.south);
 
-  % Backend server
-  \node[ttl] at (9.5,-0.4) {Backend server};
+  % Location server
+  \node[ttl] at (9.5,-0.4) {Location server};
   \node[sub, text width=2.6cm] (mapd) at (9.5,-1.3) {Survey and map data};
   \node[sub, text width=2.6cm] (proc) at (9.5,-2.3) {Location estimation};
+  \draw[->, thick] (9.5,-4.0) -- (9.5,-3.0);
+  \node[anchor=north, align=center] at (9.5,-4.0) {survey measurements};
 
   % User application
   \node[ttl] at (14.85,-0.4) {User application};
@@ -493,8 +500,8 @@ the application configure and debug the tag.
 
 The tag must measure signals as weak as $-100$~dBm and report at least every 10~s while it moves,
 and the application must display each new estimate within 1~s of receiving it.
-Table~\ref{tab:io}\vpageref[]{tab:io} gives these and the other values for each input and output in Figure~\ref{fig:io}. GNSS appears
-only as an optional input for open outdoor areas.
+Table~\ref{tab:io}\vpageref[]{tab:io} gives these and the other input and output values. GNSS
+appears only as an optional input for open outdoor areas.
 
 \begin{table}[!htp]
 \caption{BevoTag Input and Output Specifications}
@@ -506,12 +513,12 @@ only as an optional input for open outdoor areas.
 \textbf{Input/Output} & \textbf{Description} & \textbf{Value or Range} \\
 \midrule
 Wi-Fi RSSI input & Strength of each Wi-Fi signal & $-100$ to $-30$~dBm \\
-Wi-Fi CSI input & Frequency response per sub-carrier \cite{espcsi} & 64 entries per 20~MHz field \\
+Wi-Fi CSI input & Frequency response per sub-carrier \cite{espcsi} & 64 entries (52 to 56 active) per 20~MHz field \\
 Acceleration input & Linear acceleration from the IMU & $\pm 8$~g \\
 Angular rate input & Rotation rate from the IMU & $\pm 1000$ degrees/s \\
 GNSS input (optional) & Satellite position outdoors & Latitude and longitude \\
 Charging power input & Power that charges the battery & 5~V through USB-C \\
-Survey fingerprint input & Measurements at known points & At least one per surveyed room \\
+Survey measurement input & Measurements at known points & At least one per surveyed room \\
 User input & Tag selection and map controls & Up to five tags per user \\
 Telemetry output & Data sent from tag to server & At most 10~s apart while moving \\
 Location output & Estimated position of the tag & Latitude, longitude, and floor \\
@@ -556,12 +563,12 @@ USB-C connection & Configure and debug a connected tag & Application recognizes 
 BevoTag must operate in the physical conditions of the surveyed campus zones and within the
 computing and network environment that the university and the team provide, and
 Table~\ref{tab:env}\vpageref[]{tab:env} sets both. Physically, the tag must work at every survey
-point that receives at least three access points, from 0 to 40~\textdegree C, while a person
-carries it at up to 5~m/s; it need not survive rain. The computing and network environment matters
-because most of BevoTag's function is software. The tag's firmware must fit in a microcontroller's
-memory, and the tag must join the utexas-iot network and encrypt its telemetry in transit. The
-backend must run on a Linux server reachable from campus, and the application must run in current
-browsers or on current phones.
+point that receives signals from at least three access points, from 0 to 40~\textdegree C, while a
+person carries it at up to 5~m/s; it need not survive rain. The tag's firmware must fit in a
+microcontroller's memory, and the tag must join the utexas-iot network, which the university
+provides for Internet of Things devices \cite{utiot}, and encrypt its telemetry in transit. The
+location server must run on a Linux machine reachable from campus, and the application must run in
+current browsers or on current phones.
 
 \begin{table}[H]
 \caption{Operating Environment Specifications}
@@ -580,10 +587,10 @@ Moisture & Water exposure the tag must tolerate & Dry indoor and outdoor use; no
 User motion & Speed of the person carrying the tag & 0 to 5~m/s \\
 \midrule
 \multicolumn{3}{@{}l}{\textit{Computing and network environment}} \\
-Tag processor & Battery-powered microcontroller with integrated Wi-Fi & Firmware fits in at most 512~KB of RAM \\
+Tag processor & Battery-powered microcontroller with integrated Wi-Fi & Firmware uses at most 512~KB of RAM \\
 Tag network & Campus network that carries telemetry & utexas-iot at 2.4~GHz with Wi-Fi Protected Access 2 (WPA2) \cite{utiot} \\
 Data transport & Protection of telemetry between tag and server & Transport Layer Security (TLS) 1.2 or later \\
-Backend host & Server that receives telemetry and serves the application & Linux virtual machine reachable from campus, with at least two CPU cores and 4~GB of memory \\
+Location server host & Machine that receives telemetry and serves the application & Linux virtual machine reachable from campus, with at least two CPU cores and 4~GB of memory \\
 Application platform & Devices that run the user application & Current Chrome, Firefox, and Safari browsers, or iOS~17 and Android~13 and later \\
 \bottomrule
 \end{tabularx}
@@ -592,10 +599,10 @@ Application platform & Devices that run the user application & Current Chrome, F
 
 \subsubsection{Performance Specifications}
 Room identification is the governing accuracy target in Table~\ref{tab:perf}\vpageref[]{tab:perf},
-which also sets targets for timeliness, battery life, size, and cost. RSSI fingerprinting can
-already reach errors of 1 to 5~m under favorable conditions \cite[Table~4]{rssi}, so the 5~m median
-error is a ceiling, whereas placing a moving tag in the correct room in more than 90\% of trials as
-conditions change is the result that BevoTag must add. The team will measure accuracy at surveyed
+which also sets targets for timeliness, battery life, size, and cost. RSSI fingerprinting already
+reaches 1 to 5~m under favorable conditions \cite[Table~4]{rssi}, so the 5~m median error is only a
+ceiling. BevoTag's contribution is placing a moving tag in the correct room in more than 90\% of
+trials as conditions change. The team will measure accuracy at surveyed
 points whose true positions it has recorded independently of BevoTag's estimate, in stationary and
 moving trials indoors and outdoors, and it will repeat the trials at different times of day to
 capture changing conditions such as pedestrian traffic.
@@ -630,8 +637,8 @@ Parts cost & Cost of components for one prototype tag & $\leq 50$ & US\$ \\
 %----------------------------------------------------------------------------------------------------
 The five-member team has organized itself into two sub-teams under a Project Lead: Embedded
 Hardware and Firmware, which builds the tag, and Localization and Application Software, which turns
-measurements into a location and shows it to the user. Each member's assignment matches that
-member's coursework and experience, and all members share integration, testing, and documentation.
+measurements into a location and shows it to the user. All members share integration, testing, and
+documentation.
 Team policies set how members communicate, hold one another accountable, and resolve
 disagreements.
 
@@ -646,18 +653,18 @@ displayed location. The Embedded Hardware and Firmware sub-team, Esteban Martine
 first build a data logger for feasibility experiments and Wi-Fi survey collection. It will then
 integrate the required processing on the tag and evaluate measurement reliability, execution time,
 memory use, and power consumption. The Localization and Application Software sub-team, Andrew Yin
-and Abhirit Das, owns survey data processing, the position-estimation pipeline, the backend that
-receives and manages tag data, the 3D campus map, and the user application. The two sub-teams will
+and Abhirit Das, will own survey data processing, the position-estimation pipeline, the location
+server that receives and manages tag data, the 3D campus map, and the user application. The two sub-teams will
 integrate the tag, the positioning software, and the application, and all members will take part
 in system testing.
 
 \subsubsection{Personnel and Team-Wide Roles}
-Each member's assignment follows from that member's coursework and experience, and
+Each member's assignment follows from that member's experience and interests, and
 Table~\ref{tab:roles}\vpageref[]{tab:roles} summarizes the assignments. Ethan Chua's positioning
 research suits the Project Lead role and the fusion algorithm, Esteban Martinez's and Li Shi's
 embedded systems experience suits the tag, and Andrew Yin's and Abhirit Das's application and
-machine-learning experience suits the software. Ethan serves as Project Lead, and Andrew serves as
-Documentation Lead, who checks every submission against the ECE Style Guide.
+machine-learning experience suits the software. Ethan will serve as Project Lead, and Andrew will
+serve as Documentation Lead, who checks every submission against the ECE Style Guide.
 
 \begin{table}[!htp]
 \caption{Project Responsibilities}
@@ -671,7 +678,7 @@ Documentation Lead, who checks every submission against the ECE Style Guide.
 Ethan Chua & Project Lead & Coordination, integration, verification, fusion guidance & Radio positioning, GNSS, signal processing & ECE 351M \\
 Esteban Martinez & Embedded Hardware and Firmware & Components, power system, hardware integration & Embedded hardware design & ECE 445L, 422C, 360C \\
 Li Shi & Embedded Hardware and Firmware & Firmware, sensor drivers, Wi-Fi communication & Embedded firmware design & ECE 445L, 422C, 360C \\
-Andrew Yin & Localization and Application Software; Documentation Lead & Survey processing, localization, backend & Mobile development, machine learning & ECE 445L, 422C, 360C \\
+Andrew Yin & Localization and Application Software; Documentation Lead & Survey processing, localization, location server & Mobile development, machine learning & ECE 445L, 422C, 360C \\
 Abhirit Das & Localization and Application Software & User application, 3D campus map, status display & Web development, machine-learning deployment & ECE 445L, 422C, 360C \\
 \bottomrule
 \end{tabularx}
@@ -691,7 +698,7 @@ and network communication. Both have completed ECE~445L, Embedded Systems Design
 Software Design and Implementation~II; and ECE~360C, Algorithms, and both have embedded systems
 experience through Texas Aerial Robotics and industry internships.
 
-Andrew Yin will lead survey processing, position estimation, and the backend, and Abhirit Das will
+Andrew Yin will lead survey processing, position estimation, and the location server, and Abhirit Das will
 lead the user application and the 3D campus map. Andrew's experience in mobile application
 development and machine learning applies to fingerprint matching and sensor fusion. Abhirit's
 experience in web application development and in profiling machine-learning deployment tools at
@@ -702,7 +709,7 @@ same three courses as the hardware sub-team.
 The team's policies set how members communicate, what they owe one another, and how the team
 decides questions and resolves conflict. Members use Discord for daily communication and GitHub for
 code and task tracking, attend two team meetings each week and a mentor meeting every two weeks,
-and finish work 48~hours before each course deadline. They review one another's work, decide
+and meet internal deadlines set ahead of course deadlines. They review one another's work, decide
 significant questions by majority vote after research, and settle technical disagreements with
 data.
 
@@ -719,11 +726,11 @@ guidance.
 
 \subsubsection{Team Expectations}
 Members respond promptly, come to meetings prepared, review one another's work, and finish work
-48~hours before each course deadline. The Conflict Resolution policy states how the team responds
+early. The Conflict Resolution policy states how the team responds
 when a member does not meet these expectations.
 
-Members respond within 24~hours and come to every meeting prepared. They answer direct questions on
-Discord within 24~hours on weekdays and flag time-sensitive issues, such as a blocked task or an
+Members answer direct questions on Discord within 24~hours on weekdays and come to every meeting
+prepared. They flag time-sensitive issues, such as a blocked task or an
 approaching deadline, by mentioning the affected members directly. The team meets twice a week and
 meets with Dr.\ Vikalo every two weeks. Members review the agenda before each meeting, notify the
 team on Discord at least 24~hours before an unavoidable absence, and read the notes and follow up on
@@ -745,11 +752,10 @@ with tests, mediates interpersonal conflicts, and answers missed responsibilitie
 steps. Unresolved technical risks go to Dr.\ Vikalo or the Technical TA, and unresolved conflicts go
 to the Technical TA or the course instructor.
 
-The team makes significant decisions, such as selecting a positioning approach, choosing
-components, or changing the project scope, by majority vote after researching the options. The
-members most familiar with the question present the trade-offs of each option, supported by
-datasheets, published results, cost estimates, or the team's own measurements, and the Project
-Lead records the outcome and its rationale in the meeting notes. Each sub-team makes decisions that
+Significant decisions, such as selecting a positioning approach, choosing components, or changing
+the project scope, follow a set procedure. The members most familiar with the question present the trade-offs of each option, supported by
+datasheets, published results, cost estimates, or the team's own measurements. The team then
+votes, and the Project Lead records the outcome and its rationale in the meeting notes. Each sub-team makes decisions that
 affect only its own work and reports them at the next meeting. When the two members of a sub-team
 disagree, the Project Lead breaks the tie.
 
@@ -778,18 +784,16 @@ matching Wi-Fi measurements against a building survey and fusing them with motio
 design must place the item in the correct room in more than 90\% of trials, within the limits that
 radio, data-security, and battery standards and the team's ethical commitments set. Two sub-teams
 under a Project Lead will do the work under shared policies for communication, review, and
-decisions. Success depends on three risks, and the team's next steps begin to reduce them.
+decisions.
 
-Reliable positioning where satellite signals fail matters beyond lost laptops. Indoor
-location-based services have both social and commercial value, with a market that one survey
-predicted would reach US\$10 billion by 2020 \cite[Sec.~I]{hechan}, and the same need applies to
-shared lab equipment that moves among rooms. The project's outcome depends on three risks: the tag
-must capture CSI on low-power hardware, room-level accuracy depends on careful building surveys,
-and campus network coverage and access policies may limit where the tag can operate. If CSI
-capture proves unreliable, signal-strength fingerprinting fused with motion data remains a
-fallback at reduced accuracy. With that fallback and the team's experience in embedded systems,
-positioning research, and software development, a working prototype within a few surveyed
-buildings is a realistic outcome.
+A working prototype within a few surveyed buildings is a realistic outcome despite the three
+challenges that the Design Challenges describe. Computing the position may strain the tag's power,
+CSI capture may prove unreliable as signals change, and drift may outpace Wi-Fi fixes. If CSI
+capture fails, signal-strength fingerprinting fused with motion data remains a fallback at reduced
+accuracy, and the team's experience in embedded systems, positioning research, and software
+development covers the rest of the work. Success would matter beyond lost laptops: indoor
+location-based services have social and commercial value \cite[Sec.~I]{hechan}, and on campus the
+same tag could track shared lab equipment that moves among rooms.
 
 Next, the team will confirm the specification targets with Dr.\ Vikalo, complete a data logger for
 initial Wi-Fi and IMU measurements, and survey EER as the first test building. It will then refine
@@ -813,7 +817,7 @@ reduction activity in that member's area of the design.
          \setlength{\topsep}{0pt}%
          \usecounter{enumiv}%
          \renewcommand\theenumiv{\@arabic\c@enumiv}}%
-   \RaggedRight}
+   \RaggedRight\exhyphenpenalty=50 }
   {\endlist}
 \makeatother
 
@@ -821,7 +825,7 @@ reduction activity in that member's area of the design.
 \bibitem{hechan}
 S. He and S.-H. G. Chan, ``Wi-Fi fingerprint-based indoor positioning: Recent advances and
 comparisons,'' \emph{IEEE Commun. Surveys Tuts.}, vol.~18, no.~1, pp.~466--490, 1st Quart. 2016,
-doi: 10.1109/COMST.2015.2464084.
+doi: \url{10.1109/COMST.2015.2464084}.
 
 
 \bibitem{airtag}
@@ -829,20 +833,20 @@ Apple Inc. (2026). \emph{AirTag} [Online]. Available: \url{https://www.apple.com
 
 
 \bibitem{rssi}
-A. S. Yaro, F. Maly, and P. Prazak, ``A survey of the performance-limiting factors of a
+A. S. Yaro \emph{et al.}, ``A survey of the performance-limiting factors of a
 2-dimensional RSS fingerprinting-based indoor wireless localization system,'' \emph{Sensors},
-vol.~23, no.~5, art.~no.~2545, Feb. 2023, doi: 10.3390/s23052545.
+vol.~23, no.~5, art.~no.~2545, Feb. 2023, doi: \url{10.3390/s23052545}.
 
 
 \bibitem{imu}
 O. J. Woodman, ``An introduction to inertial navigation,'' Comput. Lab., Univ. Cambridge,
-Cambridge, U.K., Tech. Rep. UCAM-CL-TR-696, Aug. 2007, doi: 10.48456/tr-696.
+Cambridge, U.K., Tech. Rep. UCAM-CL-TR-696, Aug. 2007, doi: \url{10.48456/tr-696}.
 
 
 \bibitem{yoder}
 J. E. Yoder and T. E. Humphreys, ``Low-cost inertial aiding for deep-urban tightly coupled
 multi-antenna precise GNSS,'' \emph{NAVIGATION}, vol.~70, no.~1, art.~no.~navi.561, Mar. 2023,
-doi: 10.33012/navi.561.
+doi: \url{10.33012/navi.561}.
 
 
 \bibitem{gps}
@@ -855,11 +859,6 @@ Samsung Electronics Canada. (n.d.). \emph{Galaxy SmartTag2} [Online]. Available:
 \url{https://www.samsung.com/ca/business/mobile-accessories/galaxy-smarttag2-white-ei-t5600bwegca/}.
 
 
-\bibitem{utiot}
-The University of Texas at Austin. (2025, Aug.~25). \emph{Connecting to utexas-iot Wi-Fi}
-[Online]. Available: \url{https://ut.service-now.com/kb_view.do?sysparm_article=KB0017215}.
-
-
 \bibitem{espcsi}
 Espressif Systems. (2026). \emph{ESP-IDF Programming Guide (ESP32-S3): Wi-Fi Vendor Features}
 [Online]. Available:
@@ -867,9 +866,9 @@ Espressif Systems. (2026). \emph{ESP-IDF Programming Guide (ESP32-S3): Wi-Fi Ven
 
 
 \bibitem{yangcsi}
-Z. Yang, Z. Zhou, and Y. Liu, ``From RSSI to CSI: Indoor localization via channel response,''
+Z. Yang \emph{et al.}, ``From RSSI to CSI: Indoor localization via channel response,''
 \emph{ACM Comput. Surv.}, vol.~46, no.~2, art.~no.~25, pp.~1--32, Nov. 2013,
-doi: 10.1145/2543581.2543592.
+doi: \url{10.1145/2543581.2543592}.
 
 
 \bibitem{welch}
@@ -881,7 +880,7 @@ Carolina, Chapel Hill, Tech. Rep. TR 95-041, Apr. 2004.
 \emph{IEEE Standard for Information Technology---Telecommunications and Information Exchange
 between Systems---Local and Metropolitan Area Networks---Specific Requirements---Part 11:
 Wireless LAN Medium Access Control (MAC) and Physical Layer (PHY) Specifications}, IEEE Standard
-802.11-2020, Feb. 2021, doi: 10.1109/IEEESTD.2021.9363693.
+802.11-2020, Feb. 2021, doi: \url{10.1109/IEEESTD.2021.9363693}.
 
 
 \bibitem{fcc15}
@@ -891,13 +890,13 @@ Wireless LAN Medium Access Control (MAC) and Physical Layer (PHY) Specifications
 \bibitem{std1451}
 \emph{IEEE Standard for a Smart Transducer Interface for Sensors and Actuators---Common Functions,
 Communication Protocols, and Transducer Electronic Data Sheet (TEDS) Formats}, IEEE Standard
-1451.0-2024, Jun. 2024, doi: 10.1109/IEEESTD.2024.10571828.
+1451.0-2024, Jun. 2024, doi: \url{10.1109/IEEESTD.2024.10571828}.
 
 
 \bibitem{nist80088}
 R. Chandramouli and E. A. Hibbard, ``Guidelines for media sanitization,'' Nat. Inst. Standards
 Technol., Gaithersburg, MD, NIST Special Publication 800-88 Rev.~2, Sept. 2025,
-doi: 10.6028/NIST.SP.800-88r2.
+doi: \url{10.6028/NIST.SP.800-88r2}.
 
 
 \bibitem{fips1403}
@@ -907,13 +906,18 @@ doi: 10.6028/NIST.SP.800-88r2.
 \bibitem{iec62133}
 \emph{Secondary Cells and Batteries Containing Alkaline or Other Non-Acid Electrolytes---Safety
 Requirements for Portable Sealed Secondary Cells, and for Batteries Made from Them, for Use in
-Portable Applications---Part 2: Lithium Systems}, IEC Standard 62133-2:2017, Feb. 2017.
+Portable Applications---Part 2: Lithium Systems}, IEC Standard 62133-2:2017 with Amendment 1:2021, 2021.
 
 
 \bibitem{utaup}
 The University of Texas at Austin Information Security Office. (2019, Aug.~28). \emph{Acceptable
 Use Policy for University Students} [Online]. Available:
 \url{https://security.utexas.edu/policies/aup}.
+
+\bibitem{utiot}
+The University of Texas at Austin. (2025, Aug.~25). \emph{Connecting to utexas-iot Wi-Fi}
+[Online]. Available: \url{https://ut.service-now.com/kb_view.do?sysparm_article=KB0017215}.
+
 \end{thebibliography}
 
 %----------------------------------------------------------------------------------------------------
