@@ -428,7 +428,8 @@ The BevoTag system has three components (the tag, a location server, and the use
 its primary inputs are Wi-Fi signals and the tag's own motion. Its outputs are the tag's estimated
 position, the time of that estimate, and the tag's status, which the application shows to the
 user. Figure~\ref{fig:io}\vpageref[]{fig:io} diagrams these connections, and the specification
-table after the diagram sets the value of each input and output.
+table after the diagram sets their values, chiefly a sensitivity of $-100$~dBm, a report at least
+every 10~s while moving, and a display refresh within 1~s.
 
 The diagram shows that every live measurement enters through the tag and every output leaves
 through the application. The tag measures Wi-Fi signals, motion, and, optionally, GNSS signals, and it
@@ -579,19 +580,17 @@ current browsers or on current phones.
 \toprule
 \textbf{Condition} & \textbf{Description} & \textbf{Value or Criterion} \\
 \midrule
-\multicolumn{3}{@{}l}{\textit{Physical environment}} \\
-Deployment area & Indoor floors and outdoor plazas that the team surveys & Every survey point, beginning with EER and its adjacent plazas \\
-Wi-Fi coverage & Campus access points received at each survey point & At least three, each stronger than $-80$~dBm \\
-Temperature & Ambient temperature for correct operation & 0 to 40~\textdegree C \\
-Moisture & Water exposure the tag must tolerate & Dry indoor and outdoor use; no rain or immersion \\
+Deployment area & Surveyed indoor floors and plazas & Every survey point, starting with EER \\
+Wi-Fi coverage & Access points received at each point & At least three above $-80$~dBm \\
+Temperature & Ambient operating temperature & 0 to 40~\textdegree C \\
+Moisture & Water exposure & Dry use only; no rain or immersion \\
 User motion & Speed of the person carrying the tag & 0 to 5~m/s \\
 \midrule
-\multicolumn{3}{@{}l}{\textit{Computing and network environment}} \\
-Tag processor & Battery-powered microcontroller with integrated Wi-Fi & Firmware uses at most 512~KB of RAM \\
-Tag network & Campus network that carries telemetry & utexas-iot at 2.4~GHz with Wi-Fi Protected Access 2 (WPA2) \cite{utiot} \\
-Data transport & Protection of telemetry between tag and server & Transport Layer Security (TLS) 1.2 or later \\
-Location server host & Machine that receives telemetry and serves the application & Linux virtual machine reachable from campus, with at least two CPU cores and 4~GB of memory \\
-Application platform & Devices that run the user application & Current Chrome, Firefox, and Safari browsers, or iOS~17 and Android~13 and later \\
+Tag processor & Microcontroller with integrated Wi-Fi & Firmware uses at most 512~KB of RAM \\
+Tag network & Network that carries telemetry & utexas-iot at 2.4~GHz, Wi-Fi Protected Access 2 (WPA2) \cite{utiot} \\
+Data transport & Protection of telemetry in transit & Transport Layer Security (TLS) 1.2 or later \\
+Location server host & Machine that runs the location server & Linux virtual machine on the campus network; two or more cores, 4~GB of memory \\
+Application platform & Devices that run the application & Current Chrome, Firefox, and Safari; iOS~17 and Android~13 or later \\
 \bottomrule
 \end{tabularx}
 \end{spectable}
@@ -784,7 +783,8 @@ matching Wi-Fi measurements against a building survey and fusing them with motio
 design must place the item in the correct room in more than 90\% of trials, within the limits that
 radio, data-security, and battery standards and the team's ethical commitments set. Two sub-teams
 under a Project Lead will do the work under shared policies for communication, review, and
-decisions.
+decisions. A working prototype in a few surveyed buildings is realistic, and the team's next steps
+are a data logger, confirmed targets, and a survey of EER.
 
 A working prototype within a few surveyed buildings is a realistic outcome despite the three
 challenges that the Design Challenges describe. Computing the position may strain the tag's power,
