@@ -286,33 +286,27 @@ encrypts its reports and how a factory reset erases its memory.
 
 \subsubsection{Ethical Considerations}
 A device whose purpose is to report location creates ethical obligations that extend beyond the
-team's own users. The team has identified five areas of responsibility: the privacy of bystanders,
-the risk of misuse for tracking people, the security of stored location data, the shared campus
-network, and the safety and environmental impact of the hardware.
+team's own users. The team has identified four areas of responsibility: the privacy of bystanders,
+the security of stored location data, the shared campus network, and the safety and environmental
+impact of the hardware.
 
 The first obligation concerns people near the tag. To capture CSI, the tag listens to Wi-Fi traffic
 that may come from other people's devices. The firmware will therefore record only the signal
 measurements and packet header fields needed for positioning, such as the access point address and
 signal strength. It will not decode, store, or transmit the contents of anyone's network traffic.
 
-The second obligation is to prevent misuse. Consumer tracking tags have been hidden in other
-people's belongings to follow them without consent. Although BevoTag is designed to track objects,
-the team must consider how a tag could be misused against a person. Location data will be visible
-only to the registered owner of each tag, and the team will evaluate safeguards such as alerting a
-person when an unregistered tag appears to be traveling with them.
-
-The third obligation is to protect location data once collected. A history of where an item has
+The second obligation is to protect location data once collected. A history of where an item has
 been reveals where its owner has been, so the data are personal information. The team will encrypt
 data in transit between the tag and the server, restrict server access to authenticated owners,
 retain location history only as long as needed for the project, and ensure that a factory reset
 erases stored credentials and history, consistent with the guidelines in Appendix~A.
 
-The fourth obligation is to the campus network that BevoTag depends on. The tag will listen
+The third obligation is to the campus network that BevoTag depends on. The tag will listen
 passively or connect as an ordinary client and will never transmit traffic designed to disrupt,
 congest, or probe UT Austin's network. It will use only networks, such as \texttt{utexas-iot}, that
 the university provides for devices of this kind \cite{utiot}.
 
-The fifth obligation is the physical safety and environmental impact of the device. The tag will
+The fourth obligation is the physical safety and environmental impact of the device. The tag will
 carry a small lithium battery near people and their belongings, so the design will include
 protection against overcharging, short circuits, and overheating. To limit electronic waste, the
 team will favor a rechargeable battery over disposable cells and will document how to dispose of
