@@ -52,6 +52,11 @@
 \setlength{\textfloatsep}{\baselineskip}
 \setlength{\floatsep}{\baselineskip}
 \setlength{\intextsep}{\baselineskip}
+% Tables pinned with [H] get one empty line below them, like tables LaTeX places in the text.
+% The zero skip keeps a following heading's \addvspace from cancelling the correction.
+\makeatletter
+\g@addto@macro\float@endH{\vskip-\parskip\vskip\z@}
+\makeatother
 
 % Indented lists that continue the preceding paragraph (Style Guide 2.5).
 \setlist[itemize]{leftmargin=0.5in,topsep=0pt,itemsep=0pt,parsep=0pt}
@@ -407,7 +412,7 @@ Table~\ref{tab:io} lists each input and output in Figure~\ref{fig:io}, along wit
 and units. The Wi-Fi measurements and motion data are the primary inputs; GNSS is used only when it
 is available and more accurate than Wi-Fi, such as in open outdoor areas.
 
-\begin{table}[htbp]
+\begin{table}[H]
 \caption{BevoTag Input and Output Specifications}
 \label{tab:io}
 \centering
@@ -438,7 +443,7 @@ direct USB-C connection to a tag for configuration and debugging. The initial im
 be either a web or mobile application, provided that it supports the requirements in
 Table~\ref{tab:ui}.
 
-\begin{table}[htbp]
+\begin{table}[H]
 \caption{User Interface Specifications}
 \label{tab:ui}
 \centering
@@ -465,7 +470,14 @@ environment is defined by the conditions expected in those zones: walls and floo
 signals, pedestrian traffic, changes in the tag's orientation, and access to UT Austin's wireless
 network. Table~\ref{tab:env} summarizes these conditions.
 
-\begin{table}[htbp]
+\subsubsection{Performance Specifications}
+Successful operation requires more than producing a location value; the estimates must be accurate,
+frequent, and timely enough for BevoTag to serve as a useful tracker. Existing Wi-Fi positioning
+systems show that meter-level accuracy is achievable, but performance varies widely with the
+sensing method and the radio environment \cite{jiang}. The specifications in Table~\ref{tab:perf}
+therefore define performance in terms of repeatable measurements.
+
+\begin{table}[H]
 \caption{Operating Environment Specifications}
 \label{tab:env}
 \centering
@@ -485,19 +497,12 @@ User motion & Speed of the person carrying the tag & 0 to 5 & m/s \\
 \end{spectable}
 \end{table}
 
-\subsubsection{Performance Specifications}
-Successful operation requires more than producing a location value; the estimates must be accurate,
-frequent, and timely enough for BevoTag to serve as a useful tracker. Existing Wi-Fi positioning
-systems show that meter-level accuracy is achievable, but performance varies widely with the
-sensing method and the radio environment \cite{jiang}. The specifications in Table~\ref{tab:perf}
-therefore define performance in terms of repeatable measurements.
-
 The team will evaluate performance at surveyed points whose true positions are known
 independently of BevoTag's estimate. Tests will include both stationary and moving trials, indoors
 and outdoors, and will be repeated at different times of day to capture the effect of changing
 conditions such as pedestrian traffic.
 
-\begin{table}[htbp]
+\begin{table}[H]
 \caption{Performance Specifications}
 \label{tab:perf}
 \centering
@@ -561,7 +566,7 @@ estimation, sensor fusion, and backend development. Abhirit brings experience in
 development and in profiling machine-learning deployment tools at NXP Semiconductors, and he will
 develop and test the user application. Table~\ref{tab:roles} summarizes each member's assignment.
 
-\begin{table}[htbp]
+\begin{table}[H]
 \caption{Project Responsibilities}
 \label{tab:roles}
 \centering
@@ -744,7 +749,7 @@ by comparing recorded sub-carrier data against known access-point beacons, confi
 with a Wireshark capture showing no transmissions during scans, and confirm network association
 through connection logs on \texttt{utexas-iot}.
 
-\begin{table}[htbp]
+\begin{table}[H]
 \caption{IEEE 802.11 Requirements Affecting BevoTag}
 \label{tab:a80211}
 \centering
@@ -769,7 +774,7 @@ module that already holds an FCC modular grant, the team will verify conducted o
 bench spectrum analyzer and check the board for unintended emissions with a near-field probe,
 rather than performing full certification testing.
 
-\begin{table}[htbp]
+\begin{table}[H]
 \caption{FCC Part 15 Requirements Affecting BevoTag}
 \label{tab:afcc}
 \centering
@@ -791,7 +796,7 @@ rather than performing full certification testing.
 IEEE 1451 \cite{std1451} guides how the firmware separates sensor hardware from the processing that
 uses its data. Table~\ref{tab:a1451} summarizes the relevant parts.
 
-\begin{table}[htbp]
+\begin{table}[H]
 \caption{IEEE 1451 Guidelines Affecting BevoTag}
 \label{tab:a1451}
 \centering
