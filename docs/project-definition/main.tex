@@ -735,11 +735,14 @@ Communication Protocols, and Transducer Electronic Data Sheet (TEDS) Formats}, I
 
 This appendix lists the clauses of each standard introduced in the Problem Statement that most
 directly affect BevoTag's design. Each table gives the requirement and its consequence for the
-design, and the paragraph that follows each table explains how the team will verify compliance.
+design, and the accompanying text explains how the team will verify compliance.
 
 \subsection{IEEE 802.11: Wi-Fi Physical and MAC Layers}
 IEEE 802.11 \cite{std80211} determines both how BevoTag can measure CSI and how it may join campus
-networks. Table~\ref{tab:a80211} summarizes the relevant clauses.
+networks. Table~\ref{tab:a80211} summarizes the relevant clauses. The team will verify CSI capture
+by comparing recorded sub-carrier data against known access-point beacons, confirm passive listening
+with a Wireshark capture showing no transmissions during scans, and confirm network association
+through connection logs on \texttt{utexas-iot}.
 
 \begin{table}[htbp]
 \caption{IEEE 802.11 Requirements Affecting BevoTag}
@@ -759,13 +762,12 @@ Channel plan & Defines 2.4~GHz channel frequencies and bandwidths & The radio us
 \end{spectable}
 \end{table}
 
-The team will verify CSI capture by comparing recorded sub-carrier data against known access-point
-beacons, confirm passive listening with a Wireshark capture showing no transmissions during scans,
-and confirm network association through connection logs on \texttt{utexas-iot}.
-
 \subsection{FCC 47 CFR Part 15: Radio Frequency Devices}
 Part 15 \cite{fcc15} limits both intentional transmissions and unintended emissions from the tag's
-digital circuits. Table~\ref{tab:afcc} summarizes the relevant sections.
+digital circuits. Table~\ref{tab:afcc} summarizes the relevant sections. Because the tag will use a
+module that already holds an FCC modular grant, the team will verify conducted output power on a
+bench spectrum analyzer and check the board for unintended emissions with a near-field probe,
+rather than performing full certification testing.
 
 \begin{table}[htbp]
 \caption{FCC Part 15 Requirements Affecting BevoTag}
@@ -784,10 +786,6 @@ digital circuits. Table~\ref{tab:afcc} summarizes the relevant sections.
 \end{tabularx}
 \end{spectable}
 \end{table}
-
-Because the tag will use a module that already holds an FCC modular grant, the team will verify
-conducted output power on a bench spectrum analyzer and check the board for unintended emissions
-with a near-field probe, rather than performing full certification testing.
 
 \subsection{IEEE 1451: Smart Transducer Interface}
 IEEE 1451 \cite{std1451} guides how the firmware separates sensor hardware from the processing that
@@ -818,9 +816,11 @@ timing of the sensor bus, and unit tests confirming that calibration data load c
 \subsection{NIST SP 800-88 and FIPS 140-3: Data Sanitization and Cryptography}
 These federal guidelines \cite{nist80088}, \cite{fips1403} govern how the tag protects and erases
 the credentials and location history it stores. Table~\ref{tab:anist} summarizes the relevant
-sections.
+sections. The team will verify sanitization by reading back flash memory through a debug probe after
+a factory reset, verify encryption against published NIST test vectors, and verify secure boot by
+attempting to load an unsigned firmware image.
 
-\begin{table}[htbp]
+\begin{table}[H]
 \caption{Data Security Requirements Affecting BevoTag}
 \label{tab:anist}
 \centering
@@ -837,9 +837,5 @@ FIPS 140-3 roles and authentication & Separate administrative functions from nor
 \end{tabularx}
 \end{spectable}
 \end{table}
-
-The team will verify sanitization by reading back flash memory through a debug probe after a factory
-reset, verify encryption against published NIST test vectors, and verify secure boot by attempting
-to load an unsigned firmware image.
 
 \end{document}
