@@ -15,6 +15,24 @@
     "axes": "x = right on the sheet, y = up on the sheet; sheet up is about 4.5-5 deg east of true north",
     "registration": "every floor placed by matching structural columns to floor 2 (residual 0.004-0.05 ft; floor 6 attic ~0.33 ft); see VERIFICATION.md"
   },
+  "geometry_review": {
+    "reviewed": "2026-10-21",
+    "note": "The building opened in 2002 and underwent a 2019 renovation. A registered 2025 classroom split adds walls and doors but provides no floor/room ID or as-built drawing. No speculative partition changes are applied. Current room boundaries and all vertical dimensions remain unverified.",
+    "sources": [
+      {
+        "id": "ase-ut-facilities",
+        "title": "UT Aerospace Engineering: Facilities",
+        "url": "https://ae.utexas.edu/about/facilities/",
+        "evidence": "Official department page identifies the 2002 opening and comprehensive 2019 renovation. Building history does not certify current partition coordinates or floor elevations."
+      },
+      {
+        "id": "ase-classroom-split-2025",
+        "title": "TDLR TABS2025013611: UT ASE VR Flight Simulator",
+        "url": "https://www.tdlr.texas.gov/TABS/Search/Project/TABS2025013611",
+        "evidence": "Registered March 7, 2025: 1,000 square foot classroom split with new walls and doors; scheduled April 1, 2025-March 1, 2026. Project Closed is an administrative status, not an as-built geometry record. No floor/room ID or replacement layout is supplied."
+      }
+    ]
+  },
   "vertical": {
     "datum": {"floor_id": "1", "description": "Level 1 = 0 ft model datum; not surveyed altitude"},
     "reviewed": "2026-10-21",

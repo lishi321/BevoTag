@@ -19,6 +19,7 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.geometry.polygon import orient
 from shapely.ops import unary_union
 from shapely import set_precision
+from architecture_review import apply_geometry_review
 
 ROOT = Path(__file__).resolve().parent
 
@@ -46,6 +47,10 @@ def transform(floor, dpi):
 def extract_vectors(page, floor, dpi):
     project = transform(floor, dpi)
     clip = pymupdf.Rect([v * 72 / dpi for v in floor['fit']])
+    # get_drawings() returns unrotated page coordinates. Registration and fit use
+    # the rendered sheet, so rotate every primitive before clipping/projecting.
+    # ECJ level 4 is stored as a portrait page with a 270-degree display rotation.
+    rotation = page.rotation_matrix
     groups = collections.defaultdict(list)
     doors = []
     for drawing in page.get_drawings():
@@ -55,15 +60,18 @@ def extract_vectors(page, floor, dpi):
             kind = item[0]
             lines = []
             if kind == 'l':
-                lines = [(item[1], item[2])]
+                lines = [(item[1] * rotation, item[2] * rotation)]
             elif kind == 're':
-                r = item[1]; corners = [r.tl, r.tr, r.br, r.bl]
+                r = item[1]; corners = [p * rotation for p in [r.tl, r.tr, r.br, r.bl]]
                 lines = list(zip(corners, corners[1:] + corners[:1]))
             elif kind == 'qu':
-                q = item[1]; corners = [q.ul, q.ur, q.lr, q.ll]
+                q = item[1]; corners = [p * rotation for p in [q.ul, q.ur, q.lr, q.ll]]
                 lines = list(zip(corners, corners[1:] + corners[:1]))
-            elif kind == 'c' and all(clip.contains(p) for p in [item[1], item[4]]):
-                pts = [project(p) for p in item[1:]]
+            elif kind == 'c':
+                rendered = [p * rotation for p in item[1:]]
+                if not all(clip.contains(p) for p in [rendered[0], rendered[3]]):
+                    continue
+                pts = [project(p) for p in rendered]
                 start, end = pts[0], pts[3]
                 mid = (pts[0] + 3*pts[1] + 3*pts[2] + pts[3]) / 8
                 # Circle through the curve endpoints and midpoint recovers a door hinge.
@@ -296,8 +304,14 @@ def main():
             labels=read_labels(page,cfg,floor,ocr,args.ocr_cache) if ocr else []
             result=build_floor(page,cfg,floor,labels);data['floors'].append(result)
             print(f"{bid} {floor['id']}: {len(result['walls'])} walls, {len(result['rooms'])} spaces, {len(result['openings'])} door closures",flush=True)
-            if args.preview_dir:
-                args.preview_dir.mkdir(parents=True,exist_ok=True);preview_model(result,args.preview_dir/f'{bid}-{floor["id"]}-architecture.png')
+        review_path = folder/'geometry-review.json'
+        if review_path.exists():
+            data = apply_geometry_review(data, json.loads(review_path.read_text(encoding='utf-8')),
+                                         source_sha256=data['source']['sha256'])
+        if args.preview_dir:
+            args.preview_dir.mkdir(parents=True, exist_ok=True)
+            for result in data['floors']:
+                preview_model(result, args.preview_dir/f'{bid}-{result["id"]}-architecture.png')
         # Partial runs are diagnostic only; never replace a whole building with a single floor.
         target=(args.preview_dir/f'{bid}-{args.floor}-architecture.json') if args.floor and args.preview_dir else folder/'architecture.json'
         if not args.floor or args.preview_dir: target.write_text(json.dumps(data,separators=(',',':'))+'\n',encoding='utf-8')

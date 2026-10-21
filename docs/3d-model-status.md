@@ -1,121 +1,149 @@
 # 3D DAQ model: completed work, limitations, and estimation
 
-Updated **2026-10-21**. This note accompanies integration of `3d-model` into `main`.
+Updated **2026-10-21**, on branch **`3d-model`**. This source-review pass has not yet been merged to `main`.
 
-**Current status:** the DAQ app has functional CAD-style room-and-wall meshes and Wi-Fi
-fingerprint position estimation. It is an experimental survey and visualization tool.
-The building geometry is not verified as-built CAD, and real-world positioning accuracy
+**Current status:** the DAQ app has CAD-style room-and-wall geometry, IFC4 and OBJ export,
+and Wi-Fi fingerprint position estimation. The geometry is reconstructed from plans; it is
+not a native architectural authoring model or verified as-built CAD. Real positioning accuracy
 has not been measured.
 
 ## What is done
 
-| Building | Modeled levels | Implemented geometry |
-| --- | --- | --- |
-| EER | 9: B, 1–8 | Extruded walls and selectable room surfaces |
-| ECJ | 15: SB, B, 1–11, 11M, R | Extruded walls and selectable room surfaces; R is a roof plan |
-| ASE | 7: B, 1–6 | Extruded walls and selectable room surfaces; level 6 is the attic |
+| Building | Modeled levels | Wall polygons | Space polygons | Elevation evidence |
+| --- | --- | ---: | ---: | --- |
+| EER | 9: B, 1–8 | 1,109 | 804 | All 9 unknown |
+| ECJ | 15: SB, B, 1–11, 11M, R | 638 | 569 | 11 documented, 1 estimated, 3 unknown |
+| ASE | 7: B, 1–6 | 105 | 178 | All 7 unknown |
 
-- All 31 plan levels share their building's registered XY coordinate frame in feet.
-  The models contain 3,348 reconstructed wall/room polygons. Interiors are empty, as requested.
-- Orbit, zoom, top/perspective views, active-floor isolation, and an optional source-plan
-  overlay are available. Room selection, approximate area, focus, and interior survey-point
-  placement are synchronized with the original 2D collector.
-- OBJ export contains named wall and room meshes in building X/Y coordinates with Z up,
-  in feet. It records elevation status and source caveats. Visual floor separation is excluded.
-- Signal layers show survey points, strongest observed RSSI or a selected BSSID, and
-  interpolated coverage. Demo signals are explicitly synthetic and separate from real surveys.
-- The app imports labeled survey CSVs, excludes discarded/unlabeled/simulator data when
-  identifiable, deduplicates repeat imports, and averages repeat measurements at survey points.
-- Recorded scans and one-shot device scans can request a floor and horizontal position estimate.
-  The query scan is excluded from its own training data.
+The current assets contain **3,403 wall/space polygons across 31 plan levels**, with empty
+interiors. A space polygon may represent a room, circulation, or several connected spaces;
+these counts are not a certified room inventory. Wall counts describe connected reconstructed
+polygons, not individual architectural wall elements. All levels share their building's
+registered XY frame in feet. ECJ R is a roof plan; ASE level 6 is an attic plan.
+
+- Orbit, zoom, top/perspective views, active-floor isolation, and a source-plan overlay are
+  available. Room selection, approximate area, focus, and interior survey-point placement
+  synchronize with the original 2D collector.
+- **IFC4 export** converts feet to metres and retains a project/building/storey hierarchy.
+  Walls use analytic extruded polygon profiles, including holes. Spaces are named footprint
+  boundary curves, with no invented room volume or slab thickness. Evidence and height status
+  accompany the model. Only documented storeys receive a semantic IFC `Elevation` value;
+  other storeys retain explicitly unverified placements.
+- **OBJ export** contains named wall and room meshes in building X/Y, Z up, in **feet**, with
+  evidence comments. Both exports exclude exploded-view separation, signals, and plan textures.
+- Signal layers show survey points, strongest observed RSSI or a selected BSSID, and interpolated
+  coverage. Demo signals are explicitly synthetic and separate from real surveys.
+- CSV import filters discarded/unlabeled/simulator samples when identifiable, deduplicates
+  repeat imports, and averages repeated observations. Recorded or one-shot device scans can
+  request a floor and horizontal position estimate without entering their own training data.
 - ESP32 firmware returns a complete scan per request. Request IDs, stale-response handling,
   collection/localization exclusion, and CSV write-retry behavior are implemented.
-- Height-source research, per-level evidence status, and the distinction between unknown
-  elevations and schematic model coordinates are visible in the app and export.
+
+## Improvements from this source-review pass
+
+**ECJ elevations:** 2013 record elevations reproduced in Sarlo's 2018 dissertation now support
+11 historical elevations, normalized by subtracting Level 1 EL 552 ft. Basement is −16 ft;
+Level 2 is +16 ft; Levels 3–5 and 7–11 follow the cited drawing values. Level 6 is **estimated
+at +72 ft**, because both sheets repeat the basement elevation tag while their adjacent
+dimension chains imply EL 624 ft. SB, 11M, and the multi-surface roof plan remain unknown.
+“Documented” means supported by that historical source, not field-verified or current as-built.
+See the complete [elevation table and source interpretation](floor-height-sources.md).
+
+**ECJ plan alignment:** the extractor now applies the PDF page's display rotation to raw
+drawing primitives before registration. This repairs level 4's 270-degree source-coordinate
+mismatch without changing the building's registered frame.
+
+**EER atrium review:** source-plan linework and labels, supported by AISC and UT descriptions,
+now drive explicit, source-hash-bound corrections. Level 3 skylight/truss projections no longer
+become floor patches or walls; level 6's false central atrium floor is removed; and the actual
+west bridge is restored from page 7's floor boundaries. Level 8's roof-member projections are
+excluded from the room/wall scope. Adjacent spaces and bridge boundaries are preserved. The
+level 8 exclusion means unmodeled roof structure, not a claim that the whole region is empty air.
+The review is reproducible in `buildings/EER/geometry-review.json`; it is not a full audit of
+every atrium opening, bridge, or roof surface.
+
+The [CAD source review](cad-source-review.md) records corroborating dimensions and renovation
+notices. The examined ECJ plans predate registered 2026 work on Levels 7–8 and parts of 9–11.
+EER has a registered library-to-office project, and ASE has a classroom-partition project.
+Those notices supply no replacement room layouts; their partition changes have not been invented.
 
 ## What is approximate, unknown, or not accurate yet
 
 | Item | Current interpretation and limitation |
 | --- | --- |
-| Floor elevations | **All 31 actual elevations are unknown.** No usable per-level dimensioned elevation schedule was verified. |
-| Vertical spacing | Missing elevations use a **14 ft display step** between ordered plan levels. This includes mezzanines and basements and must not be read as their real spacing. |
-| Wall height | **10 ft default display extrusion**, editable. It is not a measured clear height, ceiling height, or floor-to-floor height. |
-| Vertical datum | Level 1 = 0 ft is a local model reference, not a surveyed altitude. |
-| Visual separation | Defaults to **1×**. Larger values produce an exploded view and do not change underlying model/export coordinates. |
-| XY registration | Checked against the source plans and cross-floor alignment. Reported registration residuals describe agreement with those drawings, not surveyed as-built accuracy or localization error. |
-| Wall and room geometry | Automatically reconstructed from PDF strokes. Some short wall returns/openings are missing, adjacent spaces can be merged, and small drawing artifacts can remain. |
-| Room labels and areas | OCR labels can be wrong or merged; areas depend on inferred boundaries. For example, ASE 1.102 shares a reconstructed region with circulation labels. Compare the plan overlay. |
-| CAD format | Polygonal meshes with OBJ export. No parametric CAD/BIM editor, editable architectural constraints, STEP/IFC export, or GLB/OBJ/STEP/IFC import. |
-
-The [height-source audit](floor-height-sources.md) records the evidence and missing documents.
-EER's published architect section does not establish numerical level elevations. ASE's
-additional official drawings require UT access. ECJ's official roof report describes an
-approximately **175 ft overall height**, but does not establish the datum needed for per-floor
-coordinates. That number is stored as context only; it is not assigned to the roof or divided
-among levels. The audit identifies the original ECJ as-built structural set to request.
+| Floor elevations | **19 unknown**, **1 estimated**, **11 documented historical values**. EER and ASE still have no verified numerical level schedule. ECJ's unresolved roof surfaces need separate identification. |
+| Unknown-level placement | Schematic interpolation between entered levels, or a **14 ft default display step** beyond an anchor. This does not establish basement, mezzanine, or roof spacing. |
+| Wall height | **10 ft default display extrusion**, editable; not a measured clear height, ceiling height, or storey height. |
+| Vertical datum | Local Level 1 = 0 ft. ECJ is normalized from record EL 552 ft; original survey datum and finished-floor versus slab reference remain unspecified. EER/ASE zero is only a display reference. |
+| Visual separation | Defaults to **1×**. Larger values produce an exploded view without changing model/export coordinates. |
+| XY registration | Agreement with source plans and cross-floor alignment, not surveyed as-built accuracy or localization error. |
+| Walls, openings and spaces | PDF-stroke reconstruction plus targeted reviewed corrections. Short returns/openings may be missing; adjacent spaces may merge; drawing artifacts may remain. Doors, glazing and materials are not fully modeled. |
+| Labels and areas | OCR labels and inferred areas may be wrong. ASE 1.102, for example, shares a reconstructed region with circulation labels. The added EER bridge is labeled from plan review. |
+| CAD scope | IFC wall solids and space footprints, plus OBJ meshes. No native parametric architectural editing, constraints, STEP export, or GLB/OBJ/STEP/IFC import. IFC delivery does not make the model as-built. |
 
 An entered `elevation_ft` overrides display spacing but remains unverified without a complete,
-resolved citation and declared provenance. A source-based estimate stays labeled estimated;
-it must not be promoted to documented merely because a source URL exists.
+resolved citation and declared provenance. A justified source-based estimate stays estimated.
+ECJ's approximate 175 ft overall-height context is not assigned to the roof or divided among levels.
 
 ## What the position and signal estimates mean
 
-**Position estimation currently predicts a discrete floor and horizontal X/Y on that floor.**
-It does not estimate a continuous, measured 3D Z position or the device's height above the floor.
-The 3D marker is placed on the selected model level, whose elevation may be schematic.
+**Position estimation predicts a discrete floor and horizontal X/Y on that floor.** It does
+not estimate continuous measured Z or the device's height above the floor. The 3D marker uses
+the selected model level, whose elevation may be schematic.
 
 The fingerprint baseline compares up to 32 strong query BSSIDs with surveyed fingerprints,
 using RMS RSSI differences and a missing-BSSID penalty of −100 dBm. It rejects insufficient
 overlap, selects up to five weighted neighbors, votes for a floor, and averages coordinates
-within the winning floor. The app requires at least three survey points before estimation.
-The [collector README](../Experiments/Campus_Map/collector/README.md) describes thresholds
-and import rules; `signal-model.mjs` is the implementation.
+within the winning floor. At least three survey points are required. The
+[collector README](../Experiments/Campus_Map/collector/README.md) documents thresholds and import rules.
 
-- The displayed neighbor spread describes dispersion of matching survey locations. It is
-  **not measured error, a confidence radius, or a calibrated probability**. Floor-support
-  scores are also descriptive matching metrics, not calibrated probabilities.
-- Floor ambiguity and insufficient overlap can be reported. There is no established floor
-  classification accuracy, room classification accuracy, or horizontal error in feet/meters.
-- The containing model space is a geometric lookup after estimation. Walls do not constrain
-  the estimate; an estimate can lie in an unresolved space or on the wrong side of a wall.
-- Heatmaps interpolate nearby observations on the same floor within 60 ft and are clipped to
-  reconstructed rooms. Blank areas lack supporting data or a resolved room boundary. This is
-  not a wall-attenuation model, radio-propagation simulation, or measured AP-position map.
-- Synthetic demo success verifies software behavior only. No held-out real-world survey has
-  validated performance with the target device, antenna, orientations, or changing conditions.
+- Neighbor spread describes matching survey-location dispersion. It is **not measured error,
+  a confidence radius, or a calibrated probability**. Floor-support scores are descriptive too.
+- There is no measured floor/room classification accuracy or horizontal error distribution.
+- The containing model space is looked up after estimation. Walls do not constrain estimates,
+  which can fall in unresolved spaces or on the wrong side of a wall.
+- Heatmaps interpolate same-floor observations within 60 ft and clip to reconstructed spaces.
+  Blank areas lack supporting data or a resolved boundary. This is not wall-attenuation modeling,
+  radio-propagation simulation, or measured AP-position mapping.
+- Synthetic demo success verifies behavior only. No held-out real survey validates performance
+  across devices, antennas, orientations, or changing conditions.
 
-## What is not done / next work
+## Remaining work
 
-1. Obtain dimensioned sections, current as-built drawings, a BIM level schedule, or survey
-   measurements. Resolve datum and finished-floor versus slab references, then enter sourced
-   floor elevations and independently verified wall heights.
-2. Review reconstructed walls, openings, room boundaries, and OCR labels against the source
-   drawings and site conditions. Repair ambiguous spaces before using geometry as a constraint.
-3. Flash and bench-test a physical DAQ board: repeated full scans, save/reopen real CSVs,
-   disconnect/reconnect, and localization queries. Native USB and save-picker behavior still
-   need hardware validation; no board was flashed during this work.
-4. Collect representative real surveys and independent held-out queries. Measure floor
-   accuracy and horizontal error distributions, including failure/ambiguity cases. Do not
-   infer accuracy from synthetic results or from agreement between the 2D and 3D displays.
+1. Obtain current dimensioned sections, as-built plans/BIM, or measurements. Resolve EER/ASE
+   levels, ECJ level 6's conflicting tag, SB/11M/roof surfaces, datum, and slab/finished-floor
+   references. Verify wall heights independently.
+2. Review remaining wall returns, openings, room boundaries, OCR labels, atrium bridges and
+   renovation changes against drawings and field conditions before adding geometric constraints.
+   Validate IFC interoperability in the intended CAD/BIM application; importer support can differ.
+3. Flash and bench-test a physical DAQ board: full scans, real CSV save/reopen, reconnect, and
+   localization queries. Native USB and browser save-picker behavior still need hardware testing.
+4. Collect representative surveys and independent held-out queries. Measure floor accuracy,
+   horizontal error, and failure/ambiguity cases. Better geometry alone is not an accuracy result.
 5. Wall-aware propagation/constraints, temporal tracking, IMU/CSI fusion, continuous vertical
    localization, and calibrated uncertainty are not implemented.
-6. Imported/live model samples are page-memory only. CSV is the durable record; reloading clears
-   the in-memory model. Older logs without device/source identity may contain undetectable
-   simulator data and must not be assumed suitable for real training.
+6. Imported/live model samples are page-memory only. CSV is the durable record. Older logs
+   without source identity may contain undetectable simulator data.
 7. No cloud session or hosted deployment was created. The separate Python AP-estimation
-   experiment was not changed; the new browser estimator does not validate its behavior.
+   experiment was not changed by the browser-model work.
 
 ## Verification and handoff
 
-- **35/35 Node tests passed again before this integration**, including all 31 registrations,
-  polygon triangulation and containment, source hashes, elevation provenance, OBJ geometry,
-  CSV filtering/retry behavior, and synthetic fingerprint queries.
-- Previously completed browser checks cover EER/ASE/ECJ rendering, room/point synchronization,
-  CSV import and recorded queries, height controls/evidence, and desktop/mobile layouts.
-  Updated OBJ provenance comments were verified in Node; the earlier browser download test
-  predates those comments.
-- Firmware previously compiled successfully for `esp32dev` with PlatformIO 6.2.0 and
-  Espressif32 8.0.0. Compilation is not a physical-device test.
-- These checks establish functional consistency, not physical building accuracy or measured
-  localization performance. See the [handoff](3d-model-handoff.md) for run commands and the
-  [test guide](../Experiments/Campus_Map/collector/tests/README.md) for verification details.
+This pass passed **47 Node tests and 9 Python tests**. The actual generator's EER level 6
+diagnostic run applied the review and restored the bridge. Checks cover source hashes, exclusions,
+geometry validity, rotation, elevation provenance, exports and collection/estimation behavior.
+
+IfcOpenShell 0.9.0.post1 parsed all three IFC4 exports with zero EXPRESS/schema errors and
+tessellated **all 1,852 wall solids**. Every wall volume matched reconstructed footprint area
+times the assumed 10 ft extrusion after conversion to metres. Unicode and escaped text
+round-tripped. This verifies the exporter, not the physical dimensions; no manual Revit or
+FreeCAD import was performed.
+
+Browser checks verified corrected ECJ level 4 (50 spaces, 78 walls, +44 ft documented), the
+level 6 conflict note, unknown-height controls without shifting documented levels, EER's west
+bridge aligned with the 2D plan, a synthetic EER level 6 estimate, IFC download without console
+errors, and a 390 px mobile layout without horizontal overflow.
+
+Firmware previously compiled for `esp32dev` with PlatformIO 6.2.0 and Espressif32 8.0.0; no board
+was flashed. These checks establish functional consistency, not physical accuracy. See the
+[handoff](3d-model-handoff.md) and [test guide](../Experiments/Campus_Map/collector/tests/README.md).

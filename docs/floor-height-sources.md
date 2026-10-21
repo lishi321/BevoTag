@@ -2,9 +2,41 @@
 
 Reviewed **2026-10-21** for the EER, ASE, and ECJ room-and-wall model.
 
-**No per-floor elevation schedule, floor-to-floor dimensions, or measured wall heights have been verified for these three buildings.** Public sources establish building identity and floor counts; one ECJ engineering report also gives approximate overall height. These facts do not justify replacing the previous uniform 14 ft spacing with another set of apparently measured values.
+**ECJ now has 11 documented historical level elevations and one source-based estimate. EER and ASE still have no verified per-level elevation schedule.** No building's interior wall heights have been measured or verified. Documented means supported by a cited drawing, not certified as-built accuracy.
 
-The model's coordinate datum is **Level 1 = 0 ft**, chosen for local coordinates. It is not a surveyed altitude, a sea-level datum, or evidence of the heights of other levels. A model placeholder or user-entered value must remain distinguishable from a documented elevation. Visual floor separation must not change physical elevations or exported coordinates.
+The model uses **Level 1 = 0 ft** as its local coordinate datum. For ECJ, values are normalized by subtracting the record drawings' **Level 1 EL 552 ft**. The original survey datum and finished-floor versus structural-slab interpretation are unspecified. A schematic placeholder must remain distinguishable from a documented elevation. Visual separation must not change these coordinates or exported elevations.
+
+## ECJ: newly recovered record elevations
+
+[Rodrigo Sarlo's 2018 Virginia Tech dissertation](https://hdl.handle.net/10919/84477), *High-Resolution, High-Frequency Modal Analysis for Instrumented Buildings*, reproduces WJE record drawings for UT project **CP412964**, dated **May 8, 2013**. [Appendix C, PDF pages 189-190](https://vtechworks.lib.vt.edu/bitstreams/b9653165-72de-4e1e-9470-21996593bbe9/download#page=189), printed pages 171-172, Figures C.1-C.2, contain south/east elevation sheets **S3.2/S3.1**.
+
+| Model level | Drawing elevation (ft) | Local elevation (ft above Level 1) | Status |
+| --- | ---: | ---: | --- |
+| SB | Unknown | Unknown | Schematic placement only |
+| B | 536 | -16 | Documented |
+| 1 | 552 | 0 | Documented datum |
+| 2 | 568 | 16 | Documented |
+| 3 | 582 | 30 | Documented |
+| 4 | 596 | 44 | Documented |
+| 5 | 610 | 58 | Documented |
+| 6 | 624 inferred; tag conflicts | 72 | Estimated; requires confirmation |
+| 7 | 638 | 86 | Documented |
+| 8 | 652 | 100 | Documented |
+| 9 | 666 | 114 | Documented |
+| 10 | 680 | 128 | Documented |
+| 11 | 694 | 142 | Documented, with level correspondence below |
+| 11M | Unknown | Unknown | Schematic placement only |
+| R | Multiple roof surfaces not resolved | Unknown | Schematic placement only |
+
+**Level 6 conflict:** both sheets print EL 536 ft for Level 6, duplicating the basement elevation. Their dimension chains show 14 ft between Levels 5-6 and 6-7, bounded by EL 610 and EL 638. These imply EL 624 ft; the model records the resulting 72 ft local coordinate as **estimated**, rather than silently correcting the source.
+
+**Level 11 correspondence:** the drawings label EL 694 ft as Roof Level. PDF page 191, printed page 173, Table C.1 explicitly places Floor 11 sensors at Z = 126 ft relative to Level 2. Adding Level 2 EL 568 ft yields EL 694 ft. The same table corroborates B, 5, 7 and 9 at -32, 42, 70 and 98 ft relative to Level 2.
+
+The drawings also identify the upper penthouse roof at EL 711 ft. That value is **not assigned to the complete R plan**: the local plan is titled **Roof (TBD)** and does not distinguish the heights of its nested outlines. SB and the elevator-equipment mezzanine 11M are absent from the elevation schedule. Their unknown status is preserved.
+
+The drawing note derives existing-building information from Page Southerland Page's **March 10, 1971** contract drawings and requires field verification. These are historical drawing levels, not a new survey, guaranteed present conditions, measured wall heights, or an established finished-floor reference.
+
+Source PDF SHA256: `5cf0c4aa258c6e5fb1f442d74a33a883c6b8c69c72b88acfea3b8795a84b53c8`.
 
 ## What the sources establish
 
@@ -28,11 +60,11 @@ In the 326-page RFQ PDF:
 - **PDF pages 61, 62, and 65** contain roof-plan and framing excerpts. Inspection did not establish a numerical floor-elevation schedule.
 - **PDF page 66**, AEC-WAY structural assessment, printed page 3, section 2.2: identifies signed original structural drawings by Page Southerland Page, dated **March 10, 1971**, titled **`P-ECJ-OC-ASB-0227-NA-CTS-S-ALL-4`**.
 
-The 175 ft passages do not identify a datum or the precise reference point at the building base. Therefore **do not assign the model roof `elevation_ft: 175`, divide 175 ft by a floor count, or use the figure to calculate mezzanine or basement elevations**. `building.vertical.overall_height_context` records it separately from floor coordinates.
+The recovered record drawings put the penthouse roof 175 ft above basement (711 - 536), consistent with the report's approximate figure. The report itself does not identify its datum. Therefore **do not assign the model roof `elevation_ft: 175` above Level 1, divide 175 ft by a floor count, or use it to calculate mezzanine or basement elevations**. `building.vertical.overall_height_context` records it separately from floor coordinates. The RFQ's PDF page 64 explicitly distinguishes mechanical-penthouse floor L11 and roof L12; multiple roof surfaces remain to be modeled separately.
 
 ## Documents needed to establish elevations
 
-Obtain the current as-built architectural building sections, exterior elevations, structural level schedules, and relevant stair sections for EER **0223**, ASE **0983**, and ECJ **0227**. The documents should identify the reference datum and finished-floor or structural-slab elevations, including basements, mezzanines, roof levels, and any split levels. Wall height needs its own evidence; floor-to-floor distance does not equal clear wall or ceiling height.
+Obtain current dimensioned sections for EER **0223** and ASE **0983**; confirm ECJ **0227** Level 6, SB, 11M and each roof surface. Resolve the reference datum and finished-floor/slab distinction before treating historical drawing levels as surveyed coordinates. Wall height needs its own evidence; floor-to-floor distance does not equal clear wall or ceiling height.
 
 For ECJ, request the exact **`P-ECJ-OC-ASB-0227-NA-CTS-S-ALL-4`** set identified above, together with current architectural sections and subsequent modifications. This is a document identifier found in the source, not a claim that the full set was accessed.
 
@@ -48,4 +80,6 @@ Each `collector/buildings/<building>/building.json` records:
 - `vertical.note`: building-specific gaps.
 - ECJ only: `vertical.overall_height_context`, deliberately separate from any floor's `elevation_ft`.
 
-This source review adds **no numerical per-floor elevations**. The existing horizontal plan scales and registrations remain useful for XY geometry, but do not supply Z coordinates. When documented elevations become available, record the document, sheet/page, datum, units, and measurement interpretation alongside each value. Normalize values to the chosen local datum only after resolving finished-floor versus slab references. Preserve unknown values explicitly instead of silently promoting visual placeholders to measured geometry.
+ECJ floors additionally record `elevation_ft`, `elevation_source.status`, source reference, original/inferred elevation, normalization offset and reference interpretation. Unknown floors retain no elevation value. EER and ASE remain schematic vertically. Horizontal plan scale and registration residuals do not supply Z coordinates or certify on-site accuracy.
+
+PDF metadata modification dates indicate file processing, **not** an as-built or field-verification date. Plan title-block dates and historical record-drawing dates also do not prove present room layouts. See [CAD source review](cad-source-review.md) for additional geometry evidence and renovation notices.

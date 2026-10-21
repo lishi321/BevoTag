@@ -66,13 +66,19 @@
       <details class="model-settings"><summary>Heights &amp; 3D export</summary>
         <p id="heightDatum" class="small muted"></p>
         <div class="grid2"><label>Wall display height (ft)<input id="wallHeight" type="number" min="1" max="30" step="0.5" value="10"></label><label>Unknown-level display step (ft)<input id="floorSpacing" type="number" min="6" max="40" step="1" value="14"></label></div>
-        <p class="small muted">These controls set schematic geometry. Wall height is not a measured ceiling or floor-to-floor height. Documented level elevations, when available, override the display step.</p>
+        <p class="small muted">Wall height is schematic. Entered elevations stay fixed; unknown levels are placed between those entries or use the display step beyond them.</p>
         <label>Visual floor separation <output id="separationValue">1× · unexploded</output><input id="floorSeparation" type="range" min="1" max="5" step="0.25" value="1"></label>
         <div class="height-table-wrap"><table class="height-table"><caption>Level elevations and base positions (before visual separation)</caption><thead><tr><th>Level</th><th>Elevation</th><th>Model Z (ft)</th></tr></thead><tbody id="heightRows"></tbody></table></div>
+        <p id="heightEvidence" class="small muted" role="status"></p>
         <p id="heightResearchNote" class="small muted"></p>
         <ul id="heightSources" class="height-sources"></ul>
-        <button id="btnExportModel" class="wide" disabled>Export building OBJ</button>
-        <p class="small muted">OBJ includes elevation status and source comments. Unknown heights remain schematic; visual separation is excluded.</p>
+        <div class="btnrow"><button id="btnExportIFC" disabled>Export CAD / BIM IFC</button><button id="btnExportModel" disabled>Export building OBJ</button></div>
+        <p class="small muted">IFC keeps levels, wall solids and room footprints as separate objects in metres. OBJ is a mesh in feet. Both retain height evidence; unknown heights remain schematic. Visual separation is excluded.</p>
+      </details>
+      <details class="model-settings"><summary>Geometry evidence &amp; review</summary>
+        <p id="geometryReviewNote" class="small muted"></p>
+        <ul id="geometryCorrections" class="small"></ul>
+        <ul id="geometrySources" class="height-sources"></ul>
       </details>
       <p class="small model-provenance">Reconstructed from floor plans. Some boundaries and room labels need review. Empty interiors; no furniture.</p>
     </div>

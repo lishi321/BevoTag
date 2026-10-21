@@ -121,9 +121,9 @@ test('summary reports mixed provenance and preserves the source datum without mu
   assert.match(fallback.datum.description, /assumed display reference/);
 });
 
-test('all 31 supplied floors remain unknown despite having research citations', () => {
+test('EER and ASE remain unknown despite background research citations', () => {
   let total = 0;
-  for (const id of ['EER', 'ASE', 'ECJ']) {
+  for (const id of ['EER', 'ASE']) {
     const b = loadBuilding(id), summary = verticalSummary(b);
     assert.equal(b.vertical.research_status, 'no-documented-elevations', id);
     assert.ok(b.vertical.sources.length > 0, `${id}: research evidence is retained`);
@@ -136,7 +136,7 @@ test('all 31 supplied floors remain unknown despite having research citations', 
       total++;
     }
   }
-  assert.equal(total, 31);
+  assert.equal(total, 16);
 });
 
 test('ECJ overall 175 ft context never establishes roof or mezzanine elevations', () => {
@@ -163,6 +163,41 @@ test('documented elevation remains fixed when display spacing changes through th
     assert.equal(elevationInfo(b, '2', spacing).elevationFt, 16);
     assert.equal(elevationInfo(b, '2', spacing).status, 'documented');
     assert.equal(floorElevation(b, '2', spacing), 16);
-    assert.equal(floorElevation(b, 'M', spacing), spacing, 'unknown levels still use the selected schematic spacing');
+    assert.equal(floorElevation(b, 'M', spacing), 8, 'unknown level stays between the datum and a fixed elevation');
+    assert.match(elevationInfo(b, 'M', spacing).note, /Schematic interpolation/);
+  }
+});
+
+
+test('ECJ historical record elevations reconcile to Level 1 without concealing the Level 6 conflict', () => {
+  const b = loadBuilding('ECJ'), summary = verticalSummary(b);
+  assert.deepEqual(summary.counts, { documented: 11, estimated: 1, unverified: 0, assumed: 3 });
+  const documented = { B: -16, 1: 0, 2: 16, 3: 30, 4: 44, 5: 58, 7: 86, 8: 100, 9: 114, 10: 128, 11: 142 };
+  for (const [id, value] of Object.entries(documented)) {
+    const info = elevationInfo(b, id, 6);
+    assert.equal(info.elevationFt, value);
+    assert.equal(info.status, 'documented');
+    assert.equal(info.source.id, 'ecj-sarlo-record-elevations');
+    assert.equal(elevationInfo(b, id, 40).elevationFt, value, 'display step cannot change record elevations');
+  }
+  const six = elevationInfo(b, '6');
+  assert.equal(six.elevationFt, 72);
+  assert.equal(six.status, 'estimated');
+  assert.match(six.note, /536/);
+  // Independent sensor table C.1 uses Level 2 as its zero, not our Level 1 datum.
+  for (const [id, relative] of Object.entries({ B: -32, 5: 42, 7: 70, 9: 98, 11: 126 })) {
+    assert.equal(floorElevation(b, id) - floorElevation(b, '2'), relative);
+  }
+});
+
+test('unknown ECJ levels stay ordered around fixed levels at every allowed display step', () => {
+  const b = loadBuilding('ECJ');
+  for (const spacing of [6, 10, 14, 25, 40]) {
+    const summary = verticalSummary(b, spacing);
+    assert.ok(summary.rows.every((row, i) => !i || row.elevationFt > summary.rows[i - 1].elevationFt));
+    for (const id of ['SB', '11M', 'R']) assert.equal(elevationInfo(b, id, spacing).status, 'assumed');
+    assert.equal(floorElevation(b, 'SB', spacing), -16 - spacing);
+    assert.equal(floorElevation(b, '11M', spacing), 142 + spacing);
+    assert.equal(floorElevation(b, 'R', spacing), 142 + 2 * spacing);
   }
 });

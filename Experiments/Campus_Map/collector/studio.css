@@ -84,6 +84,7 @@ input[type=range] { padding:0; accent-color:#285c5c; }
 .height-sources { padding-left:16px; font-size:11px; line-height:1.6; }
 .height-sources li { margin:6px 0; }
 .height-sources a { color:#276c70; }
+.height-status.documented { background:#e2efea; color:#285f50; }
 #roomDetail { min-height:34px; margin-top:-4px; }
 .estimate-card .primary { font-size:12px; padding:11px; }
 .paste-scan { margin-top:13px; }

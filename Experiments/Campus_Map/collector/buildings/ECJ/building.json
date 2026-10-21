@@ -15,32 +15,90 @@
     "axes": "x = right on the sheet, y = up on the sheet; sheet up is about 5 deg east of true north",
     "registration": "every floor placed onto floor 4 by structural columns and the tower's outer wall faces (residual <= 0.08 ft on tower floors, ~0.1-0.2 ft for SB/B/1 and 11M); see VERIFICATION.md"
   },
-  "vertical": {
-    "datum": {"floor_id": "1", "description": "Level 1 = 0 ft model datum; not surveyed altitude"},
+  "geometry_review": {
     "reviewed": "2026-10-21",
-    "research_status": "no-documented-elevations",
-    "note": "The public roof RFQ describes an approximately 175 ft overall height without a vertical datum. This is context only and cannot establish the roof's elevation relative to Level 1 or any intermediate floor, basement, or mezzanine elevation. No per-level elevation schedule or wall heights were verified. The RFQ identifies original structural as-built set P-ECJ-OC-ASB-0227-NA-CTS-S-ALL-4, dated March 10, 1971, by Page Southerland Page.",
-    "overall_height_context": {"height_ft": 175, "qualifier": "approximate overall height; datum unspecified", "source_id": "ecj-roof-rfq"},
+    "note": "Record elevations and structural grids improve the historical model; they do not certify current partitions or wall heights. The examined upper-level and roof plans carry May 5, 2022 title-block dates. Registered 2026 work fully renovates Levels 7-8 and partly affects 9-11; replacement layouts are unavailable. Roof (TBD) includes multiple unresolved roof surfaces.",
     "sources": [
-      {"id": "ecj-ut-inventory", "title": "UT building inventory: Ernest Cockrell Jr. Hall (0227)", "url": "https://utdirect.utexas.edu/apps/campus/buildings/information/nlogon/maps/UTM/ECJ/", "evidence": "Lists fourteen floors, excluding the additional roof sheet in the local plan set. No vertical dimensions are published on the inventory page."},
-      {"id": "ecj-roof-rfq", "title": "UT ECJ Roof Replacement RFQ 26DBL001 / CP2001733", "url": "https://utexas.box.com/s/k7zef80nsnhzma53vbyihkfszvcg483w/file/2253671762219", "evidence": "PDF page 29 (Design Criteria section 4.02) gives approximate rooftop elevation of 175 ft without a datum. Page 41 (WJE Roof Condition Assessment, printed page 1) describes a 175-foot-tall structure. Page 66 identifies the original signed structural as-built set; the roof framing excerpts do not provide a usable floor-elevation schedule."},
-      {"id": "ecj-roof-solicitation", "title": "UT Planning, Design and Construction: ECJ roof replacement solicitation", "url": "https://construction.utexas.edu/26dbl001-cp2001733-ecj-roof-replacement-rfq", "evidence": "Official university project page links to the public RFQ folder and identifies roof replacement and mechanical penthouse repairs. This establishes the provenance of the linked RFQ, not per-floor elevations."}
+      {
+        "id": "ecj-sarlo-geometry",
+        "title": "Sarlo (2018), Appendix C: ECJ record drawings",
+        "url": "https://vtechworks.lib.vt.edu/bitstreams/b9653165-72de-4e1e-9470-21996593bbe9/download#page=189",
+        "evidence": "PDF pages 189-190 reproduce 2013 record elevations with 134 ft and 102 ft structural-axis spans and central 22 ft/26 ft bays, corroborating horizontal plan scale. Existing conditions derive from 1971 drawings and require field verification."
+      },
+      {
+        "id": "ecj-renovation-2026",
+        "title": "TDLR TABS2026014484: ECJ renovation scope",
+        "url": "https://www.tdlr.texas.gov/TABS/Search/Print/TABS2026014484",
+        "evidence": "Registered March 9, 2026: full renovation on Levels 7-8 with additional partial scope on Levels 9-11. This indicates possible stale room geometry; no replacement partition plans are supplied."
+      },
+      {
+        "id": "ecj-bgk-renovation",
+        "title": "BGK Architects: Ernest Cockrell Jr. Hall Lab Renovations",
+        "url": "https://www.bgkarchitects.com/project/ecj-engineering-renovation-at-austin-adaptive",
+        "evidence": "Project architect describes modernization of research labs on the seventh and eighth floors. The project page corroborates renovation context but does not establish installed room boundaries or level elevations."
+      }
+    ]
+  },
+  "vertical": {
+    "datum": {
+      "floor_id": "1",
+      "description": "Level 1 = 0 ft model datum, normalized from record-drawing EL 552 ft; original survey datum and finished-floor versus slab reference are unspecified."
+    },
+    "reviewed": "2026-10-21",
+    "research_status": "partial-documented-elevations",
+    "note": "2013 record-drawing elevations reproduced in Sarlo (2018), Appendix C, support Basement and Levels 1-11 after subtracting Level 1 EL 552 ft. Level 6 is a source-based estimate: both sheets print a conflicting EL 536 ft tag, while adjacent dimension chains imply EL 624 ft. SB, 11M and the undifferentiated Roof (TBD) plan remain unknown. The drawings rely on 1971 contract documents and require field verification; they do not define finished-floor versus slab references or interior wall heights. Registered 2026 renovations cover Levels 7-8 and parts of 9-11, so the 2022 room plans may not reflect current partitions.",
+    "overall_height_context": {
+      "height_ft": 175,
+      "qualifier": "approximate overall height; datum unspecified",
+      "source_id": "ecj-roof-rfq"
+    },
+    "sources": [
+      {
+        "id": "ecj-sarlo-record-elevations",
+        "title": "Sarlo (2018), Appendix C: ECJ record elevations, sheets S3.1/S3.2",
+        "url": "https://vtechworks.lib.vt.edu/bitstreams/b9653165-72de-4e1e-9470-21996593bbe9/download#page=189",
+        "evidence": "PDF pages 189-190 (printed 171-172), Figures C.1-C.2 reproduce WJE 2013 record drawings for UT project CP412964: B EL536, Level1 EL552, Level2 EL568, Levels3-5 EL582/596/610, Levels7-10 EL638/652/666/680, lower roof EL694 and penthouse roof EL711 ft. Level6 tag EL536 conflicts with adjacent 14 ft dimension chains, which imply EL624. PDF page191, TableC.1 independently corroborates Level2/5/7/9/11/B sensor Z=0/42/70/98/126/-32 ft relative to Level2. Drawings reference 1971 contract plans and require field verification; FF/slab and original survey datum are unspecified."
+      },
+      {
+        "id": "ecj-ut-inventory",
+        "title": "UT building inventory: Ernest Cockrell Jr. Hall (0227)",
+        "url": "https://utdirect.utexas.edu/apps/campus/buildings/information/nlogon/maps/UTM/ECJ/",
+        "evidence": "Lists fourteen floors, excluding the additional roof sheet in the local plan set. No vertical dimensions are published on the inventory page."
+      },
+      {
+        "id": "ecj-roof-rfq",
+        "title": "UT ECJ Roof Replacement RFQ 26DBL001 / CP2001733",
+        "url": "https://utexas.box.com/s/k7zef80nsnhzma53vbyihkfszvcg483w/file/2253671762219",
+        "evidence": "PDF page 29 (Design Criteria section 4.02) gives approximate rooftop elevation of 175 ft without a datum. Page 41 (WJE Roof Condition Assessment, printed page 1) describes a 175-foot-tall structure. Page 66 identifies the original signed structural as-built set; the roof framing excerpts do not provide a usable floor-elevation schedule."
+      },
+      {
+        "id": "ecj-roof-solicitation",
+        "title": "UT Planning, Design and Construction: ECJ roof replacement solicitation",
+        "url": "https://construction.utexas.edu/26dbl001-cp2001733-ecj-roof-replacement-rfq",
+        "evidence": "Official university project page links to the public RFQ folder and identifies roof replacement and mechanical penthouse repairs. This establishes the provenance of the linked RFQ, not per-floor elevations."
+      },
+      {
+        "id": "ecj-renovation-2026",
+        "title": "TDLR TABS2026014484: ECJ renovation scope",
+        "url": "https://www.tdlr.texas.gov/TABS/Search/Print/TABS2026014484",
+        "evidence": "Registration dated March 9, 2026 describes full renovation of Levels 7-8 and partial work on Levels 9-11. This is evidence of potential changes after the local 2022 room plans; it does not supply replacement partition layouts or elevations."
+      }
     ]
   },
   "floors": [
     {"id": "SB", "name": "Sub-basement", "page": 1, "image": "floors/SB.png", "fit": [972, 660, 3130, 1967], "ft_per_in": 32, "to_frame": [0.128, 0, -243.32, 0, -0.128, 213.724]},
-    {"id": "B", "name": "Basement", "page": 2, "image": "floors/B.png", "fit": [1018, 624, 3175, 2047], "ft_per_in": 32, "to_frame": [0.128, 0, -249.027, 0, -0.128, 220.794]},
-    {"id": "1", "name": "First", "page": 3, "image": "floors/1.png", "fit": [1004, 559, 3161, 2005], "ft_per_in": 32, "to_frame": [0.128, 0, -247.25, 0, -0.128, 215.484]},
-    {"id": "2", "name": "Second", "page": 4, "image": "floors/2.png", "fit": [1480, 430, 3760, 2400], "to_frame": [0.064, 0, -100.22, 0, -0.064, 136.4]},
-    {"id": "3", "name": "Third", "page": 5, "image": "floors/3.png", "fit": [982, 407, 3198, 2125], "to_frame": [0.064, 0, -65.413, 0, -0.064, 133.509]},
-    {"id": "4", "name": "Fourth", "page": 6, "image": "floors/4.png", "fit": [991, 449, 3193, 2166], "to_frame": [0.064, 0, -66.0, 0, -0.064, 136.147]},
-    {"id": "5", "name": "Fifth", "page": 7, "image": "floors/5.png", "fit": [989, 431, 3207, 2149], "to_frame": [0.064, 0, -65.947, 0, -0.064, 135.034]},
-    {"id": "6", "name": "Sixth", "page": 8, "image": "floors/6.png", "fit": [1022, 400, 3239, 2119], "to_frame": [0.064, 0, -67.995, 0, -0.064, 133.07]},
-    {"id": "7", "name": "Seventh", "page": 9, "image": "floors/7.png", "fit": [1022, 418, 3239, 2134], "to_frame": [0.064, 0, -67.993, 0, -0.064, 134.154]},
-    {"id": "8", "name": "Eighth", "page": 10, "image": "floors/8.png", "fit": [991, 432, 3207, 2149], "to_frame": [0.064, 0, -65.987, 0, -0.064, 135.079]},
-    {"id": "9", "name": "Ninth", "page": 11, "image": "floors/9.png", "fit": [1022, 400, 3239, 2119], "to_frame": [0.064, 0, -67.994, 0, -0.064, 133.066]},
-    {"id": "10", "name": "Tenth", "page": 12, "image": "floors/10.png", "fit": [986, 417, 3203, 2133], "to_frame": [0.064, 0, -65.7, 0, -0.064, 134.08]},
-    {"id": "11", "name": "Eleventh", "page": 13, "image": "floors/11.png", "fit": [1117, 585, 3177, 2128], "to_frame": [0.064, 0, -72.773, 0, -0.064, 135.08]},
+    {"id": "B", "name": "Basement", "page": 2, "image": "floors/B.png", "fit": [1018, 624, 3175, 2047], "ft_per_in": 32, "to_frame": [0.128, 0, -249.027, 0, -0.128, 220.794], "elevation_ft": -16, "elevation_source": {"source_id": "ecj-sarlo-record-elevations", "status": "documented", "note": "Record sheets S3.1/S3.2 label Basement EL536 ft; subtract Level1 EL552 ft. TableC.1 confirms Basement -32 ft relative to Level2 EL568 ft. Historical drawing level, not a fresh field survey or a defined finished-floor reference.", "original_elevation_ft": 536, "normalization_offset_ft": 552, "reference_kind": "historical drawing level; finished-floor versus structural slab unspecified"}},
+    {"id": "1", "name": "First", "page": 3, "image": "floors/1.png", "fit": [1004, 559, 3161, 2005], "ft_per_in": 32, "to_frame": [0.128, 0, -247.25, 0, -0.128, 215.484], "elevation_ft": 0, "elevation_source": {"source_id": "ecj-sarlo-record-elevations", "status": "documented", "note": "Record sheets S3.1/S3.2, PDF pp189-190 (printed171-172): Level 1 EL 552 ft minus Level1 EL552 ft. Historical drawing level; field verification and FF-versus-slab interpretation remain outstanding.", "original_elevation_ft": 552, "normalization_offset_ft": 552, "reference_kind": "historical drawing level; finished-floor versus structural slab unspecified"}},
+    {"id": "2", "name": "Second", "page": 4, "image": "floors/2.png", "fit": [1480, 430, 3760, 2400], "to_frame": [0.064, 0, -100.22, 0, -0.064, 136.4], "elevation_ft": 16, "elevation_source": {"source_id": "ecj-sarlo-record-elevations", "status": "documented", "note": "Record sheets S3.1/S3.2, PDF pp189-190 (printed171-172): Level 2 EL 568 ft minus Level1 EL552 ft. Historical drawing level; field verification and FF-versus-slab interpretation remain outstanding.", "original_elevation_ft": 568, "normalization_offset_ft": 552, "reference_kind": "historical drawing level; finished-floor versus structural slab unspecified"}},
+    {"id": "3", "name": "Third", "page": 5, "image": "floors/3.png", "fit": [982, 407, 3198, 2125], "to_frame": [0.064, 0, -65.413, 0, -0.064, 133.509], "elevation_ft": 30, "elevation_source": {"source_id": "ecj-sarlo-record-elevations", "status": "documented", "note": "Record sheets S3.1/S3.2, PDF pp189-190 (printed171-172): Level 3 EL 582 ft minus Level1 EL552 ft. Historical drawing level; field verification and FF-versus-slab interpretation remain outstanding.", "original_elevation_ft": 582, "normalization_offset_ft": 552, "reference_kind": "historical drawing level; finished-floor versus structural slab unspecified"}},
+    {"id": "4", "name": "Fourth", "page": 6, "image": "floors/4.png", "fit": [991, 449, 3193, 2166], "to_frame": [0.064, 0, -66.0, 0, -0.064, 136.147], "elevation_ft": 44, "elevation_source": {"source_id": "ecj-sarlo-record-elevations", "status": "documented", "note": "Record sheets S3.1/S3.2, PDF pp189-190 (printed171-172): Level 4 EL 596 ft minus Level1 EL552 ft. Historical drawing level; field verification and FF-versus-slab interpretation remain outstanding.", "original_elevation_ft": 596, "normalization_offset_ft": 552, "reference_kind": "historical drawing level; finished-floor versus structural slab unspecified"}},
+    {"id": "5", "name": "Fifth", "page": 7, "image": "floors/5.png", "fit": [989, 431, 3207, 2149], "to_frame": [0.064, 0, -65.947, 0, -0.064, 135.034], "elevation_ft": 58, "elevation_source": {"source_id": "ecj-sarlo-record-elevations", "status": "documented", "note": "Record sheets S3.1/S3.2, PDF pp189-190 (printed171-172): Level 5 EL 610 ft minus Level1 EL552 ft. Historical drawing level; field verification and FF-versus-slab interpretation remain outstanding.", "original_elevation_ft": 610, "normalization_offset_ft": 552, "reference_kind": "historical drawing level; finished-floor versus structural slab unspecified"}},
+    {"id": "6", "name": "Sixth", "page": 8, "image": "floors/6.png", "fit": [1022, 400, 3239, 2119], "to_frame": [0.064, 0, -67.995, 0, -0.064, 133.07], "elevation_ft": 72, "elevation_source": {"source_id": "ecj-sarlo-record-elevations", "status": "estimated", "note": "Source conflict: both record sheets label Level6 EL536 ft (same as basement), inconsistent with their adjacent 14 ft dimension chains and Level5 EL610/Level7 EL638. Estimate EL624 ft, hence 72 ft above Level1; requires confirmation, not a verified correction.", "original_elevation_ft": 624, "normalization_offset_ft": 552, "reference_kind": "historical drawing level; finished-floor versus structural slab unspecified"}},
+    {"id": "7", "name": "Seventh", "page": 9, "image": "floors/7.png", "fit": [1022, 418, 3239, 2134], "to_frame": [0.064, 0, -67.993, 0, -0.064, 134.154], "elevation_ft": 86, "elevation_source": {"source_id": "ecj-sarlo-record-elevations", "status": "documented", "note": "Record sheets S3.1/S3.2, PDF pp189-190 (printed171-172): Level 7 EL 638 ft minus Level1 EL552 ft. Historical drawing level; field verification and FF-versus-slab interpretation remain outstanding.", "original_elevation_ft": 638, "normalization_offset_ft": 552, "reference_kind": "historical drawing level; finished-floor versus structural slab unspecified"}},
+    {"id": "8", "name": "Eighth", "page": 10, "image": "floors/8.png", "fit": [991, 432, 3207, 2149], "to_frame": [0.064, 0, -65.987, 0, -0.064, 135.079], "elevation_ft": 100, "elevation_source": {"source_id": "ecj-sarlo-record-elevations", "status": "documented", "note": "Record sheets S3.1/S3.2, PDF pp189-190 (printed171-172): Level 8 EL 652 ft minus Level1 EL552 ft. Historical drawing level; field verification and FF-versus-slab interpretation remain outstanding.", "original_elevation_ft": 652, "normalization_offset_ft": 552, "reference_kind": "historical drawing level; finished-floor versus structural slab unspecified"}},
+    {"id": "9", "name": "Ninth", "page": 11, "image": "floors/9.png", "fit": [1022, 400, 3239, 2119], "to_frame": [0.064, 0, -67.994, 0, -0.064, 133.066], "elevation_ft": 114, "elevation_source": {"source_id": "ecj-sarlo-record-elevations", "status": "documented", "note": "Record sheets S3.1/S3.2, PDF pp189-190 (printed171-172): Level 9 EL 666 ft minus Level1 EL552 ft. Historical drawing level; field verification and FF-versus-slab interpretation remain outstanding.", "original_elevation_ft": 666, "normalization_offset_ft": 552, "reference_kind": "historical drawing level; finished-floor versus structural slab unspecified"}},
+    {"id": "10", "name": "Tenth", "page": 12, "image": "floors/10.png", "fit": [986, 417, 3203, 2133], "to_frame": [0.064, 0, -65.7, 0, -0.064, 134.08], "elevation_ft": 128, "elevation_source": {"source_id": "ecj-sarlo-record-elevations", "status": "documented", "note": "Record sheets S3.1/S3.2, PDF pp189-190 (printed171-172): Level 10 EL 680 ft minus Level1 EL552 ft. Historical drawing level; field verification and FF-versus-slab interpretation remain outstanding.", "original_elevation_ft": 680, "normalization_offset_ft": 552, "reference_kind": "historical drawing level; finished-floor versus structural slab unspecified"}},
+    {"id": "11", "name": "Eleventh", "page": 13, "image": "floors/11.png", "fit": [1117, 585, 3177, 2128], "to_frame": [0.064, 0, -72.773, 0, -0.064, 135.08], "elevation_ft": 142, "elevation_source": {"source_id": "ecj-sarlo-record-elevations", "status": "documented", "note": "Record sheets call EL694 ft Roof Level; TableC.1 explicitly identifies Floor11 at Z126 ft relative to Level2 EL568 ft, corroborating EL694. Model142 ft above Level1. WJE 2025 report calls this the lower roof/mechanical-penthouse floor; upper penthouse roof is distinct.", "original_elevation_ft": 694, "normalization_offset_ft": 552, "reference_kind": "historical drawing level; finished-floor versus structural slab unspecified"}},
     {"id": "11M", "name": "Eleventh mezzanine", "page": 14, "image": "floors/11M.png", "fit": [991, 432, 3207, 2149], "to_frame": [0.064, 0, -66.03, 0, -0.064, 134.147]},
     {"id": "R", "name": "Roof", "page": 15, "image": "floors/R.png", "fit": [1185, 615, 3004, 2134], "to_frame": [0.064, 0, -65.713, 0, -0.064, 134.08]}
   ]

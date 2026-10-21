@@ -58,11 +58,26 @@ export function elevationInfo(building, floorId, spacing = 14) {
           : 'Elevation documented in the cited source.',
     };
   }
-  return {
-    elevationFt: (index - ground) * step,
-    status: 'assumed', source: null,
-    note: `Uniform ${step} ft display spacing from floor ${floors[ground].id}; actual elevation is unknown.`,
-  };
+  // Keep schematic levels in order when a building mixes sourced and unknown heights.
+  // The model datum is only an anchor for display, never evidence of an actual elevation.
+  const anchors = floors.flatMap((item, i) => finite(item.elevation_ft)
+    ? [{ index: i, id: item.id, z: Number(item.elevation_ft) }]
+    : i === ground ? [{ index: i, id: item.id, z: 0 }] : []);
+  const atDatum = anchors.find(anchor => anchor.index === index);
+  const below = anchors.filter(anchor => anchor.index < index).at(-1);
+  const above = anchors.find(anchor => anchor.index > index);
+  let elevationFt, placement;
+  if (atDatum) {
+    elevationFt = atDatum.z; placement = `Local model reference at floor ${atDatum.id}`;
+  } else if (below && above) {
+    elevationFt = below.z + (above.z - below.z) * (index - below.index) / (above.index - below.index);
+    placement = `Schematic interpolation between entered floors ${below.id} and ${above.id}`;
+  } else {
+    const anchor = below || above;
+    elevationFt = anchor.z + (index - anchor.index) * step;
+    placement = `Schematic ${step} ft display spacing from floor ${anchor.id}`;
+  }
+  return { elevationFt, status: 'assumed', source: null, note: `${placement}; actual elevation is unknown.` };
 }
 
 export function verticalSummary(building, spacing = 14) {

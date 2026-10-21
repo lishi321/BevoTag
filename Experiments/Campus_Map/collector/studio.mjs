@@ -2,6 +2,7 @@ import { BuildingView } from './model-view.mjs';
 import { parseCSV, importSurvey, surveyPoints, estimatePosition, demoSurvey, demoScan, toFrame, fromFrame } from './signal-model.mjs';
 import { roomAt, validateArchitecture } from './architecture.mjs';
 import { exportArchitectureOBJ } from './architecture-geometry.mjs';
+import { exportArchitectureIFC } from './architecture-ifc.mjs';
 import { elevationInfo, verticalSummary } from './vertical-model.mjs';
 
 const $ = id => document.getElementById(id);
@@ -20,7 +21,9 @@ function refreshHeights() {
   $('heightStatus').textContent = current.status === 'assumed'
     ? `Level ${S.floor} elevation unknown · schematic display only`
     : `Level ${S.floor}: ${format(current.elevationFt)} ft · ${labels[current.status].toLowerCase()}`;
-  $('sceneSubtitle').textContent = `${building.floors.length} levels · ${summary.counts.documented} documented elevations`;
+  $('heightStatus').classList.toggle('documented', current.status === 'documented');
+  $('sceneSubtitle').textContent = `${building.floors.length} levels · ${summary.counts.documented} documented${summary.counts.estimated ? ` · ${summary.counts.estimated} estimated` : ''} · ${summary.counts.assumed} unknown`;
+  $('heightEvidence').textContent = current.note;
   $('heightDatum').textContent = typeof summary.datum === 'string' ? summary.datum : summary.datum.description;
   $('heightRows').replaceChildren();
   for (const row of summary.rows) {
@@ -44,14 +47,29 @@ function refreshHeights() {
 function chooseRoom(room) {
   selectedRoom = room;
   $('modelRoom').value = room?.id || '';
-  $('roomDetail').textContent = room ? `${room.label} · ≈ ${Math.round(room.area_ft2).toLocaleString()} sq ft · ${room.label_source === 'plan-ocr' ? 'label read from plan' : 'unlabeled space'}` : 'Click a room surface or choose one above.';
+  $('roomDetail').textContent = room ? `${room.label} · ≈ ${Math.round(room.area_ft2).toLocaleString()} sq ft · ${room.label_source === 'plan-review' ? 'traced and reviewed from plan' : room.label_source === 'plan-ocr' ? 'label read from plan' : 'unlabeled space'}` : 'Click a room surface or choose one above.';
   view?.selectRoom(room?.id || null); controls();
 }
 
 function refreshArchitecture() {
   const floor = architecture?.floors.find(f => f.id === S.floor);
-  $('architectureSummary').textContent = floor ? `${floor.rooms.length} enclosed spaces · ${floor.walls.length} wall solids on level ${S.floor}` : 'No wall geometry loaded for this floor.';
+  $('architectureSummary').textContent = floor ? `${floor.rooms.length} spaces · ${floor.walls.length} wall solids on level ${S.floor}${floor.geometry_exclusions?.length ? ` · ${floor.geometry_exclusions.length} reviewed exclusions` : ''}` : 'No wall geometry loaded for this floor.';
   $('btnExportModel').disabled = !architecture;
+  $('btnExportIFC').disabled = !architecture;
+  const review = S.buildings[S.building]?.geometry_review;
+  $('geometryReviewNote').textContent = review?.note || 'No additional geometry review is recorded.';
+  $('geometryCorrections').replaceChildren();
+  for (const correction of [...(floor?.geometry_exclusions || []), ...(floor?.geometry_additions || [])]) {
+    const li = document.createElement('li'); li.textContent = `Plan page ${correction.source_page}: ${correction.reason}`;
+    $('geometryCorrections').appendChild(li);
+  }
+  $('geometrySources').replaceChildren();
+  for (const source of review?.sources || []) {
+    if (!/^https?:\/\//.test(source.url)) continue;
+    const li = document.createElement('li'), a = document.createElement('a');
+    a.textContent = source.title; a.href = source.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.title = source.evidence;
+    li.appendChild(a); $('geometrySources').appendChild(li);
+  }
   if (modelFloor === floor) return;
   modelFloor = floor;
   $('modelRoom').replaceChildren(new Option('Select a room in the model', ''));
@@ -64,7 +82,7 @@ async function loadArchitecture(building) {
   view?.clearBuilding();
   architecture = null; modelFloor = null; refreshArchitecture();
   try {
-    const response = await fetch(`buildings/${building.id}/architecture.json`);
+    const response = await fetch(`buildings/${building.id}/architecture.json`, { cache: 'no-cache' });
     if (!response.ok) throw new Error(`model file returned HTTP ${response.status}`);
     const data = validateArchitecture(await response.json(), building);
     if (generation !== loadGeneration) return;
@@ -259,12 +277,14 @@ async function init() {
     else $('room').value = '';
     $('room').dispatchEvent(new Event('input', { bubbles: true }));
   };
-  $('btnExportModel').onclick = () => {
+  const downloadModel = (exporter, extension) => {
     if (!architecture) return;
-    const text = exportArchitectureOBJ(architecture, S.buildings[S.building], { wallHeight: Number($('wallHeight').value), spacing: Number($('floorSpacing').value) });
+    const text = exporter(architecture, S.buildings[S.building], { wallHeight: Number($('wallHeight').value), spacing: Number($('floorSpacing').value) });
     const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' })), link = document.createElement('a');
-    link.href = url; link.download = `${S.building}-rooms-walls.obj`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+    link.href = url; link.download = `${S.building}-rooms-walls.${extension}`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
   };
+  $('btnExportModel').onclick = () => downloadModel(exportArchitectureOBJ, 'obj');
+  $('btnExportIFC').onclick = () => downloadModel(exportArchitectureIFC, 'ifc');
   $('btnEstimate').onclick = () => runEstimate(); $('btnEstimateJson').onclick = () => runEstimate(true);
   $('btnFocusEstimate').onclick = () => {
     if (!estimate?.ok || S.collecting || S.locating) return;

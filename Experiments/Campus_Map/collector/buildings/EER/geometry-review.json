@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "building": "EER",
+  "reviewed": "2026-10-21",
+  "source_sha256": "9cdc1a6421ce892b4e8446c461645c7bd992e4f5f395919e96a8429533a86667",
+  "coordinate_frame": "building XY in feet, using building.json floor registration",
+  "scope": "Reviewed plan classification corrections only. Masks remove falsely reconstructed floor surfaces and full-height walls; omitted skylight, canopy and structural members are not modeled. No elevation or wall-height claim is made.",
+  "sources": [
+    {"id": "eer-local-plan", "title": "EER source floor plans", "file": "plan.pdf", "evidence": "PDF pages 4, 7 and 9 visually inspected against the generated architecture. Pages 4 and 9 show central roof/structural linework, not partitions. Page 7 shows the central atrium opening with a distinct narrow west bridge."},
+    {"id": "eer-aisc-2019", "title": "AISC 2019 IDEAS2 Awards: EER atrium", "url": "https://www.aisc.org/contentassets/e18e7275c8ac4615af25d3f92fa6ec40/ideas2_promo_9x9_2019_web.pdf", "evidence": "PDF page 30, printed page 28: skylight spans 150 ft by 70 ft; west bridge connects levels 5 through 8. This corroborates spatial classification, not mask coordinates or floor elevations."},
+    {"id": "eer-ut-atrium", "title": "UT Engineering: A Unifying Force", "url": "https://magazine.engr.utexas.edu/2017/a-unifying-force", "evidence": "University opening article identifies the atrium as 70 ft wide. It supplies no elevation schedule."}
+  ],
+  "exclusions": [
+    {
+      "id": "eer-3-skylight-projection",
+      "floor_id": "3",
+      "source_page": 4,
+      "classification": "skylight-projection-not-room-or-wall",
+      "remove": ["rooms", "walls"],
+      "outline": [[58.0,126.85],[208.6,126.85],[203.1,109.0],[208.65,75.1],[203.3,57.45],[63.3,57.45],[58.0,75.1],[63.55,109.0]],
+      "holes": [],
+      "reason": "The central repeating diagonals and enclosed triangular patches on the third-floor plan depict the atrium skylight/truss projection. They are not occupied rooms or full-height partition walls. Trace the outer zigzag boundary in registered plan coordinates, preserving the adjacent terraces and tower rooms. The roof itself is omitted from this room-and-wall model.",
+      "evidence": ["eer-local-plan", "eer-aisc-2019", "eer-ut-atrium"]
+    },
+    {
+      "id": "eer-6-atrium-opening",
+      "floor_id": "6",
+      "source_page": 7,
+      "classification": "open-to-below",
+      "remove": ["rooms"],
+      "outline": [[38.7,57.5],[227.8,57.5],[227.8,126.8],[38.7,126.8]],
+      "holes": [],
+      "reason": "The central unlabelled region is the atrium opening, not a 13,065.8-square-foot room. Remove its false floor surface only. Preserve the west bridge at approximately x31 to38 ft, the perimeter glazing, and the eastern bridge/rooms.",
+      "evidence": ["eer-local-plan", "eer-aisc-2019", "eer-ut-atrium"]
+    },
+    {
+      "id": "eer-8-central-roof-structure",
+      "floor_id": "8",
+      "source_page": 9,
+      "classification": "roof-structure-not-room-or-wall",
+      "remove": ["rooms", "walls"],
+      "outline": [[38.2,56.55],[228.9,56.55],[228.9,126.6],[38.2,126.6]],
+      "holes": [],
+      "reason": "The central unlabelled repeating diagonals and long members on the eighth-floor sheet represent roof/canopy structure above the atrium. Automatic reconstruction wrongly turns the gaps into eleven floor patches and members into partition walls. Exclude this bounded central structural projection from room/wall geometry. Preserve both tower floors and the separate east connector. Roof framing and maintenance structures are omitted, not asserted to be empty air.",
+      "evidence": ["eer-local-plan", "eer-aisc-2019"]
+    }
+  ],
+  "added_spaces": [
+    {
+      "id": "6-reviewed-west-bridge",
+      "floor_id": "6",
+      "source_page": 7,
+      "label": "West bridge",
+      "outline": [[31.28,57.715],[37.226,57.715],[37.226,126.702],[31.28,126.702]],
+      "holes": [],
+      "reason": "PDF page 7 explicitly labels BRIDGE between the west-side parallel faces. The registered source vectors put the inner faces at x31.280 and x37.226 ft, with shared segment endpoints y57.715 and y126.702 ft. Restore only that interior floor polygon, clipped to avoid overlap with reconstructed wall solids. The generated enclosure detector missed this open-ended connector. These coordinates are traced from the registered plan, not inferred from the AISC skylight dimensions; no bridge elevation or slab thickness is established.",
+      "evidence": ["eer-local-plan", "eer-aisc-2019"]
+    }
+  ]
+}

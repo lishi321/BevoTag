@@ -13,11 +13,15 @@ is needed once this repository is on the laptop. Serve over HTTP rather than ope
 
 ## 3D model and signal layers
 
-The default workspace renders **actual extruded wall meshes and room floor surfaces** for
+The default workspace renders **extruded wall meshes and room floor surfaces reconstructed from plans** for
 **EER (9 levels), ASE (7), and ECJ (15)**. Interiors are empty: there are no furniture, equipment or
 decorative assets. Drag to orbit and scroll to zoom. Choose a floor, then use **Top view** or
 **Perspective**. Toggle **Active floor only** off to see the building stack. **Plan reference** shows
 the original drawing underneath the geometry for checking alignment.
+
+Current assets contain 3,403 polygons: EER 1,109 wall / 804 space polygons, ECJ 638 / 569, and
+ASE 105 / 178. A polygon can represent a connected wall network or a merged room/circulation region;
+these are reconstructed regions, not certified room or individual architectural wall counts.
 
 Click a room surface or choose a **Room / enclosed space** to highlight it and see its approximate
 area. **Focus room** zooms in. **Use room center** places an interior DAQ point and fills a single
@@ -40,20 +44,32 @@ Some wall segments are incomplete, some connected rooms share one region, and OC
 be wrong. Labels separated by `/` indicate several plan labels in one reconstructed region. Unlabeled
 regions use `Space NNN`. Compare the reference plan before using these boundaries as spatial constraints.
 
-**All 31 level elevations and wall heights remain unverified.** The source review found no usable
-per-level elevation schedule. See [Floor height sources and remaining gaps](../../../docs/floor-height-sources.md).
-ECJ's official roof report gives an approximate 175 ft overall height without a datum; it cannot
-establish the model roof's elevation or intermediate level heights.
+**ECJ has 11 documented historical level elevations and one estimate; 19 levels remain unknown
+across the three buildings.** Record drawings reproduced in Sarlo's 2018 dissertation support ECJ
+Basement and Levels 1–11, normalized from Level 1 EL 552 ft. Level 6 is **estimated at +72 ft**:
+its printed tag conflicts with the adjacent dimension chain. ECJ SB/11M/R and every EER/ASE level
+remain unknown. Documented means supported by the historical source, not current field verification;
+the original survey datum and finished-floor versus slab interpretation are unspecified. All wall
+heights remain unverified. See [Floor height sources](../../../docs/floor-height-sources.md) and
+the [CAD source review](../../../docs/cad-source-review.md). The approximate 175 ft ECJ overall-height
+context is not used as the roof elevation or divided among levels.
 
 Under **Heights & 3D export**, the table separates unknown elevations from schematic model Z values.
-The model uses **10 ft wall display height** and a **14 ft unknown-level display step** from Level 1
-as placeholders, including basements and mezzanines. Neither is a measured building dimension.
+The model uses an assumed **10 ft wall display height**. Unknown levels use schematic interpolation
+between entered levels or a **14 ft default display step** beyond an anchor. These placements do
+not establish actual basement, mezzanine, or roof spacing.
 **Visual floor separation** starts at **1× (unexploded)** and only changes the view.
+**Export CAD / BIM IFC** downloads IFC4 in **metres**, with a project/building/storey hierarchy,
+analytic extruded wall profiles (including holes), and named footprint-only `IfcSpace` boundaries.
+The export retains source/review evidence and height status. Only documented levels receive a
+semantic IFC `Elevation` value; unknown/estimated storeys retain explicitly unverified placements.
+No slab thickness, room volume, ceiling/opening height, or material assignment is inferred.
 **Export schematic OBJ** downloads wall solids and room surfaces for all levels, with named objects,
 building X/Y coordinates and Z up. Set the importing application's units to **feet**. Export preserves
 elevation status, research sources and limitations in comments; its unknown Z values remain schematic.
-It excludes visual separation and contains no signals or plan textures.
-This is a mesh export; parametric CAD editing, STEP/IFC and model import are not implemented.
+Both exports exclude visual separation, signals and plan textures. These are reconstructed models;
+IFC export does not make them verified as-built CAD or native architectural authoring models.
+Parametric editing, architectural constraints, STEP export and GLB/OBJ/STEP/IFC import are not implemented.
 
 When a dimensioned section or BIM level schedule is available, add each floor's `elevation_ft` relative
 to `vertical.datum`, plus `elevation_source: { source_id, status, note }`. Use `status: "documented"`
@@ -66,11 +82,26 @@ their underlying coordinates. `vertical-model.mjs` centralizes these rules for t
 ### Geometry source and regeneration
 
 The checked-in `buildings/<id>/architecture.json` files are runtime assets. `architecture.mjs` validates
-them and locates points in rooms; `architecture-geometry.mjs` creates meshes and exports OBJ.
+them and locates points in rooms; `architecture-geometry.mjs` creates meshes and exports OBJ;
+`architecture-ifc.mjs` exports analytic walls and space footprints as IFC4.
 `build_architecture.py` is an optional offline authoring utility, not a browser/server dependency.
 It pairs wall faces, filters short lettering and repeated stair treads, uses door arcs and small virtual
 closures for room detection, and optionally reads room labels with local OCR. Virtual door closures
 are **never extruded into walls**. Rooms include holes and an interior representative point.
+
+Raw PDF drawing primitives are transformed by the page's display rotation before clipping and
+registration, fixing the 270-degree ECJ level 4 source-page mismatch. When a building has
+`geometry-review.json`, `architecture_review.py` applies explicit reviewed exclusions/additions
+bound to the source PDF SHA-256 and source pages. It rejects mismatches instead of silently applying
+old corrections to new plans. EER's review removes level 3 skylight/truss floor-and-wall artifacts,
+level 6's false atrium floor, and level 8 roof-member artifacts, then restores the page 7 west bridge
+from its actual plan boundaries. The bridge uses `label_source: "plan-review"`; other labels remain
+OCR/generated. Level 8 exclusions omit roof structure from the room/wall scope, not certify empty air.
+The review is targeted; other atrium/roof regions still need inspection.
+
+Renovation notices identify possible stale partitions in ECJ, EER and ASE. They do not supply
+replacement layouts, so no guessed partition changes are applied. Preserve this distinction when
+updating the source assets; the [CAD source review](../../../docs/cad-source-review.md) lists the evidence.
 
 To regenerate in an isolated Python environment, install `pymupdf`, `numpy`, `opencv-python`, `shapely`
 (2.x), and `rapidocr_onnxruntime`, then run from this directory:
@@ -85,6 +116,22 @@ Tested with Python 3.12.10, PyMuPDF 1.28.2, NumPy 2.5.4, OpenCV 5.0.0, Shapely 2
 RapidOCR ONNX Runtime 1.4.4. Clear the OCR cache after changing source PDFs or registration metadata.
 Source PDF SHA-256 values are recorded in the generated files. Without `--ocr`, labels are generic.
 Inspect the diagnostic drawings and rerun tests before accepting regenerated geometry.
+
+### Verification
+
+The 2026-10-21 pass passed **47 Node tests and 9 Python tests**. IfcOpenShell 0.9.0.post1 parsed
+all three exports as IFC4 with zero EXPRESS/schema errors and tessellated all 1,852 wall solids;
+each volume matched its footprint area times the assumed 10 ft height after conversion to metres.
+Unicode, apostrophe, backslash and newline text round-trips were checked. Browser checks covered
+ECJ's corrected level 4 geometry/elevations, level 6's conflict note, unknown-height controls,
+EER's west bridge alignment with the 2D plan, a synthetic estimate, IFC download and a 390 px layout.
+No manual Revit/FreeCAD import or physical accuracy validation was performed.
+
+```sh
+# Collector directory; Node 20+ and Python extraction dependencies as above
+node --test tests/*.test.mjs
+python -m unittest discover -s tests -p "test_*.py"
+```
 
 ## Position estimation
 
@@ -210,9 +257,10 @@ Non-JSON lines are in `line` as is. Parse them however the firmware formats them
 them from `x_px`, `y_px` and the floor's new `to_frame`.
 
 **EER:** all floors (B–8) are registered. The origin is the lower-left corner of the tower's outer walls,
-x right and y up on the sheet; sheet up is about 5° east of true north. Distances are good to about an
-inch plus click precision. See [buildings/EER/VERIFICATION.md](buildings/EER/VERIFICATION.md) for how
-this was checked. Not built yet: converting the building frame to latitude/longitude.
+x right and y up on the sheet; sheet up is about 5° east of true north. Registration agrees with the
+source plan to roughly an inch; that is drawing agreement, not surveyed building or positioning
+accuracy. See [buildings/EER/VERIFICATION.md](buildings/EER/VERIFICATION.md). Converting this frame
+to latitude/longitude is not implemented.
 
 **ASE:** all floors (B–6) are registered. The origin is the south-west outer corner of the exterior
 walls; sheet up is about 4.5–5° east of true north. Floors B–5 agree to a few hundredths of a foot; the
@@ -222,6 +270,9 @@ floor 6 attic to about 0.3 ft. See [buildings/ASE/VERIFICATION.md](buildings/ASE
 tower's exterior walls; sheet up is about 5° east of true north. Tower floors agree to a few hundredths
 of a foot; SB, B and 1 (drawn at 1/32", so they set their own `ft_per_in`) and 11M to about 0.1–0.3 ft.
 See [buildings/ECJ/VERIFICATION.md](buildings/ECJ/VERIFICATION.md).
+
+These residuals describe agreement with the supplied drawings. They do not measure current
+as-built wall positions, drawing scale uncertainty, click error, or localization performance.
 
 ## Device protocol
 
@@ -262,13 +313,21 @@ To add a building `XYZ`:
 | `floors[].to_frame` | affine `[a, b, c, d, e, f]` from image px to the building frame in ft: `X = a·x + b·y + c`, `Y = d·x + e·y + f`. `null` = not registered yet |
 | `frame` | human description of the building frame (origin, axes) |
 | `default_floor`, `osm_way` | optional: floor shown first, OpenStreetMap footprint id |
+| `floors[].elevation_ft`, `floors[].elevation_source` | optional elevation relative to `vertical.datum`, with source ID, documented/estimated status, and interpretation |
+| `vertical.datum`, `vertical.sources` | model reference and uniquely identified height evidence; absence of a numeric elevation remains unknown |
+| `geometry_review` | source-review context and currency limitations; does not certify every extracted polygon |
 
 ## Files
 
 | File | What |
 |---|---|
-| `index.html`, `style.css`, `app.js` | the app |
+| `index.html`, `style.css`, `app.js`, `studio.css`, `studio.mjs` | collector and 3D workspace UI |
+| `model-view.mjs`, `signal-model.mjs` | renderer, signal layers, survey import and fingerprint estimation |
+| `architecture.mjs`, `architecture-geometry.mjs`, `architecture-ifc.mjs` | validation, mesh generation, OBJ in feet and IFC4 in metres |
+| `vertical-model.mjs` | elevation provenance and schematic placement rules |
 | `PROTOCOL.md` | serial contract with the DAQ module |
 | `buildings/` | one folder per building: config, floor-plan PDF, rendered PNGs |
 | `buildings/*/VERIFICATION.md` | how each building's plan geometry was checked |
 | `make_floors.py` | renders a building's PDF into floor PNGs |
+| `build_architecture.py`, `architecture_review.py` | offline geometry reconstruction and source-bound review corrections |
+| `buildings/*/architecture.json`, `buildings/*/geometry-review.json` | runtime geometry and optional reproducible review masks/additions |

@@ -15,6 +15,30 @@
     "axes": "x = right on the sheet, y = up on the sheet; sheet up is about 5 deg east of true north",
     "registration": "floors 4-8 share one sheet placement; B-3 are shifted onto it by matching structural columns (residual ~0.01 ft, cross-checked by outline and loop closure)"
   },
+  "geometry_review": {
+    "reviewed": "2026-10-21",
+    "note": "Atrium openings and bridges require plan-aware review: AISC describes a 150 by 70 ft skylight and west bridges on Levels 5-8. These facts do not determine every slab edge or any floor height. A registered 2026 library-to-office project has no published room IDs or replacement partitions; the source-derived model is not a confirmed current as-built layout.",
+    "sources": [
+      {
+        "id": "eer-aisc-atrium",
+        "title": "AISC 2019 IDEAS2 Awards: EERC atrium and bridges",
+        "url": "https://www.aisc.org/contentassets/e18e7275c8ac4615af25d3f92fa6ec40/ideas2_promo_9x9_2019_web.pdf#page=30",
+        "evidence": "PDF page 30 (printed page 28) describes a 150 by 70 ft skylight, west entry on Level 3, and west bridges on Levels 5-8. This supports atrium/bridge interpretation but not precise void outlines or level elevations."
+      },
+      {
+        "id": "eer-ut-atrium",
+        "title": "UT Texas Engineer: A Unifying Force",
+        "url": "https://magazine.engr.utexas.edu/2017/a-unifying-force",
+        "evidence": "The university describes the 70 ft wide atrium connecting the north and south towers. This independently corroborates width, not height or detailed slab boundaries."
+      },
+      {
+        "id": "eer-renovation-2026",
+        "title": "TDLR TABS2027000248: EER New Material Science Group",
+        "url": "https://www.tdlr.texas.gov/TABS/Projects/TABS2027000248",
+        "evidence": "Registered September 3, 2026: approximately 3,000 square feet of library-to-office renovation, scheduled September 8, 2026-January 25, 2027. No floor/room IDs or replacement geometry; scheduled dates and Review Complete status do not establish as-built completion."
+      }
+    ]
+  },
   "vertical": {
     "datum": {"floor_id": "1", "description": "Level 1 = 0 ft model datum; not surveyed altitude"},
     "reviewed": "2026-10-21",
