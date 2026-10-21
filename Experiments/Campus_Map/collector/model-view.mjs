@@ -1,6 +1,8 @@
 import * as THREE from './vendor/three.module.js';
 import { OrbitControls } from './vendor/OrbitControls.js';
 import { toFrame, fromFrame, floorElevation, interpolate, signalColor, signalAt } from './signal-model.mjs';
+import { roomAt } from './architecture.mjs';
+import { wallGeometry, roomGeometry } from './architecture-geometry.mjs';
 
 const rgb = values => new THREE.Color(`rgb(${values.join(',')})`);
 const dispose = group => group.traverse(object => {
@@ -9,9 +11,11 @@ const dispose = group => group.traverse(object => {
 });
 
 export class BuildingView {
-  constructor(container, labelContainer, onPick, onStatus) {
-    this.container = container; this.labels = labelContainer; this.onPick = onPick; this.onStatus = onStatus;
+  constructor(container, labelContainer, onPick, onStatus, onRoomPick) {
+    this.container = container; this.labels = labelContainer; this.onPick = onPick; this.onStatus = onStatus; this.onRoomPick = onRoomPick;
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color('#edf1f1');
+    this.scene.add(new THREE.HemisphereLight('#ffffff', '#74888c', 2.4));
+    const light = new THREE.DirectionalLight('#fff6e7', 2.2); light.position.set(-200, 450, 200); this.scene.add(light);
     this.camera = new THREE.PerspectiveCamera(42, 1, 0.5, 12000);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -24,17 +28,27 @@ export class BuildingView {
     this.controls.addEventListener('change', () => this.invalidate());
     this.buildingGroup = new THREE.Group(); this.scene.add(this.buildingGroup);
     this.floorGroups = new Map(); this.generation = 0; this.points = [];
-    this.options = { spacing: 14, separation: 2, heat: true, points: true, isolate: false, bssid: '*' };
+    this.options = { spacing: 14, separation: 2, wallHeight: 10, walls: true, rooms: true, plans: false, heat: true, points: true, isolate: true, bssid: '*' };
     this.raycaster = new THREE.Raycaster();
-    this.renderer.domElement.addEventListener('dblclick', event => {
+    const floorHit = event => {
       const floor = this.floorGroups.get(this.floor);
-      if (!floor) return;
+      if (!floor) return null;
       const rect = this.renderer.domElement.getBoundingClientRect();
       this.raycaster.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2), this.camera);
-      const hit = this.raycaster.intersectObject(floor.plan)[0];
-      if (!hit) return;
-      const p = fromFrame(floor.config, hit.point.x, -hit.point.z);
-      if (p) this.onPick(this.floor, p);
+      const point = this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -floor.group.position.y), new THREE.Vector3());
+      if (!point) return null;
+      const pixel = fromFrame(floor.config, point.x, -point.z), [x0, y0, x1, y1] = floor.config.fit;
+      return pixel && pixel.x >= x0 && pixel.x <= x1 && pixel.y >= y0 && pixel.y <= y1 ? { point, pixel, floor } : null;
+    };
+    this.renderer.domElement.addEventListener('pointerdown', event => { this.pointerStart = [event.clientX, event.clientY]; });
+    this.renderer.domElement.addEventListener('click', event => {
+      if (!this.pointerStart || Math.hypot(event.clientX - this.pointerStart[0], event.clientY - this.pointerStart[1]) > 5) return;
+      const hit = floorHit(event);
+      if (hit) this.onRoomPick?.(roomAt(hit.floor.model, hit.point.x, -hit.point.z));
+    });
+    this.renderer.domElement.addEventListener('dblclick', event => {
+      const hit = floorHit(event);
+      if (hit) this.onPick(this.floor, hit.pixel);
     });
     this.renderer.domElement.addEventListener('webglcontextlost', event => {
       event.preventDefault(); this.onStatus('3D graphics paused. Reload the page to restore them, or use 2D survey.');
@@ -73,26 +87,47 @@ export class BuildingView {
     return geometry;
   }
 
-  async setBuilding(building, selectedFloor) {
-    const generation = ++this.generation;
+  clearBuilding() {
+    this.generation++;
     dispose(this.buildingGroup); this.buildingGroup.clear(); this.labels.replaceChildren(); this.floorGroups.clear();
-    if (this.grid) { this.scene.remove(this.grid); dispose(this.grid); }
-    this.building = building; this.floor = selectedFloor;
+    if (this.grid) { this.scene.remove(this.grid); dispose(this.grid); this.grid = null; }
+    this.building = null; this.architecture = null; this.bounds = null; this.invalidate();
+  }
+
+  async setBuilding(building, selectedFloor, architecture) {
+    this.clearBuilding();
+    const generation = this.generation;
+    this.building = building; this.floor = selectedFloor; this.architecture = architecture; this.selectedRoom = null;
     const box = new THREE.Box3(); let missing = 0;
     const loads = [];
     for (const floor of building.floors) {
       if (!floor.to_frame || !floor.fit) { missing++; continue; }
       const group = new THREE.Group(), geometry = this.geometry(floor);
       const plan = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: '#fbfcfa', transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+      plan.position.y = 0.08;
       const outline = new THREE.LineSegments(new THREE.EdgesGeometry(geometry), new THREE.LineBasicMaterial({ color: '#87a6a8', transparent: true, opacity: 0.6 }));
       const heat = new THREE.Mesh(geometry.clone(), new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, opacity: 0.62 }));
       heat.position.y = 0.18; heat.visible = false;
       const markers = new THREE.Group(), overlay = new THREE.Group();
-      group.add(plan, outline, heat, markers, overlay); this.buildingGroup.add(group);
+      const walls = new THREE.Group(), rooms = new THREE.Group(), architectureGroup = new THREE.Group();
+      const model = architecture?.floors.find(f => f.id === floor.id);
+      for (const wall of model?.walls || []) {
+        const geometry = wallGeometry(wall); geometry.rotateX(-Math.PI / 2);
+        const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: '#e3e4df', roughness: 0.9 }));
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 25), new THREE.LineBasicMaterial({ color: '#7d9191', transparent: true, opacity: 0.6 }));
+        walls.add(mesh, edges);
+      }
+      for (const room of model?.rooms || []) {
+        const geometry = roomGeometry(room); geometry.rotateX(-Math.PI / 2);
+        const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: '#d2dcd9', roughness: 1, side: THREE.DoubleSide }));
+        mesh.position.y = 0.04; mesh.userData.room = room; rooms.add(mesh);
+      }
+      architectureGroup.add(walls, rooms);
+      group.add(plan, outline, architectureGroup, heat, markers, overlay); this.buildingGroup.add(group);
       const label = document.createElement('div'); label.className = 'floor-label'; label.textContent = `LEVEL ${floor.id}`; this.labels.appendChild(label);
       const anchor = toFrame(floor, floor.fit[0], floor.fit[3]);
-      this.floorGroups.set(floor.id, { group, plan, outline, heat, markers, overlay, label, anchor, config: floor });
-      box.expandByObject(plan);
+      this.floorGroups.set(floor.id, { group, plan, outline, heat, markers, overlay, label, anchor, config: floor, model, walls, rooms, architectureGroup });
+      box.expandByObject(model?.walls.length ? architectureGroup : plan);
       loads.push(new Promise(resolve => {
         const image = new Image();
         image.onload = () => {
@@ -128,6 +163,12 @@ export class BuildingView {
       f.group.position.y = floorElevation(this.building, id, this.options.spacing) * this.options.separation;
       lowest = Math.min(lowest, f.group.position.y);
       f.group.visible = !this.options.isolate || active;
+      f.walls.visible = this.options.walls;
+      f.walls.scale.y = this.options.wallHeight;
+      f.rooms.visible = this.options.rooms;
+      f.plan.visible = this.options.plans;
+      f.outline.visible = this.options.plans;
+      for (const mesh of f.rooms.children) mesh.material.color.set(mesh.userData.room.id === this.selectedRoom ? '#57b6a7' : '#d2dcd9');
       f.plan.material.opacity = active ? 0.95 : 0.23;
       f.outline.material.color.set(active ? '#386b6e' : '#87a6a8');
       f.heat.material.opacity = active ? 0.64 : 0.26;
@@ -135,11 +176,13 @@ export class BuildingView {
       f.markers.visible = this.options.points;
       f.label.classList.toggle('active', active);
     }
-    if (this.grid) this.grid.position.y = lowest - 12;
+    if (this.grid) this.grid.position.y = this.options.isolate ? (this.floorGroups.get(this.floor)?.group.position.y || 0) - 1 : lowest - 1;
     this.drawOverlay(); this.invalidate();
   }
 
-  setFloor(id, selectedPoint) { this.floor = id; this.selectedPoint = selectedPoint; this.updateLayout(); }
+  setFloor(id, selectedPoint) { const changed = this.floor !== id; this.floor = id; this.selectedPoint = selectedPoint; if (changed) this.selectedRoom = null; this.updateLayout(); if (changed && this.options.isolate) this.fit(this.topView); }
+
+  selectRoom(id) { this.selectedRoom = id; this.updateLayout(); }
 
   setOptions(options) {
     const heatChanged = options.bssid !== this.options.bssid;
@@ -170,6 +213,24 @@ export class BuildingView {
           image.data.set([...color, 220], offset);
         }
         ctx.putImageData(image, 0, 0);
+        if (floor.model?.rooms.length) {
+          // Mask the display to reconstructed spaces. This does not alter signal values
+          // or constrain the fingerprint estimator; unsupported/open regions stay blank.
+          const mask = document.createElement('canvas'); mask.width = mask.height = resolution;
+          const maskContext = mask.getContext('2d');
+          for (const room of floor.model.rooms) {
+            const path = new Path2D();
+            for (const ring of [room.outline, ...room.holes]) {
+              ring.forEach(([x, y], i) => {
+                const p = fromFrame(floor.config, x, y), px = (p.x - x0) / (x1 - x0) * resolution, py = (p.y - y0) / (y1 - y0) * resolution;
+                if (i) path.lineTo(px, py); else path.moveTo(px, py);
+              });
+              path.closePath();
+            }
+            maskContext.fill(path, 'evenodd');
+          }
+          ctx.globalCompositeOperation = 'destination-in'; ctx.drawImage(mask, 0, 0);
+        }
         floor.heat.material.map = new THREE.CanvasTexture(canvas); floor.heat.material.map.colorSpace = THREE.SRGBColorSpace;
       }
       floor.heat.material.needsUpdate = true;
@@ -207,10 +268,10 @@ export class BuildingView {
     this.topView = top;
     this.scene.updateMatrixWorld(true);
     const active = this.floorGroups.get(this.floor);
-    const bounds = (top || this.options.isolate) && active ? new THREE.Box3().setFromObject(active.plan) : this.bounds.clone();
+    const bounds = (top || this.options.isolate) && active ? new THREE.Box3().setFromObject(active.model?.walls.length ? active.architectureGroup : active.plan) : this.bounds.clone();
     if (!top && !this.options.isolate) {
       const heights = [...this.floorGroups.values()].map(f => f.group.position.y);
-      bounds.min.y = Math.min(...heights); bounds.max.y = Math.max(...heights);
+      bounds.min.y = Math.min(...heights); bounds.max.y = Math.max(...heights) + this.options.wallHeight;
     }
     const center = bounds.getCenter(new THREE.Vector3()), size = bounds.getSize(new THREE.Vector3());
     const halfFov = THREE.MathUtils.degToRad(this.camera.fov / 2);
@@ -225,6 +286,18 @@ export class BuildingView {
     const direction = top ? new THREE.Vector3(0, 1, 0.00001) : new THREE.Vector3(0.85, 0.95, 1.15).normalize();
     this.camera.position.copy(center).addScaledVector(direction, Math.max(20, distance));
     this.controls.update(); this.invalidate();
+  }
+
+  focusRoom(room) {
+    const f = this.floorGroups.get(this.floor);
+    const mesh = f?.rooms.children.find(m => m.userData.room.id === room?.id);
+    if (!mesh) return;
+    this.scene.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(mesh), center = bounds.getCenter(new THREE.Vector3());
+    const size = bounds.getSize(new THREE.Vector3());
+    const distance = Math.max(55, size.length() * 2.2 / Math.min(1, this.camera.aspect));
+    this.controls.target.copy(center); this.camera.position.copy(center).addScaledVector(new THREE.Vector3(.5, 1.3, 1).normalize(), distance);
+    this.topView = false; this.controls.update(); this.invalidate();
   }
 
   positionLabels() {

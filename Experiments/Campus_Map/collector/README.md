@@ -13,10 +13,16 @@ is needed once this repository is on the laptop. Serve over HTTP rather than ope
 
 ## 3D model and signal layers
 
-The default workspace stacks the registered floor plans for **EER (9 levels), ASE (7), and ECJ (15)**.
-Drag to orbit and scroll to zoom. Choose a floor, then use **Top view** to isolate it or **Perspective**
-to reset the camera. Toggle **Active floor only** off to restore the complete stack. Double-click the
-active floor to place the collector's survey point; the same point appears in **2D survey**.
+The default workspace renders **actual extruded wall meshes and room floor surfaces** for
+**EER (9 levels), ASE (7), and ECJ (15)**. Interiors are empty: there are no furniture, equipment or
+decorative assets. Drag to orbit and scroll to zoom. Choose a floor, then use **Top view** or
+**Perspective**. Toggle **Active floor only** off to see the building stack. **Plan reference** shows
+the original drawing underneath the geometry for checking alignment.
+
+Click a room surface or choose a **Room / enclosed space** to highlight it and see its approximate
+area. **Focus room** zooms in. **Use room center** places an interior DAQ point and fills a single
+recognized room label; merged/unlabeled spaces require you to enter the label. Double-click the active
+floor to place any survey point. The same location appears in **2D survey**.
 
 Click **Explore demo** for clearly labeled synthetic coverage and a sample position estimate without
 hardware. This demo is separate from the serial **Simulator**, which tests collection and raw logging.
@@ -24,14 +30,46 @@ Neither source contributes to the real survey model.
 
 For real measurements, choose **My surveys** and **Import CSV files**, or collect new hardware scans
 using the controls below Position estimate. Choose **Strongest observed signal** or a specific BSSID
-to color the sample markers and heatmap. The heatmap interpolates samples on each floor within 60 ft;
-blank regions have no supporting measurements. It is not a radio-propagation simulation or an AP-location map.
+to color the sample markers and heatmap. The heatmap interpolates samples on each floor within 60 ft
+and clips its display to reconstructed room surfaces. Blank regions have no supporting measurements
+or no resolved room boundary. It is not a radio-propagation simulation or an AP-location map.
 
-Horizontal geometry uses each plan's existing affine registration in feet. This is a stack of textured
-floor plans, not a wall/room mesh or BIM import. Heights are **approximate**: ordered levels default to
-14 ft spacing, including basements and mezzanines. Adjust this under **Model & height settings**.
-Optional `elevation_ft` on a floor overrides the spacing rule. **Visual floor separation** exaggerates
-vertical spacing only; it does not affect matching or exported coordinates.
+Horizontal geometry uses each plan's existing affine registration in feet. Walls and rooms are
+automatically reconstructed from PDF vector strokes; they are **not verified as-built CAD/BIM data**.
+Some wall segments are incomplete, some connected rooms share one region, and OCR room numbers can
+be wrong. Labels separated by `/` indicate several plan labels in one reconstructed region. Unlabeled
+regions use `Space NNN`. Compare the reference plan before using these boundaries as spatial constraints.
+
+Under **Heights & 3D export**, walls default to **10 ft** and ordered floors to **14 ft** spacing,
+including basements and mezzanines. Both are approximate and editable. Optional `elevation_ft` on a
+floor overrides the spacing rule. **Visual floor separation** exaggerates vertical spacing only.
+**Export building OBJ** downloads wall solids and room surfaces for all levels, with named objects,
+building X/Y coordinates and Z up. Set the importing application's units to **feet**. Export uses
+physical spacing and wall height, excludes visual separation, and contains no signals or plan textures.
+This is a mesh export; parametric CAD editing, STEP/IFC and model import are not implemented.
+
+### Geometry source and regeneration
+
+The checked-in `buildings/<id>/architecture.json` files are runtime assets. `architecture.mjs` validates
+them and locates points in rooms; `architecture-geometry.mjs` creates meshes and exports OBJ.
+`build_architecture.py` is an optional offline authoring utility, not a browser/server dependency.
+It pairs wall faces, filters short lettering and repeated stair treads, uses door arcs and small virtual
+closures for room detection, and optionally reads room labels with local OCR. Virtual door closures
+are **never extruded into walls**. Rooms include holes and an interior representative point.
+
+To regenerate in an isolated Python environment, install `pymupdf`, `numpy`, `opencv-python`, `shapely`
+(2.x), and `rapidocr_onnxruntime`, then run from this directory:
+
+```sh
+python build_architecture.py --ocr --ocr-cache /path/to/temporary-label-cache --preview-dir /path/to/temporary-previews
+# A partial run produces diagnostic output only, preserving full runtime assets:
+python build_architecture.py EER --floor 2 --ocr --preview-dir /path/to/temporary-previews
+```
+
+Tested with Python 3.12.10, PyMuPDF 1.28.2, NumPy 2.5.4, OpenCV 5.0.0, Shapely 2.2.0 and
+RapidOCR ONNX Runtime 1.4.4. Clear the OCR cache after changing source PDFs or registration metadata.
+Source PDF SHA-256 values are recorded in the generated files. Without `--ocr`, labels are generic.
+Inspect the diagnostic drawings and rerun tests before accepting regenerated geometry.
 
 ## Position estimation
 
@@ -40,6 +78,8 @@ vertical spacing only; it does not affect matching or exported coordinates.
    a JSON object containing an `aps` array. No position label is required for the query.
 3. The teal marker shows the estimate. Dashed lines connect matching survey points; the circle shows
    their spatial spread. **Show estimated floor** focuses the result, even if another floor was selected.
+   **Model space** reports the reconstructed region containing the estimate, or an open/unresolved
+   space. This is separate from the nearest survey's label. Geometry does not snap or constrain estimates.
 
 The estimator averages repeat scans at each physical point, compares up to 32 strongest query BSSIDs
 against survey fingerprints using RMS RSSI difference (missing BSSID = −100 dBm), and weights the five

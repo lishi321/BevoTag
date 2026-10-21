@@ -70,6 +70,12 @@ input[type=checkbox] { width:13px; height:13px; accent-color:#285c5c; }
 .model-settings output { float:right; color:#345b5e; }
 input[type=range] { padding:0; accent-color:#285c5c; }
 .estimate-card { border-color:#bdcecc; }
+.architecture-card { border-color:#b9ccc9; }
+.architecture-card #architectureSummary { margin-top:-5px; }
+.architecture-actions { margin:0 0 12px; }
+.architecture-actions button { flex:1; font-size:11px; }
+.model-provenance { color:#7b8884; margin-bottom:0; padding-top:4px; }
+#roomDetail { min-height:34px; margin-top:-4px; }
 .estimate-card .primary { font-size:12px; padding:11px; }
 .paste-scan { margin-top:13px; }
 textarea { resize:vertical; border:1px solid var(--line); border-radius:6px; font:11px ui-monospace,monospace; color:var(--text); width:100%; }

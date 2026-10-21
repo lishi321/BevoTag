@@ -32,12 +32,12 @@
     <nav class="floors" aria-label="Building and floor"><select id="building" title="Building"></select><div id="floorTabs" class="floortabs"></div></nav>
     <div id="modelViewport" class="model-viewport">
       <div id="modelCanvas" aria-label="Interactive 3D building. Drag to orbit, scroll to zoom, double-click the selected floor to set a survey point."></div>
-      <div class="scene-heading"><div class="eyebrow">SPATIAL SIGNAL MAP</div><h1 id="sceneTitle">Building model</h1><p id="sceneSubtitle">Registered floor plans · building coordinates in feet</p></div>
+      <div class="scene-heading"><div class="eyebrow">ROOM &amp; WALL MODEL</div><h1 id="sceneTitle">Building model</h1><p id="sceneSubtitle">Plan-derived geometry · building coordinates in feet</p></div>
       <span id="dataBadge" class="data-badge">NO SURVEY DATA</span>
       <div class="camera-controls" role="group" aria-label="Camera controls"><button id="cameraIso" title="Reset perspective view">Perspective</button><button id="cameraTop" title="View selected floor from above">Top view</button><button id="cameraFit" title="Fit building to viewport">Fit</button></div>
       <div id="modelStatus" class="model-status" role="status">Loading 3D model…</div>
       <div id="floorLabels" class="floor-labels" aria-hidden="true"></div>
-      <div class="scene-footer"><div class="signal-legend"><span>RSSI <b>dBm</b></span><div class="spectrum"></div><div class="legend-ticks"><span>−95 weak</span><span>−65</span><span>−35 strong</span></div></div><p>Drag to orbit · scroll to zoom<br>Double-click the active floor to place a survey point</p></div>
+      <div class="scene-footer"><div class="signal-legend"><span>RSSI <b>dBm</b></span><div class="spectrum"></div><div class="legend-ticks"><span>−95 weak</span><span>−65</span><span>−35 strong</span></div></div><p>Click a room · drag to orbit · scroll to zoom<br>Double-click the active floor to place a survey point</p></div>
     </div>
     <div id="viewport" class="viewport" hidden>
       <div id="stage" class="stage">
@@ -55,15 +55,29 @@
   </section>
 
   <aside class="panel">
+    <div class="card architecture-card">
+      <div class="card-title"><h2>Building model</h2><span class="section-number">CAD VIEW</span></div>
+      <p id="architectureSummary" class="small muted" role="status">Loading wall and room geometry…</p>
+      <div class="layer-checks"><label class="check"><input id="showWalls" type="checkbox" checked> Walls</label><label class="check"><input id="showRooms" type="checkbox" checked> Room surfaces</label><label class="check"><input id="showPlans" type="checkbox"> Plan reference</label><label class="check"><input id="isolateFloor" type="checkbox" checked> Active floor only</label></div>
+      <label>Room / enclosed space<select id="modelRoom"><option value="">Select a room in the model</option></select></label>
+      <p id="roomDetail" class="small muted">Click a room surface or choose one above.</p>
+      <div class="btnrow architecture-actions"><button id="btnFocusRoom" disabled>Focus room</button><button id="btnRoomPoint" disabled>Use room center</button></div>
+      <details class="model-settings"><summary>Heights &amp; 3D export</summary>
+        <div class="grid2"><label>Wall height (ft)<input id="wallHeight" type="number" min="1" max="30" step="0.5" value="10"></label><label>Floor spacing (ft)<input id="floorSpacing" type="number" min="6" max="40" step="1" value="14"></label></div>
+        <label>Visual floor separation <output id="separationValue">2×</output><input id="floorSeparation" type="range" min="1" max="5" step="0.25" value="2"></label>
+        <button id="btnExportModel" class="wide" disabled>Export building OBJ</button>
+        <p class="small muted">Heights are approximate and editable. OBJ uses feet and physical floor spacing; visual separation is excluded.</p>
+      </details>
+      <p class="small model-provenance">Reconstructed from floor plans. Some boundaries and room labels need review. Empty interiors; no furniture.</p>
+    </div>
     <div class="card signal-card">
       <div class="card-title"><h2>Signal layers</h2><span class="section-number">01</span></div>
       <label>Survey source<select id="surveySource"><option value="survey">My surveys</option><option value="demo">Demo · synthetic signals</option></select></label>
       <div class="btnrow import-row"><button id="btnImport">Import CSV files</button><button id="btnClearImport" title="Remove imported files from this page">Clear imports</button><input id="csvFiles" type="file" accept=".csv,text/csv" multiple hidden></div>
       <p id="surveySummary" class="small muted" role="status">Import survey logs or collect points to map signals.</p>
       <label>Signal to display<select id="signalSelect"><option value="*">Strongest observed signal</option></select></label>
-      <div class="layer-checks"><label class="check"><input id="showHeat" type="checkbox" checked> Heatmap</label><label class="check"><input id="showPoints" type="checkbox" checked> Sample points</label><label class="check"><input id="isolateFloor" type="checkbox"> Active floor only</label></div>
-      <p class="small muted">Heatmap interpolates nearby samples. Blank areas have no survey support.</p>
-      <details class="model-settings"><summary>Model &amp; height settings</summary><label>Approximate floor spacing (ft)<input id="floorSpacing" type="number" min="6" max="40" step="1" value="14"></label><label>Visual floor separation <output id="separationValue">2×</output><input id="floorSeparation" type="range" min="1" max="5" step="0.25" value="2"></label><p class="small muted">Heights are approximate. Separation changes the view only. Floor-plan registration supplies horizontal geometry; wall heights are not modeled.</p></details>
+      <div class="layer-checks"><label class="check"><input id="showHeat" type="checkbox" checked> Heatmap</label><label class="check"><input id="showPoints" type="checkbox" checked> Sample points</label></div>
+      <p class="small muted">Heatmap interpolates nearby samples inside modeled spaces. Blank areas lack survey support or a resolved room boundary.</p>
     </div>
     <div class="card estimate-card">
       <div class="card-title"><h2>Position estimate</h2><span class="section-number">02</span></div>

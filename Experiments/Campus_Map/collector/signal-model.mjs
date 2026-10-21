@@ -193,10 +193,20 @@ export function demoScan(building, floorId, x, y) {
   return { type: 'scan', aps };
 }
 
-export function demoSurvey(building) {
+export function demoSurvey(building, architecture = null) {
   const samples = [];
   for (const floor of building.floors) {
     if (!floor.to_frame || !floor.fit) continue;
+    const rooms = architecture?.floors.find(f => f.id === floor.id)?.rooms;
+    if (rooms?.length) {
+      const count = Math.min(40, rooms.length);
+      for (let i = 0; i < count; i++) {
+        const room = rooms[Math.floor(i * rooms.length / count)], p = fromFrame(floor, ...room.center);
+        samples.push({ building: building.id, floor: floor.id, room: `Demo · ${room.label}`, x_px: p.x, y_px: p.y,
+          scan: demoScan(building, floor.id, ...room.center), source: 'demo' });
+      }
+      continue;
+    }
     const [x0, y0, x1, y1] = floor.fit;
     for (let row = 0; row < 4; row++) for (let col = 0; col < 4; col++) {
       const x_px = x0 + (x1 - x0) * (0.16 + col * 0.22), y_px = y0 + (y1 - y0) * (0.16 + row * 0.22);

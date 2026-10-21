@@ -1,10 +1,54 @@
 import { BuildingView } from './model-view.mjs';
-import { parseCSV, importSurvey, surveyPoints, estimatePosition, demoSurvey, demoScan, toFrame } from './signal-model.mjs';
+import { parseCSV, importSurvey, surveyPoints, estimatePosition, demoSurvey, demoScan, toFrame, fromFrame } from './signal-model.mjs';
+import { roomAt, validateArchitecture } from './architecture.mjs';
+import { exportArchitectureOBJ } from './architecture-geometry.mjs';
 
 const $ = id => document.getElementById(id);
 const api = window.BevoTag, S = api.S;
 let view, buildingId, points = [], importedRows = [], imported = [], estimate = null, estimating = false;
 let modelMessage = '', demo = [], importInfo = '', currentView = '3d', importing = false;
+let architecture = null, modelFloor = null, selectedRoom = null, loadGeneration = 0;
+
+function chooseRoom(room) {
+  selectedRoom = room;
+  $('modelRoom').value = room?.id || '';
+  $('roomDetail').textContent = room ? `${room.label} · ≈ ${Math.round(room.area_ft2).toLocaleString()} sq ft · ${room.label_source === 'plan-ocr' ? 'label read from plan' : 'unlabeled space'}` : 'Click a room surface or choose one above.';
+  view?.selectRoom(room?.id || null); controls();
+}
+
+function refreshArchitecture() {
+  const floor = architecture?.floors.find(f => f.id === S.floor);
+  $('architectureSummary').textContent = floor ? `${floor.rooms.length} enclosed spaces · ${floor.walls.length} wall solids on level ${S.floor}` : 'No wall geometry loaded for this floor.';
+  $('btnExportModel').disabled = !architecture;
+  if (modelFloor === floor) return;
+  modelFloor = floor;
+  $('modelRoom').replaceChildren(new Option('Select a room in the model', ''));
+  for (const room of [...(floor?.rooms || [])].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }))) $('modelRoom').appendChild(new Option(room.label, room.id));
+  chooseRoom(null);
+}
+
+async function loadArchitecture(building) {
+  const generation = ++loadGeneration;
+  view?.clearBuilding();
+  architecture = null; modelFloor = null; refreshArchitecture();
+  try {
+    const response = await fetch(`buildings/${building.id}/architecture.json`);
+    if (!response.ok) throw new Error(`model file returned HTTP ${response.status}`);
+    const data = validateArchitecture(await response.json(), building);
+    if (generation !== loadGeneration) return;
+    architecture = data;
+    demo = demoSurvey(building, architecture);
+    const loading = view?.setBuilding(building, S.floor, architecture);
+    options(); refreshArchitecture(); refreshData();
+    await loading;
+    if (!view) modelMessage = '';
+    if (generation === loadGeneration) status();
+  } catch (error) {
+    if (generation !== loadGeneration) return;
+    modelMessage = `Wall model unavailable: ${error.message}. Use the 2D survey to view the plan.`;
+    refreshArchitecture(); status();
+  }
+}
 
 function status() {
   $('modelStatus').textContent = modelMessage || (!points.length ? 'Import survey CSVs or explore the demo to see signal coverage.' : '');
@@ -29,6 +73,8 @@ function controls() {
   for (const id of ['btnDemo', 'surveySource', 'btnImport', 'btnClearImport', 'btnEstimateJson']) $(id).disabled = busy;
   $('btnEstimate').disabled = busy || points.length < 3;
   $('btnEstimate').textContent = estimating ? 'Matching fingerprints…' : $('surveySource').value === 'demo' ? 'Estimate demo signal' : 'Scan & estimate position';
+  $('btnFocusRoom').disabled = !selectedRoom || !view;
+  $('btnRoomPoint').disabled = busy || !selectedRoom;
 }
 
 function refreshData(reset = true) {
@@ -59,21 +105,27 @@ function syncBuilding() {
   if (buildingId !== S.building) {
     buildingId = S.building; demo = demoSurvey(building);
     $('buildingName').textContent = building.name;
-    modelMessage = 'Loading registered floor plans…';
-    view?.setBuilding(building, S.floor).catch(error => { modelMessage = `3D model failed: ${error.message}. Use 2D survey.`; status(); });
+    modelMessage = 'Loading room and wall geometry…';
+    loadArchitecture(building);
     refreshData();
   }
   $('sceneTitle').textContent = `${building.id} / Level ${S.floor}`;
-  $('sceneSubtitle').textContent = `${building.floors.length} registered levels · approximate heights`;
+  $('sceneSubtitle').textContent = `${building.floors.length} modeled levels · heights adjustable`;
   view?.setFloor(S.floor, S.point);
+  refreshArchitecture();
   controls();
 }
 
 function options() {
   const spacing = Math.max(6, Math.min(40, Number($('floorSpacing').value) || 14));
   const separation = Number($('floorSeparation').value);
+  const wallHeight = Math.max(1, Math.min(30, Number($('wallHeight').value) || 10));
+  const isolateChanged = view && view.options.isolate !== $('isolateFloor').checked;
+  const heightsChanged = view && (view.options.spacing !== spacing || view.options.separation !== separation);
+  $('wallHeight').value = wallHeight;
   $('floorSpacing').value = spacing; $('separationValue').value = `${separation}×`;
-  view?.setOptions({ spacing, separation, bssid: $('signalSelect').value, heat: $('showHeat').checked, points: $('showPoints').checked, isolate: $('isolateFloor').checked });
+  view?.setOptions({ spacing, separation, wallHeight, walls: $('showWalls').checked, rooms: $('showRooms').checked, plans: $('showPlans').checked, bssid: $('signalSelect').value, heat: $('showHeat').checked, points: $('showPoints').checked, isolate: $('isolateFloor').checked });
+  if (isolateChanged || heightsChanged) view.fit();
 }
 
 function renderEstimate(result, source) {
@@ -84,6 +136,8 @@ function renderEstimate(result, source) {
   const title = document.createElement('strong'); title.textContent = `${S.building} · Level ${result.floor}`; output.appendChild(title);
   const position = document.createElement('div'); position.textContent = `Building frame: ${result.x.toFixed(1)}, ${result.y.toFixed(1)} ft`; output.appendChild(position);
   const room = document.createElement('div'); room.textContent = `Nearest survey label: ${result.room || 'unlabeled'}`; output.appendChild(room);
+  const modelRoom = roomAt(architecture?.floors.find(f => f.id === result.floor), result.x, result.y);
+  const space = document.createElement('div'); space.textContent = `Model space: ${modelRoom?.label || 'open or unresolved space'}`; output.appendChild(space);
   const grid = document.createElement('div'); grid.className = 'result-detail';
   for (const [label, value] of [['Neighbor spread', `${result.spread.toFixed(1)} ft`], ['Shared BSSIDs', result.shared], ['Fingerprint difference', `${result.distance.toFixed(1)} dB RMS`], ['Matching points', result.neighbors.length]]) {
     const item = document.createElement('div'); item.textContent = label;
@@ -108,7 +162,8 @@ async function runEstimate(pasted = false) {
     } else if (synthetic) {
       const building = S.buildings[S.building], floor = building.floors.find(f => f.id === S.floor);
       const [x0, y0, x1, y1] = floor.fit;
-      const pixel = S.point || { x: x0 + (x1 - x0) * 0.47, y: y0 + (y1 - y0) * 0.51 };
+      const room = modelFloor?.rooms[Math.floor(modelFloor.rooms.length / 2)];
+      const pixel = S.point || (room && fromFrame(floor, ...room.center)) || { x: x0 + (x1 - x0) * 0.47, y: y0 + (y1 - y0) * 0.51 };
       const p = toFrame(floor, pixel.x, pixel.y); scan = demoScan(building, S.floor, p.x, p.y);
       source = 'Synthetic demo query';
     } else {
@@ -144,7 +199,7 @@ async function importFiles(files) {
 async function init() {
   if (!await api.ready) throw new Error('Building metadata failed to load. Serve this folder over HTTP.');
   try {
-    view = new BuildingView($('modelCanvas'), $('floorLabels'), (floor, p) => { if (!S.collecting && !S.locating) { api.setFloor(floor, true); api.setPoint(p.x, p.y); } }, message => { modelMessage = message; status(); });
+    view = new BuildingView($('modelCanvas'), $('floorLabels'), (floor, p) => { if (!S.collecting && !S.locating) { api.setFloor(floor, true); api.setPoint(p.x, p.y); } }, message => { modelMessage = message; status(); }, chooseRoom);
   } catch (error) {
     $('graphicsNotice').textContent = `3D requires WebGL 2: ${error.message}. The 2D survey, data import, and position estimation remain available.`;
     $('graphicsNotice').hidden = false;
@@ -157,8 +212,26 @@ async function init() {
   $('btnImport').onclick = () => $('csvFiles').click();
   $('csvFiles').onchange = event => importFiles([...event.target.files]);
   $('btnClearImport').onclick = () => { imported = []; importedRows = []; importInfo = ''; refreshData(); };
-  for (const id of ['signalSelect', 'showHeat', 'showPoints', 'isolateFloor', 'floorSpacing']) $(id).onchange = options;
+  for (const id of ['signalSelect', 'showHeat', 'showPoints', 'isolateFloor', 'floorSpacing', 'showWalls', 'showRooms', 'showPlans', 'wallHeight']) $(id).onchange = options;
   $('floorSeparation').oninput = options;
+  $('modelRoom').onchange = () => chooseRoom(modelFloor?.rooms.find(r => r.id === $('modelRoom').value) || null);
+  $('btnFocusRoom').onclick = () => { if (selectedRoom) { $('isolateFloor').checked = true; options(); selectView('3d'); view?.focusRoom(selectedRoom); } };
+  $('btnRoomPoint').onclick = () => {
+    if (!selectedRoom || S.collecting || S.locating || estimating || importing) return;
+    const floor = S.buildings[S.building].floors.find(f => f.id === S.floor);
+    const p = fromFrame(floor, ...selectedRoom.center);
+    if (!p) return;
+    api.setPoint(p.x, p.y);
+    if (selectedRoom.label_source === 'plan-ocr' && !selectedRoom.label.includes(' / ')) $('room').value = selectedRoom.label;
+    else $('room').value = '';
+    $('room').dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  $('btnExportModel').onclick = () => {
+    if (!architecture) return;
+    const text = exportArchitectureOBJ(architecture, S.buildings[S.building], { wallHeight: Number($('wallHeight').value), spacing: Number($('floorSpacing').value) });
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' })), link = document.createElement('a');
+    link.href = url; link.download = `${S.building}-rooms-walls.obj`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+  };
   $('btnEstimate').onclick = () => runEstimate(); $('btnEstimateJson').onclick = () => runEstimate(true);
   $('btnFocusEstimate').onclick = () => {
     if (!estimate?.ok || S.collecting || S.locating) return;
@@ -171,7 +244,7 @@ async function init() {
   window.addEventListener('pagehide', () => view?.destroy(), { once: true });
   syncBuilding();
   // Read-only diagnostics used by browser regression tests.
-  window.BevoTagStudio = { get points() { return points; }, get estimate() { return estimate; }, get view() { return currentView; }, get renderedFloors() { return view?.floorGroups.size || 0; } };
+  window.BevoTagStudio = { get points() { return points; }, get estimate() { return estimate; }, get view() { return currentView; }, get renderedFloors() { return view?.floorGroups.size || 0; }, get architecture() { return architecture; }, get selectedRoom() { return selectedRoom; } };
 }
 
 init().catch(error => { $('modelStatus').textContent = error.message; $('estimateResult').textContent = error.message; });

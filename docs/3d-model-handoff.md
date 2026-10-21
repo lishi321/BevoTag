@@ -3,6 +3,8 @@
 Updated 2026-10-21. The user requested a 3D DAQ webapp with signal-strength visualization and position
 estimation, on branch **`3d-model`**, explicitly without a `codex/` prefix. They chose to continue local
 development and will switch to ChatGPT Work when shutting down the computer.
+They clarified that the model must be **CAD-like at room and wall level, with empty interiors**.
+That geometry is now implemented; the original textured-plan-only view has been replaced.
 
 ## Repository and transfer
 
@@ -21,10 +23,23 @@ The app in `Experiments/Campus_Map/collector/` remains buildless HTML/JS and wor
 
 - `index.html`, `studio.css`, `studio.mjs`: 3D/2D workspace toggle, building/floor controls, CSV import,
   source/BSSID selection, layers, approximate heights, demo and recorded/device query estimation.
-- `model-view.mjs`: local Three.js renderer, 31 textured registered floors across EER/ASE/ECJ,
+- `model-view.mjs`: local Three.js renderer, extruded walls and selectable room surfaces for all
+  31 registered floors across EER/ASE/ECJ, optional reference-plan overlay,
   orbit/zoom, top/perspective/fit, active-floor isolation, RSSI heatmaps and markers, estimate marker,
   matched-neighbor links/spread, and double-click picking synchronized to the original 2D collector.
   GPU resources are disposed on rebuild; stale image loads cannot overwrite a newer building.
+- `build_architecture.py`, `buildings/*/architecture.json`: offline reconstruction from the existing
+  vector PDFs, with paired wall faces, inferred openings, enclosed-space polygons/holes, local OCR
+  room labels and source PDF hashes. There are 3,348 valid wall/room polygons across all 31 floors.
+  Virtual door closures define regions but are not physical wall meshes. Some boundaries/labels
+  remain ambiguous. No furniture/interior assets were added.
+- `architecture.mjs`, `architecture-geometry.mjs`: model validation, room containment, mesh generation
+  and OBJ export. Export is building X/Y, Z-up, feet, with physical floor spacing and wall height.
+  Visual separation is excluded. This is polygonal mesh geometry, not a parametric CAD/BIM editor.
+- Building model UI: walls/rooms/reference toggles; room selection/highlight/area; focus room; place
+  an interior DAQ point; adjustable wall height (10 ft default); OBJ download. Position results now
+  report the containing model space separately from the nearest survey label. Heatmaps are clipped
+  to resolved spaces; synthetic samples are placed inside rooms.
 - `signal-model.mjs`: affine transforms/inverse, CSV parser/import filters, repeated-point averaging,
   bounded inverse-distance RSSI interpolation, weighted-neighbor fingerprint estimator and deterministic
   demo generation. Query scans never enter the training set.
@@ -43,14 +58,20 @@ The app in `Experiments/Campus_Map/collector/` remains buildless HTML/JS and wor
 
 ## Validation completed
 
-- `node --test tests/*.test.mjs`: **18/18 passed**. Tests exercise all 31 registration round-trips,
+- `node --test tests/*.test.mjs`: **24/24 passed**. Tests exercise all 31 registration round-trips,
   demo queries on every floor, sparse/novel fingerprints, floor voting without cross-floor coordinate
   averaging, CSV quoting/corruption, session-scoped discards, simulator exclusions, deduplication,
   averaging, heatmap support, disk-write failures, recording cutoff, and query/collection separation.
+  New geometry tests cover source hashes, floor/page coverage, containment/holes, triangulation area
+  across every polygon, wall volume, OBJ axes and physical heights, and room-based synthetic samples.
+  A separate Shapely audit confirmed all 3,348 serialized polygons are valid after precision repair.
 - Browser: all three buildings render; synthetic signals and estimates work; a controlled CSV fixture
   accepted 3 points and excluded its discarded fourth point; a pasted matching query produced the
   expected EER floor and finite coordinates. Double-click picking in 3D matched the 2D marker and
   location fields. Narrow layouts were inspected and the building selector was fixed to remain readable.
+  CAD checks: all three buildings render; EER room 2.610 and ASE room 1.108 place matching 2D/3D DAQ
+  points; reference overlay aligns; wall-height changes/full-building view work; EER OBJ download
+  completed (15.7 MB at 12 ft wall height). Synthetic estimates report a containing model space.
 - ESP32 firmware **compiled successfully** for `esp32dev`, with PlatformIO 6.2.0, Espressif32 8.0.0 and
   Arduino-ESP32 3.3.12. Final build: RAM 45,704 bytes (13.9%), flash 925,052 bytes (70.6%). No flashing.
 - Tool dependencies were installed in the task scratch directory, not added as project dependencies.
@@ -91,10 +112,14 @@ Those paths are specific to this computer; cloud work should install its own bui
 2. **Measured accuracy:** run held-out surveys with the target board/antenna, estimate floor/position,
    and report floor accuracy and horizontal error. Synthetic floor matching is only a functional test.
    There are no calibrated confidence intervals, wall constraints, temporal filtering or IMU/CSI fusion.
-3. **Geometry:** the model stacks registered plan images; it is not a detailed architectural/BIM mesh
-   or a GLB/OBJ importer. Horizontal registration is existing metadata. Heights default to 14 ft between
-   ordered levels, including mezzanines; add measured `elevation_ft` values when available. Visual floor
-   separation has no effect on matching. Heatmaps interpolate nearby measurements, not propagation.
+3. **Geometry review:** the model contains actual wall solids and room surfaces reconstructed from
+   PDFs, not verified as-built geometry. Some short returns/openings are missing; some adjacent rooms
+   are merged; OCR labels may be wrong. For example, ASE 1.102 currently shares a reconstructed region
+   with circulation labels. Review against Plan reference before adding wall constraints or attenuation.
+   Small drawing artifacts may remain. Heights default to 10 ft walls and 14 ft between ordered levels,
+   including mezzanines; add measured `elevation_ft` values when available. No parametric editing or
+   GLB/OBJ/STEP/IFC import. Heatmaps interpolate nearby measurements; no wall propagation or position
+   snapping is implemented. The room display and OBJ export do not imply measured positioning accuracy.
 4. **Data lifecycle:** imports/live samples are page-memory only; CSV is the record. Import only labeled
    real surveys. Any simulator marker excludes that entire session, conservatively; old logs missing
    identity metadata cannot be classified reliably. Use a fresh page/session for real data.
@@ -106,7 +131,8 @@ Those paths are specific to this computer; cloud work should install its own bui
 
 > Continue BevoTag on branch `3d-model` (no prefix). Read `docs/3d-model-handoff.md` and the collector
 > README first. The 3D signal workspace, CSV import, fingerprint estimates and protocol-compatible
-> firmware are implemented and locally tested. Verify the transferred checkpoint, rerun the 18 Node
+> firmware plus CAD-style room/wall meshes are implemented and locally tested. Verify the transferred
+> checkpoint, rerun the 24 Node
 > tests and firmware build, then work on the remaining validation or refinements I request. Preserve
 > the 2D collection workflow and synthetic/real data separation. Keep approximate geometry and
 > unvalidated positioning accuracy explicit. Do not deploy a hosted website.

@@ -6,12 +6,17 @@ From `Experiments/Campus_Map/collector`, with Node.js 20 or later:
 node --test tests/*.test.mjs
 ```
 
-No npm installation is needed. The 18 tests cover all 31 affine registrations, approximate/measured
+No npm installation is needed. The 24 tests cover all 31 affine registrations, approximate/measured
 heights, BSSID normalization, CSV quoting and corruption, discarded/simulated/unlabeled rows,
 reimport deduplication, repeat averaging, bounded heatmap support, sparse/novel queries, cross-floor
 voting, and independent demo queries. Collector tests execute the actual `app.js` in a VM with fake
 DOM, device and file boundaries to verify failed-write recovery, stop cutoff, simulator metadata,
 late replies, query exclusion and mutual exclusion with collection.
+
+Architecture tests check PDF source hashes and floor/page correspondence, every room's interior
+point and DAQ round-trip, room picking with holes/concavities, malformed models, room-based synthetic
+samples, triangulated area for all 3,348 room/wall polygons, solid volume, and OBJ axes/units/heights.
+Export must omit visual floor separation. An additional Shapely validity audit passed for all polygons.
 
 Serve the app and perform these browser checks after renderer/UI changes:
 
@@ -24,7 +29,10 @@ Serve the app and perform these browser checks after renderer/UI changes:
 4. Double-click a floor in 3D, switch to 2D, and check that the point and location fields agree.
 5. Check a narrow phone viewport and desktop. Floor tabs must scroll while the building selector stays
    readable. Check the browser console for application errors.
-6. Physical-device follow-up: flash the compiled firmware, collect points to a real CSV, reconnect,
+6. Select and focus rooms, place an interior DAQ point and compare it with the 2D source plan. Toggle
+   wall/room/reference layers, adjust heights, and export OBJ. Check holes remain open and physical
+   heights are used even when the view is exploded. Check building switching clears stale geometry.
+7. Physical-device follow-up: flash the compiled firmware, collect points to a real CSV, reconnect,
    verify repeated requests and an unlabelled localization scan, then evaluate held-out positions.
 
 On 2026-10-21, automated tests passed and browser checks covered demo rendering, imported/discarded
