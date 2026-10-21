@@ -10,9 +10,9 @@ That geometry is now implemented; the original textured-plan-only view has been 
 
 - Local checkout: `C:\Users\lishi\Code\BevoTag`, branch `3d-model`.
 - Base: `origin/main` at `1dddf550a24fbe1fb16952fea1b584c871a80970`.
-- Work is local; no cloud task or deployment was created and the branch has not been pushed. Inspect
-  `git status` and `git log -1` for the final local checkpoint. A cloud session needs the branch pushed
-  or the changed files transferred before it can continue. This document alone does not carry the code.
+- Branch `3d-model` is pushed to [GitHub](https://github.com/lishi321/BevoTag/tree/3d-model) and tracks
+  `origin/3d-model`. A cloud session with repository access can check out that branch and continue.
+  Inspect `git status` and `git log -1` for the latest checkpoint. No cloud task or deployment was created.
 - Existing untracked `.claude/` content is unrelated and must be preserved/excluded from this feature.
 - The earlier Codex CLI cloud-environment picker returned no configured environments. ChatGPT Work
   was not started. Continue in this repository; hosting a new Site is outside the requested scope.
