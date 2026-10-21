@@ -26,7 +26,7 @@ void csi_cb(void *ctx, wifi_csi_info_t *info) {
 }
 
 void sendHello() {
-  Serial.printf("{\"type\":\"hello\",\"v\":1,\"fw\":\"0.1.0\",\"chip\":\"%s\",\"mac\":\"%s\"}\n",
+  Serial.printf("{\"type\":\"hello\",\"v\":1,\"fw\":\"0.2.0\",\"chip\":\"%s\",\"mac\":\"%s\"}\n",
                 ESP.getChipModel(), WiFi.macAddress().c_str());
 }
 
@@ -156,45 +156,45 @@ void sendHello() {
 //   Serial.printf("{\"type\":\"info\",\"msg\":\"Scan sequence complete. Waiting for next command.\"}\n");
 // }
 
-// Use this for detecting AP MAC Address  
-void doScan(long id) {
-  Serial.printf("{\"type\":\"info\",\"msg\":\"Starting continuous scan loop for strongest AP\",\"id\":%ld}\n", id);
-  
-  // Infinite loop as requested
-  while (true) {
-    int n = WiFi.scanNetworks(false, true); // blocking active scan, include hidden
-    
-    if (n > 0) {
-      int best_rssi = -128;
-      int best_idx = -1;
-      
-      // Find the AP with the highest RSSI
-      for (int i = 0; i < n; i++) {
-        if (WiFi.RSSI(i) > best_rssi) {
-          best_rssi = WiFi.RSSI(i);
-          best_idx = i;
-        }
-      }
-      
-      if (best_idx != -1) {
-        String ssid = WiFi.SSID(best_idx);
-        ssid.replace("\\", "\\\\"); 
-        ssid.replace("\"", "\\\"");
-        
-        Serial.printf("{\"type\":\"strongest_ap\",\"mac\":\"%s\",\"ssid\":\"%s\",\"rssi\":%d}\n",
-                      WiFi.BSSIDstr(best_idx).c_str(),
-                      ssid.c_str(),
-                      best_rssi);
-      }
-    } else {
-      Serial.println("{\"type\":\"err\",\"msg\":\"No APs found in this cycle\"}");
-    }
-    
-    WiFi.scanDelete();
-    
-    // Mandatory delay to prevent the FreeRTOS watchdog timer from crashing the ESP32
-    delay(2000); 
+// SSIDs can contain control characters; never let one split a JSON serial line.
+void printJsonString(const String &value) {
+  Serial.print('"');
+  for (size_t i = 0; i < value.length(); ++i) {
+    const uint8_t c = static_cast<uint8_t>(value[i]);
+    if (c == '"' || c == '\\') { Serial.print('\\'); Serial.write(c); }
+    else if (c < 0x20) Serial.printf("\\u%04x", c);
+    else Serial.write(c);
   }
+  Serial.print('"');
+}
+
+// One command produces one complete fingerprint, then returns to the command loop.
+void doScan(long id, bool strongestOnly = false) {
+  const uint32_t t0 = millis();
+  const int n = WiFi.scanNetworks(false, true);
+  if (n < 0) {
+    Serial.printf("{\"type\":\"err\",\"id\":%ld,\"msg\":\"scan failed: %d\"}\n", id, n);
+    WiFi.scanDelete();
+    return;
+  }
+  if (strongestOnly) {
+    int best = -1;
+    for (int i = 0; i < n; ++i) if (best < 0 || WiFi.RSSI(i) > WiFi.RSSI(best)) best = i;
+    if (best < 0) Serial.println("{\"type\":\"err\",\"msg\":\"No APs found\"}");
+    else {
+      Serial.printf("{\"type\":\"strongest_ap\",\"mac\":\"%s\",\"rssi\":%d,\"ssid\":", WiFi.BSSIDstr(best).c_str(), static_cast<int>(WiFi.RSSI(best)));
+      printJsonString(WiFi.SSID(best)); Serial.println("}");
+    }
+  } else {
+    Serial.printf("{\"type\":\"scan\",\"v\":1,\"id\":%ld,\"seq\":%lu,\"ms\":%lu,\"dur_ms\":%lu,\"aps\":[",
+                  id, ++seq, millis(), millis() - t0);
+    for (int i = 0; i < n; ++i) {
+      Serial.printf("%s{\"bssid\":\"%s\",\"rssi\":%d,\"ch\":%d,\"ssid\":", i ? "," : "", WiFi.BSSIDstr(i).c_str(), static_cast<int>(WiFi.RSSI(i)), static_cast<int>(WiFi.channel(i)));
+      printJsonString(WiFi.SSID(i)); Serial.print('}');
+    }
+    Serial.println("]}");
+  }
+  WiFi.scanDelete();
 }
 
 void setup() {
@@ -210,7 +210,9 @@ void loop() {
   String line = Serial.readStringUntil('\n');
   if (line.indexOf("\"hello\"") >= 0) sendHello();
   else if (line.indexOf("\"scan\"") >= 0) {
-    int k = line.indexOf("\"id\":");
-    doScan(k >= 0 ? line.substring(k + 5).toInt() : -1);
+    int k = line.indexOf("\"id\"");
+    int colon = k >= 0 ? line.indexOf(':', k + 4) : -1;
+    doScan(colon >= 0 ? line.substring(colon + 1).toInt() : -1);
   }
+  else if (line.indexOf("\"strongest\"") >= 0) doScan(-1, true);
 }

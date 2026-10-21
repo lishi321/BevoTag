@@ -15,6 +15,18 @@
     "axes": "x = right on the sheet, y = up on the sheet; sheet up is about 5 deg east of true north",
     "registration": "every floor placed onto floor 4 by structural columns and the tower's outer wall faces (residual <= 0.08 ft on tower floors, ~0.1-0.2 ft for SB/B/1 and 11M); see VERIFICATION.md"
   },
+  "vertical": {
+    "datum": {"floor_id": "1", "description": "Level 1 = 0 ft model datum; not surveyed altitude"},
+    "reviewed": "2026-10-21",
+    "research_status": "no-documented-elevations",
+    "note": "The public roof RFQ describes an approximately 175 ft overall height without a vertical datum. This is context only and cannot establish the roof's elevation relative to Level 1 or any intermediate floor, basement, or mezzanine elevation. No per-level elevation schedule or wall heights were verified. The RFQ identifies original structural as-built set P-ECJ-OC-ASB-0227-NA-CTS-S-ALL-4, dated March 10, 1971, by Page Southerland Page.",
+    "overall_height_context": {"height_ft": 175, "qualifier": "approximate overall height; datum unspecified", "source_id": "ecj-roof-rfq"},
+    "sources": [
+      {"id": "ecj-ut-inventory", "title": "UT building inventory: Ernest Cockrell Jr. Hall (0227)", "url": "https://utdirect.utexas.edu/apps/campus/buildings/information/nlogon/maps/UTM/ECJ/", "evidence": "Lists fourteen floors, excluding the additional roof sheet in the local plan set. No vertical dimensions are published on the inventory page."},
+      {"id": "ecj-roof-rfq", "title": "UT ECJ Roof Replacement RFQ 26DBL001 / CP2001733", "url": "https://utexas.box.com/s/k7zef80nsnhzma53vbyihkfszvcg483w/file/2253671762219", "evidence": "PDF page 29 (Design Criteria section 4.02) gives approximate rooftop elevation of 175 ft without a datum. Page 41 (WJE Roof Condition Assessment, printed page 1) describes a 175-foot-tall structure. Page 66 identifies the original signed structural as-built set; the roof framing excerpts do not provide a usable floor-elevation schedule."},
+      {"id": "ecj-roof-solicitation", "title": "UT Planning, Design and Construction: ECJ roof replacement solicitation", "url": "https://construction.utexas.edu/26dbl001-cp2001733-ecj-roof-replacement-rfq", "evidence": "Official university project page links to the public RFQ folder and identifies roof replacement and mechanical penthouse repairs. This establishes the provenance of the linked RFQ, not per-floor elevations."}
+    ]
+  },
   "floors": [
     {"id": "SB", "name": "Sub-basement", "page": 1, "image": "floors/SB.png", "fit": [972, 660, 3130, 1967], "ft_per_in": 32, "to_frame": [0.128, 0, -243.32, 0, -0.128, 213.724]},
     {"id": "B", "name": "Basement", "page": 2, "image": "floors/B.png", "fit": [1018, 624, 3175, 2047], "ft_per_in": 32, "to_frame": [0.128, 0, -249.027, 0, -0.128, 220.794]},

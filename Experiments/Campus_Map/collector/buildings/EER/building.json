@@ -15,6 +15,18 @@
     "axes": "x = right on the sheet, y = up on the sheet; sheet up is about 5 deg east of true north",
     "registration": "floors 4-8 share one sheet placement; B-3 are shifted onto it by matching structural columns (residual ~0.01 ft, cross-checked by outline and loop closure)"
   },
+  "vertical": {
+    "datum": {"floor_id": "1", "description": "Level 1 = 0 ft model datum; not surveyed altitude"},
+    "reviewed": "2026-10-21",
+    "research_status": "no-documented-elevations",
+    "note": "The official inventory confirms nine floors. The architect-provided transverse section shows unequal lower-level spacing, but has no labeled floor IDs, vertical datum, or elevation dimensions; its graphic scale has no units. No dimensioned level schedule was verified. Neither floor count nor photographs establish floor-to-floor dimensions, basement elevation, or wall heights.",
+    "sources": [
+      {"id": "eer-ut-inventory", "title": "UT building inventory: Engineering Education and Research Center (0223)", "url": "https://utdirect.utexas.edu/apps/campus/buildings/information/nlogon/maps/UTM/EER/", "evidence": "Lists nine floors and identifies restricted floor plans. No vertical dimensions are published on the inventory page."},
+      {"id": "eer-ennead", "title": "Ennead: Engineering Education and Research Center", "url": "https://www.ennead.com/work/eerc", "evidence": "Primary architect project description and architectural imagery. No verified numerical floor elevations or floor-to-floor schedule were recovered from the reviewed material."},
+      {"id": "eer-architect-section", "title": "Ennead architect-provided EERC transverse section, published by ArchDaily", "url": "https://www.archdaily.com/881939/cockrell-school-of-engineering-education-research-center-eerc-ennead-architects/59e83b27b22e38b6a3000639-cockrell-school-of-engineering-education-research-center-eerc-ennead-architects-section", "evidence": "The original 2000 x 1500 image shows unequal lower-level spacing. The graphic scale has no units, and floor IDs, a vertical datum, and elevation dimensions are absent. This establishes a limitation of uniform spacing, not numerical level heights."},
+      {"id": "eer-ut-drawings", "title": "UT EER drawing portal (restricted access)", "url": "https://utdirect.utexas.edu/apps/campus/lis/drawings/EER/", "evidence": "Official inventory link redirects to UT authentication. No additional drawing contents or elevations were verified through this portal."}
+    ]
+  },
   "floors": [
     { "id": "B", "name": "Basement", "page": 1, "image": "floors/B.png", "fit": [240, 290, 2469, 3789], "to_frame": [0.128,  0,  -60.307,  0,  -0.128,  368.209] },
     { "id": "1", "name": "First",    "page": 2, "image": "floors/1.png", "fit": [240, 295, 2469, 3771], "to_frame": [0.128,  0,  -58.977,  0,  -0.128,  452.799] },
