@@ -40,13 +40,28 @@ Some wall segments are incomplete, some connected rooms share one region, and OC
 be wrong. Labels separated by `/` indicate several plan labels in one reconstructed region. Unlabeled
 regions use `Space NNN`. Compare the reference plan before using these boundaries as spatial constraints.
 
-Under **Heights & 3D export**, walls default to **10 ft** and ordered floors to **14 ft** spacing,
-including basements and mezzanines. Both are approximate and editable. Optional `elevation_ft` on a
-floor overrides the spacing rule. **Visual floor separation** exaggerates vertical spacing only.
-**Export building OBJ** downloads wall solids and room surfaces for all levels, with named objects,
-building X/Y coordinates and Z up. Set the importing application's units to **feet**. Export uses
-physical spacing and wall height, excludes visual separation, and contains no signals or plan textures.
+**All 31 level elevations and wall heights remain unverified.** The source review found no usable
+per-level elevation schedule. See [Floor height sources and remaining gaps](../../../docs/floor-height-sources.md).
+ECJ's official roof report gives an approximate 175 ft overall height without a datum; it cannot
+establish the model roof's elevation or intermediate level heights.
+
+Under **Heights & 3D export**, the table separates unknown elevations from schematic model Z values.
+The model uses **10 ft wall display height** and a **14 ft unknown-level display step** from Level 1
+as placeholders, including basements and mezzanines. Neither is a measured building dimension.
+**Visual floor separation** starts at **1× (unexploded)** and only changes the view.
+**Export schematic OBJ** downloads wall solids and room surfaces for all levels, with named objects,
+building X/Y coordinates and Z up. Set the importing application's units to **feet**. Export preserves
+elevation status, research sources and limitations in comments; its unknown Z values remain schematic.
+It excludes visual separation and contains no signals or plan textures.
 This is a mesh export; parametric CAD editing, STEP/IFC and model import are not implemented.
+
+When a dimensioned section or BIM level schedule is available, add each floor's `elevation_ft` relative
+to `vertical.datum`, plus `elevation_source: { source_id, status, note }`. Use `status: "documented"`
+only for an explicitly dimensioned elevation, or `"estimated"` for a justified source-based estimate.
+The `source_id` must resolve to a unique entry in `vertical.sources` with `title`, `url` and `evidence`
+(document/sheet/page, datum, units and interpretation). An entered number without complete evidence
+is labeled **Unverified**. Explicit values override the display step; visual separation never changes
+their underlying coordinates. `vertical-model.mjs` centralizes these rules for the renderer and export.
 
 ### Geometry source and regeneration
 

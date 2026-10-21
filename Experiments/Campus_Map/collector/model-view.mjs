@@ -28,7 +28,7 @@ export class BuildingView {
     this.controls.addEventListener('change', () => this.invalidate());
     this.buildingGroup = new THREE.Group(); this.scene.add(this.buildingGroup);
     this.floorGroups = new Map(); this.generation = 0; this.points = [];
-    this.options = { spacing: 14, separation: 2, wallHeight: 10, walls: true, rooms: true, plans: false, heat: true, points: true, isolate: true, bssid: '*' };
+    this.options = { spacing: 14, separation: 1, wallHeight: 10, walls: true, rooms: true, plans: false, heat: true, points: true, isolate: true, bssid: '*' };
     this.raycaster = new THREE.Raycaster();
     const floorHit = event => {
       const floor = this.floorGroups.get(this.floor);

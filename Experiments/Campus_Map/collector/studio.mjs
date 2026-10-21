@@ -2,12 +2,44 @@ import { BuildingView } from './model-view.mjs';
 import { parseCSV, importSurvey, surveyPoints, estimatePosition, demoSurvey, demoScan, toFrame, fromFrame } from './signal-model.mjs';
 import { roomAt, validateArchitecture } from './architecture.mjs';
 import { exportArchitectureOBJ } from './architecture-geometry.mjs';
+import { elevationInfo, verticalSummary } from './vertical-model.mjs';
 
 const $ = id => document.getElementById(id);
 const api = window.BevoTag, S = api.S;
 let view, buildingId, points = [], importedRows = [], imported = [], estimate = null, estimating = false;
 let modelMessage = '', demo = [], importInfo = '', currentView = '3d', importing = false;
 let architecture = null, modelFloor = null, selectedRoom = null, loadGeneration = 0;
+
+function refreshHeights() {
+  const building = S.buildings[S.building];
+  if (!building || !S.floor) return;
+  const spacing = Number($('floorSpacing').value) || 14, summary = verticalSummary(building, spacing);
+  const current = elevationInfo(building, S.floor, spacing);
+  const labels = { documented: 'Documented', estimated: 'Source estimate', unverified: 'Unverified', assumed: 'Unknown' };
+  const format = value => Number(value.toFixed(2)).toString();
+  $('heightStatus').textContent = current.status === 'assumed'
+    ? `Level ${S.floor} elevation unknown · schematic display only`
+    : `Level ${S.floor}: ${format(current.elevationFt)} ft · ${labels[current.status].toLowerCase()}`;
+  $('sceneSubtitle').textContent = `${building.floors.length} levels · ${summary.counts.documented} documented elevations`;
+  $('heightDatum').textContent = typeof summary.datum === 'string' ? summary.datum : summary.datum.description;
+  $('heightRows').replaceChildren();
+  for (const row of summary.rows) {
+    const tr = document.createElement('tr'); tr.classList.toggle('active', row.floorId === S.floor); tr.title = row.note;
+    for (const value of [row.floorId, row.status === 'assumed' ? 'Unknown' : `${format(row.elevationFt)} ft · ${labels[row.status]}`, format(row.elevationFt)]) {
+      const td = document.createElement('td'); td.textContent = value; tr.appendChild(td);
+    }
+    $('heightRows').appendChild(tr);
+  }
+  $('heightResearchNote').textContent = building.vertical?.note || 'No dimensioned elevation source is recorded for this building.';
+  $('heightSources').replaceChildren();
+  for (const source of building.vertical?.sources || []) {
+    if (!/^https?:\/\//.test(source.url)) continue;
+    const li = document.createElement('li'), a = document.createElement('a');
+    a.textContent = source.title; a.href = source.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.title = source.evidence;
+    li.appendChild(a); $('heightSources').appendChild(li);
+  }
+  $('btnExportModel').textContent = summary.counts.documented === building.floors.length ? 'Export building OBJ' : 'Export schematic OBJ';
+}
 
 function chooseRoom(room) {
   selectedRoom = room;
@@ -110,7 +142,7 @@ function syncBuilding() {
     refreshData();
   }
   $('sceneTitle').textContent = `${building.id} / Level ${S.floor}`;
-  $('sceneSubtitle').textContent = `${building.floors.length} modeled levels · heights adjustable`;
+  refreshHeights();
   view?.setFloor(S.floor, S.point);
   refreshArchitecture();
   controls();
@@ -123,9 +155,10 @@ function options() {
   const isolateChanged = view && view.options.isolate !== $('isolateFloor').checked;
   const heightsChanged = view && (view.options.spacing !== spacing || view.options.separation !== separation);
   $('wallHeight').value = wallHeight;
-  $('floorSpacing').value = spacing; $('separationValue').value = `${separation}×`;
+  $('floorSpacing').value = spacing; $('separationValue').value = `${separation}×${separation === 1 ? ' · unexploded' : ' · exploded view'}`;
   view?.setOptions({ spacing, separation, wallHeight, walls: $('showWalls').checked, rooms: $('showRooms').checked, plans: $('showPlans').checked, bssid: $('signalSelect').value, heat: $('showHeat').checked, points: $('showPoints').checked, isolate: $('isolateFloor').checked });
   if (isolateChanged || heightsChanged) view.fit();
+  refreshHeights();
 }
 
 function renderEstimate(result, source) {

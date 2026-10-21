@@ -75,6 +75,15 @@ input[type=range] { padding:0; accent-color:#285c5c; }
 .architecture-actions { margin:0 0 12px; }
 .architecture-actions button { flex:1; font-size:11px; }
 .model-provenance { color:#7b8884; margin-bottom:0; padding-top:4px; }
+.height-status { margin:0 0 13px; padding:8px 10px; border-radius:6px; background:#fff4df; color:#795725; font-size:11px; line-height:1.5; }
+.height-table-wrap { max-height:230px; overflow:auto; border:1px solid var(--line); border-radius:5px; }
+.height-table { font-size:10px; width:100%; }
+.height-table caption { text-align:left; padding:8px; color:#537274; font-size:11px; }
+.height-table th, .height-table td { padding:6px; text-align:left; }
+.height-table tr.active { background:#dcece8; font-weight:600; }
+.height-sources { padding-left:16px; font-size:11px; line-height:1.6; }
+.height-sources li { margin:6px 0; }
+.height-sources a { color:#276c70; }
 #roomDetail { min-height:34px; margin-top:-4px; }
 .estimate-card .primary { font-size:12px; padding:11px; }
 .paste-scan { margin-top:13px; }

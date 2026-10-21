@@ -1,4 +1,5 @@
 // Pure geometry, CSV and fingerprint routines. Shared by the UI and Node tests.
+import { elevationInfo } from './vertical-model.mjs';
 export const MISSING_RSSI = -100;
 export const finite = value => value !== '' && value != null && Number.isFinite(Number(value));
 
@@ -16,9 +17,7 @@ export function fromFrame(floor, x, y) {
 }
 
 export function floorElevation(building, floorId, spacing = 14) {
-  const i = building.floors.findIndex(f => f.id === floorId);
-  const ground = Math.max(0, building.floors.findIndex(f => f.id === '1'));
-  return finite(building.floors[i]?.elevation_ft) ? Number(building.floors[i].elevation_ft) : (i - ground) * spacing;
+  return elevationInfo(building, floorId, spacing).elevationFt;
 }
 
 export function fingerprint(aps) {

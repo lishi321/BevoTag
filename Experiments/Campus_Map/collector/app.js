@@ -69,7 +69,8 @@ function toFrame(x) {
 }
 
 async function loadBuildings() {
-  const get = async url => { const r = await fetch(url); if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`); return r.json(); };
+  // Revalidate model metadata so revised registrations and height evidence reach returning clients.
+  const get = async url => { const r = await fetch(url, { cache: 'no-cache' }); if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`); return r.json(); };
   const ids = await get('buildings/index.json');
   for (const id of ids) S.buildings[id] = await get(`buildings/${id}/building.json`);
 }

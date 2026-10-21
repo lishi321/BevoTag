@@ -15,6 +15,16 @@
     "axes": "x = right on the sheet, y = up on the sheet; sheet up is about 4.5-5 deg east of true north",
     "registration": "every floor placed by matching structural columns to floor 2 (residual 0.004-0.05 ft; floor 6 attic ~0.33 ft); see VERIFICATION.md"
   },
+  "vertical": {
+    "datum": {"floor_id": "1", "description": "Level 1 = 0 ft model datum; not surveyed altitude"},
+    "reviewed": "2026-10-21",
+    "research_status": "no-documented-elevations",
+    "note": "The official inventory confirms seven floors but provides no floor elevations, floor-to-floor dimensions, or wall heights. The restricted drawing portal requires UT authentication. Horizontal plan scale does not establish vertical dimensions, including basement and attic levels.",
+    "sources": [
+      {"id": "ase-ut-inventory", "title": "UT building inventory: Aerospace Engineering Building (0983)", "url": "https://utdirect.utexas.edu/apps/campus/buildings/information/nlogon/maps/UTM/ASE/", "evidence": "Lists seven floors and identifies restricted floor plans. No vertical dimensions are published on the inventory page."},
+      {"id": "ase-ut-drawings", "title": "UT ASE drawing portal (restricted access)", "url": "https://utdirect.utexas.edu/apps/campus/lis/drawings/ASE/", "evidence": "Official inventory link redirects to UT authentication. No additional drawing contents or elevations were verified through this portal."}
+    ]
+  },
   "floors": [
     {"id": "B", "name": "Basement", "page": 1, "image": "floors/B.png", "fit": [540, 350, 2420, 3150], "to_frame": [0.064, 0, -37.647, 0, -0.064, 197.202]},
     {"id": "1", "name": "First", "page": 2, "image": "floors/1.png", "fit": [453, 424, 2281, 3302], "to_frame": [0.064, 0, -31.596, 0, -0.064, 206.386]},

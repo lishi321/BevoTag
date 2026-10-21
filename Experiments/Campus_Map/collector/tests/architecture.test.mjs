@@ -100,3 +100,40 @@ test('walls have physical volume with open holes, and exported OBJ uses z-up fee
   assert.ok(vertices.every(p => p[0] >= 0 && p[0] <= 12 && p[1] >= 0 && p[1] <= 8));
   for (const face of obj.split('\n').filter(line => line.startsWith('f '))) assert.ok(face.split(' ').slice(1).every(n => Number(n) >= 1 && Number(n) <= vertices.length));
 });
+
+test('OBJ preserves mixed elevation provenance, source evidence and uncertainty with its geometry', () => {
+  const source = {
+    id: 'test-section', title: 'Example signed section A-301',
+    url: 'https://example.org/a-301.pdf',
+    evidence: 'Level 2 finished floor: 17.25 ft relative to Level 1.',
+  };
+  const building = {
+    id: 'TEST',
+    vertical: { datum: { floor_id: '1', description: 'Level 1 project datum, not surveyed altitude' }, sources: [source] },
+    floors: [
+      { id: 'B', elevation_ft: -11, elevation_source: { source_id: source.id, status: 'estimated', note: 'Basement inferred from section scale.' } },
+      { id: '1' },
+      { id: '2', elevation_ft: 17.25, elevation_source: { source_id: source.id, status: 'documented', note: 'Explicit finished-floor dimension.' } },
+      { id: '3', elevation_ft: 31 },
+    ],
+  };
+  const model = { floors: building.floors.map(floor => ({ id: floor.id, walls: [square], rooms: [] })) };
+  const obj = exportArchitectureOBJ(model, building, { wallHeight: 9, spacing: 14, separation: 4 });
+  assert.match(obj, /1 documented, 1 source estimates, 1 unverified entries, 1 unknown/);
+  assert.match(obj, /# Vertical datum: Level 1 project datum, not surveyed altitude/);
+  assert.match(obj, /# Level B: Z=-11 ft; status=estimated; Basement inferred from section scale\./);
+  assert.match(obj, /# Level 1: Z=0 ft; status=assumed;/);
+  assert.match(obj, /# Level 2: Z=17\.25 ft; status=documented; Explicit finished-floor dimension\./);
+  assert.match(obj, /# Level 3: Z=31 ft; status=unverified;/);
+  assert.ok(obj.includes(`# Height source: ${source.title}; ${source.url}; ${source.evidence}`));
+  assert.match(obj, /Do not use these Z values as surveyed building elevations\./);
+  assert.match(obj, /# Wall display height: 9 ft; unverified, not a measured clear height or storey height\./);
+  assert.match(obj, /# Exploded-view separation is excluded\./);
+  const level2Vertices = value => value.split('o TEST_2_wall_1\n')[1].split('\no ')[0]
+    .split('\n').filter(line => line.startsWith('v ')).map(line => Number(line.split(' ')[3]));
+  const expected = [17.25, 26.25];
+  assert.deepEqual([...new Set(level2Vertices(obj))].sort((a, b) => a - b), expected);
+  const changedDisplay = exportArchitectureOBJ(model, building, { wallHeight: 9, spacing: 25, separation: 8 });
+  assert.deepEqual([...new Set(level2Vertices(changedDisplay))].sort((a, b) => a - b), expected,
+    'a documented floor and its wall tops survive display-spacing changes in the exported geometry');
+});

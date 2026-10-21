@@ -22,7 +22,7 @@ That geometry is now implemented; the original textured-plan-only view has been 
 The app in `Experiments/Campus_Map/collector/` remains buildless HTML/JS and works from a local HTTP server.
 
 - `index.html`, `studio.css`, `studio.mjs`: 3D/2D workspace toggle, building/floor controls, CSV import,
-  source/BSSID selection, layers, approximate heights, demo and recorded/device query estimation.
+  source/BSSID selection, layers, height evidence, demo and recorded/device query estimation.
 - `model-view.mjs`: local Three.js renderer, extruded walls and selectable room surfaces for all
   31 registered floors across EER/ASE/ECJ, optional reference-plan overlay,
   orbit/zoom, top/perspective/fit, active-floor isolation, RSSI heatmaps and markers, estimate marker,
@@ -34,10 +34,16 @@ The app in `Experiments/Campus_Map/collector/` remains buildless HTML/JS and wor
   Virtual door closures define regions but are not physical wall meshes. Some boundaries/labels
   remain ambiguous. No furniture/interior assets were added.
 - `architecture.mjs`, `architecture-geometry.mjs`: model validation, room containment, mesh generation
-  and OBJ export. Export is building X/Y, Z-up, feet, with physical floor spacing and wall height.
-  Visual separation is excluded. This is polygonal mesh geometry, not a parametric CAD/BIM editor.
+  and OBJ export. Export is building X/Y, Z-up, feet. Unknown floor coordinates and wall heights
+  remain schematic; elevation status and research sources are included in comments. Visual separation
+  is excluded. This is polygonal mesh geometry, not a parametric CAD/BIM editor.
+- `vertical-model.mjs`, building `vertical` metadata and [floor-height source audit](floor-height-sources.md):
+  all 31 elevations remain unknown after public-source research. UI separates actual elevation status
+  from schematic model Z, links evidence, and defaults to 1× visual separation. Explicit floor values
+  need a resolved citation and declared status to be documented or estimated; uncited values remain
+  unverified. ECJ's approximate 175 ft overall-height context is never used as a floor elevation.
 - Building model UI: walls/rooms/reference toggles; room selection/highlight/area; focus room; place
-  an interior DAQ point; adjustable wall height (10 ft default); OBJ download. Position results now
+  an interior DAQ point; adjustable schematic wall height (10 ft default); OBJ download. Position results now
   report the containing model space separately from the nearest survey label. Heatmaps are clipped
   to resolved spaces; synthetic samples are placed inside rooms.
 - `signal-model.mjs`: affine transforms/inverse, CSV parser/import filters, repeated-point averaging,
@@ -58,12 +64,15 @@ The app in `Experiments/Campus_Map/collector/` remains buildless HTML/JS and wor
 
 ## Validation completed
 
-- `node --test tests/*.test.mjs`: **24/24 passed**. Tests exercise all 31 registration round-trips,
+- `node --test tests/*.test.mjs`: **35/35 passed**. Tests exercise all 31 registration round-trips,
   demo queries on every floor, sparse/novel fingerprints, floor voting without cross-floor coordinate
   averaging, CSV quoting/corruption, session-scoped discards, simulator exclusions, deduplication,
   averaging, heatmap support, disk-write failures, recording cutoff, and query/collection separation.
   New geometry tests cover source hashes, floor/page coverage, containment/holes, triangulation area
-  across every polygon, wall volume, OBJ axes and physical heights, and room-based synthetic samples.
+  across every polygon, wall volume, OBJ axes and model heights, and room-based synthetic samples.
+  Elevation tests cover datum validity, evidence resolution, missing/invalid values, source estimates,
+  all 31 unknown real levels, and independence of documented elevations from display spacing.
+  OBJ tests verify uncertainty and source comments; ECJ's overall-height context cannot set floor Z.
   A separate Shapely audit confirmed all 3,348 serialized polygons are valid after precision repair.
 - Browser: all three buildings render; synthetic signals and estimates work; a controlled CSV fixture
   accepted 3 points and excluded its discarded fourth point; a pasted matching query produced the
@@ -72,6 +81,10 @@ The app in `Experiments/Campus_Map/collector/` remains buildless HTML/JS and wor
   CAD checks: all three buildings render; EER room 2.610 and ASE room 1.108 place matching 2D/3D DAQ
   points; reference overlay aligns; wall-height changes/full-building view work; EER OBJ download
   completed (15.7 MB at 12 ft wall height). Synthetic estimates report a containing model space.
+  Height revision: verified all three source lists/notes, unknown statuses, 1× default, changed display
+  step, separation-independent table coordinates, and narrow layout with no console errors. Fixed stale
+  building metadata by requesting cache revalidation. Updated OBJ comments were checked in Node;
+  the earlier downloaded EER file predates this revision.
 - ESP32 firmware **compiled successfully** for `esp32dev`, with PlatformIO 6.2.0, Espressif32 8.0.0 and
   Arduino-ESP32 3.3.12. Final build: RAM 45,704 bytes (13.9%), flash 925,052 bytes (70.6%). No flashing.
 - Tool dependencies were installed in the task scratch directory, not added as project dependencies.
@@ -116,8 +129,10 @@ Those paths are specific to this computer; cloud work should install its own bui
    PDFs, not verified as-built geometry. Some short returns/openings are missing; some adjacent rooms
    are merged; OCR labels may be wrong. For example, ASE 1.102 currently shares a reconstructed region
    with circulation labels. Review against Plan reference before adding wall constraints or attenuation.
-   Small drawing artifacts may remain. Heights default to 10 ft walls and 14 ft between ordered levels,
-   including mezzanines; add measured `elevation_ft` values when available. No parametric editing or
+   Small drawing artifacts may remain. Display placeholders are 10 ft walls and 14 ft between ordered
+   levels, including mezzanines; these are not verified dimensions. See `docs/floor-height-sources.md`
+   for the evidence and exact ECJ as-built drawing identifier. Obtain dimensioned sections or a BIM
+   level schedule, then record `elevation_ft` with `elevation_source` and a consistent datum. No parametric editing or
    GLB/OBJ/STEP/IFC import. Heatmaps interpolate nearby measurements; no wall propagation or position
    snapping is implemented. The room display and OBJ export do not imply measured positioning accuracy.
 4. **Data lifecycle:** imports/live samples are page-memory only; CSV is the record. Import only labeled
@@ -132,7 +147,7 @@ Those paths are specific to this computer; cloud work should install its own bui
 > Continue BevoTag on branch `3d-model` (no prefix). Read `docs/3d-model-handoff.md` and the collector
 > README first. The 3D signal workspace, CSV import, fingerprint estimates and protocol-compatible
 > firmware plus CAD-style room/wall meshes are implemented and locally tested. Verify the transferred
-> checkpoint, rerun the 24 Node
+> checkpoint, read `docs/floor-height-sources.md`, rerun the 35 Node
 > tests and firmware build, then work on the remaining validation or refinements I request. Preserve
 > the 2D collection workflow and synthetic/real data separation. Keep approximate geometry and
 > unvalidated positioning accuracy explicit. Do not deploy a hosted website.
