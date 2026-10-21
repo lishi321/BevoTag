@@ -3,7 +3,7 @@
 Updated **2026-10-21**, on branch **`3d-model`**. This source-review pass has not yet been merged to `main`.
 
 **Current status:** the DAQ app has CAD-style room-and-wall geometry, inferred continuous EER/ECJ
-exteriors, assembled/exploded views, IFC4 and OBJ export,
+exteriors, removable inferred roofs, assembled/exploded views, IFC4 and OBJ export,
 and Wi-Fi fingerprint position estimation. The geometry is reconstructed from plans; it is
 not a native architectural authoring model or verified as-built CAD. Real positioning accuracy
 has not been measured.
@@ -30,9 +30,12 @@ enclosures: 9 EER and 13 ECJ**. ASE has no continuous exterior profile yet.
 - **Whole building** assembles at 1×; **Exploded** uses 3× visual separation. **Continuous exterior**
   switches the inferred enclosure layer on/off. Separation moves floor bases without stretching
   exterior bands or plan walls.
+- **Roofs** independently shows/removes inferred roof, terrace and skylight caps. It starts off for
+  floor inspection; Whole building turns it on and Exploded turns it off. Reenabled exploded caps
+  follow their own floors without stretching. Top view, room focus and estimate focus hide them.
 - **IFC4 export** converts feet to metres and retains a project/building/storey hierarchy.
   Walls use analytic extruded polygon profiles, including holes. Spaces are named footprint
-  boundary curves, with no invented room volume or slab thickness. Evidence and height status
+  boundary curves, with no invented room volume. Roof display thickness is explicitly assumed. Evidence and height status
   accompany the model. Only documented storeys receive a semantic IFC `Elevation` value;
   other storeys retain explicitly unverified placements.
 - **OBJ export** contains named wall and room meshes in building X/Y, Z up, in **feet**, with
@@ -42,6 +45,9 @@ enclosures: 9 EER and 13 ECJ**. ASE has no continuous exterior profile yet.
   Exterior exports use reviewed level 11 context walls and omit 11M/R wall solids; IFC retains all
   space footprint reference curves, while OBJ also omits those reference surfaces. Toggle the exterior
   off, or pass `exterior: false`, to restore all original geometry in the export.
+- UI exports follow the independent Roofs toggle. The API's `roofs` option defaults to `exterior`
+  when omitted. Roof solids are separately named IFC proxies/OBJ objects with inferred geometry and
+  assumed thickness recorded; use `exterior: false, roofs: false` for only original geometry.
 - Signal layers show survey points, strongest observed RSSI or a selected BSSID, and interpolated
   coverage. Demo signals are explicitly synthetic and separate from real surveys.
 - CSV import filters discarded/unlabeled/simulator samples when identifiable, deduplicates
@@ -66,6 +72,13 @@ multiple surfaces. Whole-exterior mode suppresses internal 11M and composite R a
 uses clipped context walls on level 11. Disabling the exterior or isolating those source levels
 restores the original geometry. Source hashes, profile assumptions and level roles are recorded in
 the EER/ECJ `exterior-review.json` files, applied reproducibly by `exterior_review.py`.
+
+**Removable roofs:** explicit roof/terrace profiles now cap the model with separate solids, using
+an assumed **0.5 ft thickness below the surface**. ECJ's lower roof is +142 ft and penthouse roof
++159 ft, supported by the historical level/roof evidence; the composite R sheet stays unresolved.
+EER roof elevations remain assumed. Its lower angled atrium skylight is a flat approximation at
+the schematic level 3 top, not a measured roof height or slope. The separate upper shading canopy
+remains unmodeled; it must not become a solid roof across the high central opening.
 
 **ECJ elevations:** 2013 record elevations reproduced in Sarlo's 2018 dissertation now support
 11 historical elevations, normalized by subtracting Level 1 EL 552 ft. Basement is −16 ft;
@@ -101,6 +114,7 @@ Those notices supply no replacement room layouts; their partition changes have n
 | Unknown-level placement | Schematic interpolation between entered levels, or a **14 ft default display step** beyond an anchor. This does not establish basement, mezzanine, or roof spacing. |
 | Plan-wall height | **10 ft default display extrusion**, editable; not a measured clear height, ceiling height, or storey height. |
 | Exterior enclosure | Coarse plan-traced perimeter with a **0.5 ft assumed inward shell** and closed door/window gaps. Bands span exterior levels; only the ECJ penthouse has a separately sourced top at +159 ft. No measured thickness, glazing, material or completed roof assembly is claimed. |
+| Roofs | Removable inferred roof/terrace/skylight solids; **0.5 ft assumed thickness extending downward**. ECJ +142/+159 ft surfaces use historical evidence. All EER roof heights, the flat skylight approximation, slopes, build-ups and parapets remain unverified. |
 | Vertical datum | Local Level 1 = 0 ft. ECJ is normalized from record EL 552 ft; original survey datum and finished-floor versus slab reference remain unspecified. EER/ASE zero is only a display reference. |
 | Visual separation | Defaults to **1×**; the Exploded preset uses **3×**. Floor bases move, but band and wall heights do not stretch. Model/export coordinates stay unchanged. |
 | XY registration | Agreement with source plans and cross-floor alignment, not surveyed as-built accuracy or localization error. |
@@ -156,21 +170,24 @@ within the winning floor. At least three survey points are required. The
 
 ## Verification and handoff
 
-The exterior revision passed **60/60 Node tests and 15/15 Python tests**. An ECJ level 11 partial
-generator rebuild succeeded; an earlier EER level 6 run applied its review and restored the bridge.
+The removable-roof revision passed **68/68 Node tests and 19/19 Python tests**. An actual ECJ level 11
+partial rebuild included roof arrays; an earlier EER level 6 run restored the bridge. Review replay
+is idempotent, and the original room, wall and enclosure geometry remains intact.
 Checks cover source hashes, rotation, elevation provenance, profiles, exports, collection/estimation
 and actual Three.js world-space geometry. Assembled bands meet, exploded bands retain their height,
 and source geometry remains available when switching views.
 
-IfcOpenShell 0.9.0.post1 validated all three exterior-enabled IFC4 exports with **zero schema or solid
-failures**. All **1,879 solids** tessellated: 1,852 selected context walls plus 27 inferred enclosure
-proxies (14 EER, 13 ECJ). All **31 storeys and 1,551 space references** remain. Volumes matched
+IfcOpenShell 0.9.0.post1 validated all three roof-inclusive IFC4 exports with **zero schema or solid
+failures**. All **1,906 solids** tessellated: 1,852 selected context walls, 27 enclosure proxies and
+27 roof proxies (22 EER, 5 ECJ). All **31 storeys and 1,551 space references** remain. Volumes matched
 footprint area × the applicable extrusion after metre conversion; maximum relative error was
-**2.71 × 10⁻¹⁰**. Unicode and escaped text round-tripped. This verifies file consistency, not physical
+**2.71 × 10⁻¹⁰**. All roof surfaces matched their elevation anchors within **7.11 × 10⁻¹⁵ m**.
+Unicode and escaped text round-tripped. This verifies file consistency, not physical
 dimensions; no manual Revit/FreeCAD import was performed.
 
-Browser checks verified EER/ECJ whole-building and exploded views, exterior-off source restoration,
-isolated 11M/R access, and ASE's disabled unavailable exterior control. A **390 × 844** viewport had
+Current browser checks verified EER/ECJ Whole building with roofs on, Exploded with roofs off,
+manual reenabling and Top view removing caps. Previous exterior checks verified source restoration,
+isolated 11M/R access, and ASE's disabled unavailable exterior control. The previous **390 × 844** viewport had
 no horizontal overflow, with zero browser warnings or errors. Earlier checks covered corrected ECJ
 level 4 (50 spaces, 78 walls, +44 ft documented), the level 6 conflict, fixed documented elevations,
 EER's bridge-to-plan alignment, a synthetic estimate and IFC download.

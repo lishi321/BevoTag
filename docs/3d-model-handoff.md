@@ -4,8 +4,8 @@ Updated **2026-10-21**. The user wants a 3D DAQ webapp with signal-strength visu
 position estimation, using **CAD-like room and wall geometry with empty interiors**. They asked
 to work on branch **`3d-model`**, without a `codex/` prefix, and will transfer to ChatGPT Work
 when shutting down this computer. This pass improves the earlier model with more source evidence,
-targeted geometry corrections, IFC export, and inferred continuous EER/ECJ exteriors with whole-building
-and exploded presets. It has not yet been merged to `main`.
+targeted geometry corrections, IFC export, inferred continuous EER/ECJ exteriors and removable roofs
+with whole-building and exploded presets. It has not yet been merged to `main`.
 
 Read [current status and limitations](3d-model-status.md), the
 [height-source audit](floor-height-sources.md), and the [CAD source review](cad-source-review.md)
@@ -37,6 +37,10 @@ The app in `Experiments/Campus_Map/collector/` is buildless HTML/JS served over 
 - **Whole building** sets 1× separation; **Exploded** sets 3×. **Continuous exterior** controls a
   separate inferred enclosure layer. Bands span exterior levels while plan walls keep their own
   10 ft default extrusion; exploding moves bases without stretching either geometry.
+- **Roofs** is independent of exterior/plan walls and starts off for floor inspection. Whole building
+  shows roofs; Exploded hides them. Manual reenabling at 3× moves each cap with its owning floor
+  without stretching. Top view, Focus room and Show estimated floor hide roofs to expose the floor.
+  `roofSurfaces()` supplies surface elevation, downward 0.5 ft assumed thickness and evidence.
 - `exterior_review.py`, `buildings/EER/exterior-review.json`, `buildings/ECJ/exterior-review.json`:
   coarse source-plan perimeters with holes/setbacks and an assumed 0.5 ft inward shell. Reviews
   are bound to PDF hashes/pages, preserve original room/wall arrays, and produce 22 exterior
@@ -56,7 +60,7 @@ The app in `Experiments/Campus_Map/collector/` is buildless HTML/JS served over 
   and **OBJ export in feet**, using building X/Y and Z up, with named objects and evidence comments.
 - `architecture-ifc.mjs`: **IFC4 export in metres**, with project/building/storey hierarchy, analytic
   wall extrusions with profile holes, and footprint-only `IfcSpace` boundary curves. No room volume,
-  slab thickness, ceiling/opening height or material is inferred. Evidence/status accompany geometry;
+  measured slab thickness, ceiling/opening height or material is established. Evidence/status accompany geometry;
   only documented levels receive semantic IFC `Elevation`. Unknown and estimated storey placements
   remain explicitly unverified. Both exports omit visual separation, signals and reference textures.
   With Continuous exterior enabled, both also include separate inferred enclosures; IFC uses
@@ -64,6 +68,9 @@ The app in `Experiments/Campus_Map/collector/` is buildless HTML/JS served over 
   reviewed level 11 context and omit 11M/R wall solids. IFC retains all storeys and space reference
   curves; OBJ omits those reference surfaces too. Disable the toggle or export with `exterior: false`
   to retain every original wall/room without the shell.
+  Roof/terrace/skylight solids are separate inferred proxies controlled by the UI Roofs toggle.
+  The independent API `roofs` option defaults to `exterior` when omitted. Pass both as `false` for
+  only original geometry; roof evidence records assumed thickness separately from surface elevation.
 - `vertical-model.mjs` and building metadata: **11 documented historical ECJ levels, 1 ECJ estimate,
   and 19 unknown levels** overall. ECJ normalizes record levels by subtracting Level 1 EL 552 ft.
   Level 6 is +72 ft **estimated**, because its printed elevation tag contradicts the dimension chain.
@@ -117,23 +124,32 @@ polygons. No furniture/interior detail was added.
   assumed, EER elevations and final top remain schematic, and roof coverings, glazing, materials,
   parapets, recesses and terraces remain incomplete. Do not use this layer as an RF obstruction,
   weatherproofing or as-built model.
+- Removable ECJ lower/penthouse roofs use historical surfaces +142/+159 ft; R remains unresolved.
+  EER's tower roofs and lower atrium skylight use assumed elevations. The skylight is a flat
+  approximation at the schematic level 3 top; its real pleats/slopes and exact height are unverified.
+  UT distinguishes this lower glass roof from a separate upper shading canopy, which is unmodeled.
+  Do not cap the high central opening or derive an atrium floor from footprint differences.
 
 ## Verification checkpoint
 
-The exterior revision passed **60/60 Node tests and 15/15 Python tests**, covering registrations,
+The removable-roof revision passed **68/68 Node tests and 19/19 Python tests**, covering registrations,
 source hashes, rotation, reviewed geometry, elevation evidence, profiles/spans, exports and
 collection/import/estimation. Renderer tests measure real Three.js world-space bounds and reversible
-source-level visibility. An ECJ level 11 partial rebuild succeeded; an earlier EER level 6 generator
-run applied the review and restored the bridge.
+source-level visibility. An actual ECJ level 11 partial rebuild included roof arrays; review replay
+is idempotent and preserves the original rooms, walls and enclosures. An earlier EER level 6 run
+applied the review and restored the bridge.
 
-IfcOpenShell 0.9.0.post1 validated all three exterior-enabled IFC4 files with **zero schema or solid
-failures**. All **1,879 solids** tessellated: 1,852 selected context walls and 27 inferred enclosure
-proxies. EER has 1,109 walls/14 proxies/804 spaces; ECJ has 638/13/569; ASE has 105/0/178. All 31 storeys
+IfcOpenShell 0.9.0.post1 validated all three roof-inclusive IFC4 files with **zero schema or solid
+failures**. All **1,906 solids** tessellated: 1,852 selected context walls, 27 enclosure proxies and
+27 roof proxies. EER has 1,145 solids including 22 roofs; ECJ has 656 including 5 roofs; ASE has 105.
+All 31 storeys
 and 1,551 space reference curves remain. Volumes matched footprint area × the applicable extrusion
-after metre conversion, with maximum relative error **2.71 × 10⁻¹⁰**. Unicode and escaped text
+after metre conversion, with maximum relative error **2.71 × 10⁻¹⁰**. All roof surface elevations match
+their anchors within **7.11 × 10⁻¹⁵ m**. Unicode and escaped text
 round-tripped. No manual Revit/FreeCAD import or physical accuracy validation was performed.
 
-The exterior browser pass verified EER/ECJ Whole building and Exploded presets, exterior-off source
+The current roof browser pass verified EER/ECJ Whole building with roofs on, Exploded with roofs off,
+manual reenabling and Top view removing caps. The preceding exterior pass verified exterior-off source
 restoration, isolated 11M/R access, and ASE's disabled unavailable exterior control. A **390 × 844**
 viewport had no horizontal overflow; the browser reported zero warnings or errors.
 

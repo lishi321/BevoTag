@@ -5,19 +5,37 @@
   "source_sha256": "9cdc1a6421ce892b4e8446c461645c7bd992e4f5f395919e96a8429533a86667",
   "wall_thickness_ft": 0.5,
   "method": "Source plan outlines were reviewed in the existing registered building frame. This is coarse exterior massing: door/window gaps are closed, glazing and masonry are not distinguished, small facade returns/columns/entrance canopies are simplified. No room, original wall, height, material or measured thickness is inferred from these profiles.",
-  "limitations": "Horizontal traces and existing floor registration are approximate; lower-level source clipping, facade recesses, terraces, shafts and renovation currency remain unverified. The 0.5 ft inward shell thickness is display-only. Closed shell surfaces include doors and windows without claiming their locations/materials. This is not an as-built envelope, weatherproofing model, or RF obstruction model.",
+  "limitations": "Horizontal traces and existing floor registration are approximate; lower-level source clipping, facade recesses, terraces, shafts and renovation currency remain unverified. The 0.5 ft inward shell thickness is display-only. Closed shell surfaces include doors and windows without claiming their locations/materials. This is not an as-built envelope, weatherproofing model, or RF obstruction model. Roofs are removable flat massing caps with 0.5 ft assumed display thickness extending downward from their anchor. Actual roof slopes, pleats, assemblies, penetrations, drains, parapets and landscaping remain unmodeled. Terrace/ground-cover caps close exposed lower profiles without verifying use or grade.",
   "sources": [
     {
       "id": "registered-floor-plans",
       "title": "UT EER floor-plan set in the project",
       "file": "plan.pdf",
-      "evidence": "PDF pages1\u20139 reviewed in the registered XY frame. Pages5\u20138 repeat the two main tower footprints with the central atrium opening and east connector. These coarse exterior traces close glazed/door gaps that room reconstruction misses; no exterior elevation schedule is supplied."
+      "evidence": "PDF pages 1\u20139 reviewed in the registered XY frame. Pages5\u20138 repeat the two main tower footprints with the central atrium opening and east connector. These coarse exterior traces close glazed/door gaps that room reconstruction misses; no exterior elevation schedule is supplied."
     },
     {
       "id": "eer-atrium-review",
       "title": "EER reviewed atrium exclusions",
       "file": "geometry-review.json",
       "evidence": "Keep the reviewed central opening and separate west bridge; no convex hull across the atrium. Floor3 retains its narrower skylight projection opening; floor8 roof framing stays omitted."
+    },
+    {
+      "id": "eer-ut-roof-canopy",
+      "title": "UT Engineering: A Unifying Force (2017)",
+      "url": "https://magazine.engr.utexas.edu/2017/a-unifying-force",
+      "evidence": "The university explicitly distinguishes the angled atrium skylight from the separate shading canopy high above it between the towers. This supports a low skylight and an open upper central volume; it supplies no roof elevation."
+    },
+    {
+      "id": "eer-architect-section",
+      "title": "Ennead Architects EERC transverse section",
+      "url": "https://www.archdaily.com/881939/cockrell-school-of-engineering-education-research-center-eerc-ennead-architects/59e83b27b22e38b6a3000639-cockrell-school-of-engineering-education-research-center-eerc-ennead-architects-section",
+      "evidence": "Architect-provided section depicts a low pleated atrium roof separately from the high canopy/trusses. Pairing its low roof with the third-floor plan projection supports a schematic Level 3-top placement only; there is no usable numerical roof-height schedule."
+    },
+    {
+      "id": "eer-aisc-roof",
+      "title": "AISC 2019 IDEAS2 Awards: EERC atrium",
+      "url": "https://www.aisc.org/contentassets/e18e7275c8ac4615af25d3f92fa6ec40/ideas2_promo_9x9_2019_web.pdf#page=30",
+      "evidence": "PDF page 30 separately describes the150 by 70 ft pleated skylight roof and the upper shade canopy above the Level 5\u20138 west bridges. The skylight has angled/zinc facets; the current flat transparent cap does not reconstruct those slopes or material divisions."
     }
   ],
   "profiles": {
@@ -151,7 +169,7 @@
         ]
       ],
       "holes": [],
-      "note": "Coarse first-floor footprint from page2, retaining north lecture wing and west projections/lightwell recesses. The eastern source crop is incomplete; x256.3 ft closes the existing registered model, with its mismatch against upper levels left explicit. Interior atrium openings do not define an outside courtyard on this level."
+      "note": "Coarse first-floor footprint from page 2, retaining north lecture wing and west projections/lightwell recesses. The eastern source crop is incomplete; x256.3 ft closes the existing registered model, with its mismatch against upper levels left explicit. Interior atrium openings do not define an outside courtyard on this level."
     },
     "second": {
       "outline": [
@@ -435,6 +453,163 @@
       "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
       "evidence": [
         "registered-floor-plans"
+      ],
+      "roofs": [
+        {
+          "id": "eer-B-setback-cap-1",
+          "label": "Level B setback / ground-cover cap (1)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              128.0,
+              -44.0
+            ],
+            [
+              254.7,
+              -44.0
+            ],
+            [
+              254.7,
+              -30.0
+            ],
+            [
+              228.0,
+              -30.0
+            ],
+            [
+              228.0,
+              -18.0
+            ],
+            [
+              0.0,
+              -18.0
+            ],
+            [
+              0.0,
+              -20.0
+            ],
+            [
+              29.0,
+              -20.0
+            ],
+            [
+              29.0,
+              -113.7
+            ],
+            [
+              128.0,
+              -113.7
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed LevelB profile where Level 1 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-B-setback-cap-2",
+          "label": "Level B setback / ground-cover cap (2)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              -29.5,
+              240.0
+            ],
+            [
+              -29.5,
+              27.0
+            ],
+            [
+              0.0,
+              27.0
+            ],
+            [
+              0.0,
+              57.0
+            ],
+            [
+              -24.7,
+              57.0
+            ],
+            [
+              -24.7,
+              129.0
+            ],
+            [
+              0.0,
+              129.0
+            ],
+            [
+              0.0,
+              153.0
+            ],
+            [
+              -24.7,
+              153.0
+            ],
+            [
+              -24.7,
+              188.0
+            ],
+            [
+              0.0,
+              188.0
+            ],
+            [
+              0.0,
+              240.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed LevelB profile where Level 1 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-B-setback-cap-3",
+          "label": "Level B setback / ground-cover cap (3)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              160.0,
+              200.0
+            ],
+            [
+              160.0,
+              280.0
+            ],
+            [
+              146.5,
+              280.0
+            ],
+            [
+              146.5,
+              200.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed LevelB profile where Level 1 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        }
       ]
     },
     {
@@ -447,6 +622,185 @@
       "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
       "evidence": [
         "registered-floor-plans"
+      ],
+      "roofs": [
+        {
+          "id": "eer-1-setback-cap-1",
+          "label": "Level 1 setback / ground-cover cap (1)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              -24.7,
+              129.0
+            ],
+            [
+              -24.7,
+              57.0
+            ],
+            [
+              0.0,
+              57.0
+            ],
+            [
+              40.0,
+              57.0
+            ],
+            [
+              40.0,
+              127.0
+            ],
+            [
+              0.0,
+              127.0
+            ],
+            [
+              0.0,
+              129.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 1 profile where Level 2 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-1-setback-cap-2",
+          "label": "Level 1 setback / ground-cover cap (2)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              38.0,
+              280.0
+            ],
+            [
+              0.0,
+              280.0
+            ],
+            [
+              0.0,
+              200.0
+            ],
+            [
+              38.0,
+              200.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 1 profile where Level 2 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-1-setback-cap-3",
+          "label": "Level 1 setback / ground-cover cap (3)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              146.5,
+              200.0
+            ],
+            [
+              146.5,
+              280.0
+            ],
+            [
+              115.0,
+              280.0
+            ],
+            [
+              115.0,
+              200.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 1 profile where Level 2 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-1-setback-cap-4",
+          "label": "Level 1 setback / ground-cover cap (4)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              -24.7,
+              188.0
+            ],
+            [
+              -24.7,
+              153.0
+            ],
+            [
+              0.0,
+              153.0
+            ],
+            [
+              0.0,
+              188.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 1 profile where Level 2 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-1-setback-cap-5",
+          "label": "Level 1 setback / ground-cover cap (5)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              228.0,
+              -30.0
+            ],
+            [
+              256.3,
+              -30.0
+            ],
+            [
+              256.3,
+              -18.0
+            ],
+            [
+              228.0,
+              -18.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 1 profile where Level 2 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        }
       ]
     },
     {
@@ -459,6 +813,107 @@
       "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
       "evidence": [
         "registered-floor-plans"
+      ],
+      "roofs": [
+        {
+          "id": "eer-2-setback-cap-1",
+          "label": "Level 2 setback / ground-cover cap (1)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              115.0,
+              280.0
+            ],
+            [
+              38.0,
+              280.0
+            ],
+            [
+              38.0,
+              201.0
+            ],
+            [
+              115.0,
+              201.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 2 profile where Level 3 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-2-setback-cap-2",
+          "label": "Level 2 setback / ground-cover cap (2)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              0.0,
+              -16.0
+            ],
+            [
+              0.0,
+              -18.0
+            ],
+            [
+              13.0,
+              -18.0
+            ],
+            [
+              13.0,
+              -16.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 2 profile where Level 3 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-2-setback-cap-3",
+          "label": "Level 2 setback / ground-cover cap (3)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              254.0,
+              -18.0
+            ],
+            [
+              266.75,
+              -18.0
+            ],
+            [
+              266.75,
+              -16.0
+            ],
+            [
+              254.0,
+              -16.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 2 profile where Level 3 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        }
       ]
     },
     {
@@ -471,6 +926,207 @@
       "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
       "evidence": [
         "registered-floor-plans"
+      ],
+      "roofs": [
+        {
+          "id": "eer-3-setback-cap-1",
+          "label": "Level 3 setback / ground-cover cap (1)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              30.9,
+              126.8
+            ],
+            [
+              0.0,
+              126.8
+            ],
+            [
+              0.0,
+              57.5
+            ],
+            [
+              30.9,
+              57.5
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 3 profile where Level 4 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-3-setback-cap-2",
+          "label": "Level 3 setback / ground-cover cap (2)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              58.0,
+              75.1
+            ],
+            [
+              63.55,
+              109.0
+            ],
+            [
+              58.0155,
+              126.8
+            ],
+            [
+              38.0,
+              126.8
+            ],
+            [
+              38.0,
+              57.5
+            ],
+            [
+              63.285,
+              57.5
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 3 profile where Level 4 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-3-setback-cap-3",
+          "label": "Level 3 setback / ground-cover cap (3)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              203.1,
+              109.0
+            ],
+            [
+              208.65,
+              75.1
+            ],
+            [
+              203.3152,
+              57.5
+            ],
+            [
+              227.8,
+              57.5
+            ],
+            [
+              227.8,
+              126.8
+            ],
+            [
+              208.5846,
+              126.8
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 3 profile where Level 4 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-3-setback-cap-4",
+          "label": "Level 3 setback / ground-cover cap (4)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              247.0,
+              57.5
+            ],
+            [
+              266.75,
+              57.5
+            ],
+            [
+              266.75,
+              126.8
+            ],
+            [
+              247.0,
+              126.8
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 3 profile where Level 4 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-atrium-skylight",
+          "label": "Lower atrium skylight (schematic)",
+          "kind": "skylight",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              58.0,
+              126.85
+            ],
+            [
+              63.55,
+              109.0
+            ],
+            [
+              58.0,
+              75.1
+            ],
+            [
+              63.3,
+              57.45
+            ],
+            [
+              203.3,
+              57.45
+            ],
+            [
+              208.65,
+              75.1
+            ],
+            [
+              203.1,
+              109.0
+            ],
+            [
+              208.6,
+              126.85
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "The reviewed zigzag region on plan page 4 identifies the pleated lower skylight, distinct from the upper shade canopy. The architect section and university account support this separation; placing a flat cap at Level 3 top is an inferred simplification, not a measured roof elevation. Real pleats, zinc facets and trusses are not modeled. The space above remains open up to the separate high shading canopy, which is omitted.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-ut-roof-canopy",
+              "eer-architect-section",
+              "eer-aisc-roof"
+            ]
+          }
+        }
       ]
     },
     {
@@ -483,7 +1139,8 @@
       "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "5",
@@ -495,7 +1152,8 @@
       "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "6",
@@ -507,7 +1165,8 @@
       "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "7",
@@ -519,6 +1178,139 @@
       "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
       "evidence": [
         "registered-floor-plans"
+      ],
+      "roofs": [
+        {
+          "id": "eer-7-setback-cap-1",
+          "label": "Level 7 setback / ground-cover cap (1)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              13.0,
+              -23.0
+            ],
+            [
+              254.0,
+              -23.0
+            ],
+            [
+              254.0,
+              -17.0
+            ],
+            [
+              13.0,
+              -17.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 7 profile where Level 8 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-7-setback-cap-2",
+          "label": "Level 7 setback / ground-cover cap (2)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              30.9,
+              57.5
+            ],
+            [
+              0.0,
+              57.5
+            ],
+            [
+              0.0,
+              57.0
+            ],
+            [
+              227.8,
+              57.0
+            ],
+            [
+              227.8,
+              57.5
+            ],
+            [
+              203.3152,
+              57.5
+            ],
+            [
+              203.3,
+              57.45
+            ],
+            [
+              63.3,
+              57.45
+            ],
+            [
+              63.285,
+              57.5
+            ],
+            [
+              38.0,
+              57.5
+            ],
+            [
+              38.0,
+              126.8
+            ],
+            [
+              30.9,
+              126.8
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 7 profile where Level 8 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        },
+        {
+          "id": "eer-7-setback-cap-3",
+          "label": "Level 7 setback / ground-cover cap (3)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              266.75,
+              57.0
+            ],
+            [
+              266.75,
+              57.5
+            ],
+            [
+              247.0,
+              57.5
+            ],
+            [
+              247.0,
+              57.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Explicit inferred closure of the exposed Level 7 profile where Level 8 steps back, checked against the corresponding registered plans. This uses reviewed perimeter differences, not room-detection gaps. Ground interface, terrace use, roof assembly and exact surface height remain unverified; placement is at the lower storey top. The central atrium skylight region is excluded.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-atrium-review"
+            ]
+          }
+        }
       ]
     },
     {
@@ -531,7 +1323,129 @@
       "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
       "evidence": [
         "registered-floor-plans"
+      ],
+      "roofs": [
+        {
+          "id": "eer-north-roof",
+          "label": "North tower roof",
+          "kind": "roof",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              247.0,
+              126.8
+            ],
+            [
+              266.75,
+              126.8
+            ],
+            [
+              266.75,
+              201.0
+            ],
+            [
+              0.0,
+              201.0
+            ],
+            [
+              0.0,
+              126.8
+            ],
+            [
+              227.8,
+              126.8
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Flat removable cap on the Level 8 enclosure traced from plan page 9. This closes the tower/connector massing only. Its height follows the schematic top of the highest storey, not a documented roof elevation. Roof plant, parapets, slopes and the separate upper central shade canopy are omitted; this cap does not span the atrium.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-ut-roof-canopy",
+              "eer-architect-section"
+            ]
+          }
+        },
+        {
+          "id": "eer-south-roof",
+          "label": "South tower roof",
+          "kind": "roof",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              266.75,
+              -17.0
+            ],
+            [
+              266.75,
+              57.0
+            ],
+            [
+              247.0,
+              57.0
+            ],
+            [
+              227.8,
+              57.0
+            ],
+            [
+              0.0,
+              57.0
+            ],
+            [
+              0.0,
+              -17.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Flat removable cap on the Level 8 enclosure traced from plan page 9. This closes the tower/connector massing only. Its height follows the schematic top of the highest storey, not a documented roof elevation. Roof plant, parapets, slopes and the separate upper central shade canopy are omitted; this cap does not span the atrium.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-ut-roof-canopy",
+              "eer-architect-section"
+            ]
+          }
+        },
+        {
+          "id": "eer-east-roof",
+          "label": "East connector roof",
+          "kind": "roof",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              247.0,
+              57.0
+            ],
+            [
+              247.0,
+              126.8
+            ],
+            [
+              227.8,
+              126.8
+            ],
+            [
+              227.8,
+              57.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Flat removable cap on the Level 8 enclosure traced from plan page 9. This closes the tower/connector massing only. Its height follows the schematic top of the highest storey, not a documented roof elevation. Roof plant, parapets, slopes and the separate upper central shade canopy are omitted; this cap does not span the atrium.",
+            "evidence": [
+              "registered-floor-plans",
+              "eer-ut-roof-canopy",
+              "eer-architect-section"
+            ]
+          }
+        }
       ]
     }
-  ]
+  ],
+  "roof_thickness_ft": 0.5,
+  "roof_thickness_status": "assumed"
 }

@@ -174,6 +174,8 @@ test('all real building exports retain each level, selected context wall and spa
     assert.equal(parsed.of('IFCBUILDINGSTOREY').length, building.floors.length);
     assert.equal(parsed.of('IFCWALL').length, model.floors.reduce((n, floor) => n + selectExteriorContextWalls(floor).length, 0));
     assert.equal(parsed.of('IFCSPACE').length, model.floors.reduce((n, floor) => n + floor.rooms.length, 0));
+    const roofProxies = parsed.of('IFCBUILDINGELEMENTPROXY').filter(product => /surface'/.test(product.args[4]));
+    assert.equal(roofProxies.length, { EER: 22, ECJ: 5, ASE: 0 }[id], 'all authored removable roof objects reach the default IFC export');
     for (const [index, storey] of parsed.of('IFCBUILDINGSTOREY').entries()) {
       const info = elevationInfo(building, model.floors[index].id);
       if (info.status === 'documented') assert.ok(Math.abs(Number(storey.args[9]) - info.elevationFt * 0.3048) < 1e-8);
@@ -222,4 +224,37 @@ test('IFC exterior mode omits internal and reference wall solids, while retainin
   const original = parse(exportArchitectureIFC(model, building, { exterior: false }));
   assert.equal(original.of('IFCWALL').length, 3);
   assert.equal(original.of('IFCBUILDINGELEMENTPROXY').length, 0);
+});
+
+test('IFC removable roofs keep metric surface elevations, openings and evidence independent of enclosure visibility', () => {
+  const { model, building } = fixture(), source = building.vertical.sources[0];
+  model.envelope_review = { sources: [source], source_sha256: model.source.sha256, roof_thickness_ft: .5 };
+  for (const floor of model.floors) floor.envelope = { role: 'storey', source_page: floor.source_page, footprints: [square], walls: [square] };
+  model.floors[2].envelope.top = { elevation_ft: 43, status: 'documented', source_id: source.id, note: 'Separate roof surface elevation.' };
+  model.floors[2].envelope.roofs = [
+    { ...square, id: 'roof-top', label: 'Upper skylight', kind: 'skylight', anchor: 'top', status: 'inferred', review: { note: 'Retain plan opening.', evidence: ['section'] } },
+    { ...square, id: 'terrace-base', label: 'Lower terrace', kind: 'terrace', anchor: 'base', status: 'inferred', review: { note: 'Setback footprint.', evidence: ['section'] } },
+  ];
+  const text = exportArchitectureIFC(model, building, { separation: 3 }), parsed = parse(text);
+  const roofs = parsed.of('IFCBUILDINGELEMENTPROXY').filter(product => /surface'/.test(product.args[4]));
+  assert.equal(roofs.length, 2);
+  const solid = product => parsed.get(refs(productShape(parsed, product)[0].args[3])[0]);
+  const depth = product => Number(solid(product).args[3]);
+  const top = roofs.find(product => product.args[4] === "'Inferred skylight surface'");
+  const terrace = roofs.find(product => product.args[4] === "'Inferred terrace surface'");
+  assert.ok(Math.abs(worldZ(parsed, top.args[5]) - 42.5 * .3048) < 1e-8);
+  assert.ok(Math.abs(worldZ(parsed, top.args[5]) + depth(top) - 43 * .3048) < 1e-8, 'assumed thickness does not raise documented roof surface');
+  assert.ok(Math.abs(worldZ(parsed, terrace.args[5]) + depth(terrace) - 14 * .3048) < 1e-8, 'base-anchored terrace uses its floor elevation');
+  assert.ok(roofs.every(product => depth(product) === .1524));
+  for (const roof of roofs) {
+    const profile = parsed.get(solid(roof).args[0]);
+    assert.equal(profile.type, 'IFCARBITRARYPROFILEDEFWITHVOIDS');
+    assert.equal(refs(profile.args[3]).length, 1, 'roof opening remains an analytic void');
+  }
+  for (const fragment of ['BevoTag_InferredRoofEvidence', 'DisplayThicknessMetres', 'ThicknessStatus', "IFCTEXT('assumed')", 'Separate roof surface elevation.', 'Retain plan opening.']) assert.ok(text.includes(fragment), fragment);
+  assert.equal(text.split('DATA;\n')[1], exportArchitectureIFC(model, building, { separation: 1 }).split('DATA;\n')[1]);
+  const count = options => parse(exportArchitectureIFC(model, building, options)).of('IFCBUILDINGELEMENTPROXY').length;
+  assert.equal(count({ roofs: false }), 3, 'enclosure stays visible while roof objects are omitted');
+  assert.equal(count({ exterior: false }), 0, 'original export defaults to no inferred roofs');
+  assert.equal(count({ exterior: false, roofs: true }), 2, 'roof visibility is independently selectable');
 });

@@ -45,8 +45,13 @@ function refreshHeights() {
   $('btnExportModel').textContent = summary.counts.documented === building.floors.length ? 'Export building OBJ' : 'Export schematic OBJ';
   const hasExterior = !!architecture?.envelope_review;
   $('showExterior').disabled = !hasExterior;
+  const hasRoofs = architecture?.floors.some(f => f.envelope?.roofs?.length);
+  $('showRoofs').disabled = !hasRoofs;
+  $('roofNote').textContent = !hasRoofs ? 'Roof surfaces are not available for this building.'
+    : $('showRoofs').checked ? 'Roofs shown. Hide them to inspect rooms. Outlines and 0.5 ft display thickness are approximate; roof slopes and details are not modeled.'
+    : 'Roofs removed for floor inspection. Whole building restores them; Exploded removes them.';
   $('exteriorNote').textContent = !hasExterior ? 'Exterior profiles are not available for this building.'
-    : !$('showExterior').checked ? 'Exterior hidden; showing the original plan reconstruction.'
+    : !$('showExterior').checked ? 'Exterior walls hidden; showing the original plan reconstruction.'
     : `Inferred exterior with closed openings; no verified glazing or material detail. ${building.id === 'ECJ' ? 'The whole-building view omits the unresolved mezzanine and composite roof reference. Select either level alone to inspect its source geometry.' : 'Level heights remain schematic until a dimensioned schedule is available.'}`;
 }
 
@@ -179,7 +184,7 @@ function options() {
   const heightsChanged = view && (view.options.spacing !== spacing || view.options.separation !== separation);
   $('wallHeight').value = wallHeight;
   $('floorSpacing').value = spacing; $('separationValue').value = `${separation}×${separation === 1 ? ' · unexploded' : ' · exploded view'}`;
-  view?.setOptions({ spacing, separation, wallHeight, exterior: $('showExterior').checked, walls: $('showWalls').checked, rooms: $('showRooms').checked, plans: $('showPlans').checked, bssid: $('signalSelect').value, heat: $('showHeat').checked, points: $('showPoints').checked, isolate: $('isolateFloor').checked });
+  view?.setOptions({ spacing, separation, wallHeight, exterior: $('showExterior').checked, roofs: $('showRoofs').checked, walls: $('showWalls').checked, rooms: $('showRooms').checked, plans: $('showPlans').checked, bssid: $('signalSelect').value, heat: $('showHeat').checked, points: $('showPoints').checked, isolate: $('isolateFloor').checked });
   if (isolateChanged || heightsChanged) view.fit();
   refreshHeights();
 }
@@ -262,9 +267,10 @@ async function init() {
     $('view3d').disabled = true; selectView('2d');
   }
   $('view3d').onclick = () => selectView('3d'); $('view2d').onclick = () => selectView('2d');
-  $('cameraIso').onclick = () => view?.fit(); $('cameraTop').onclick = () => { $('isolateFloor').checked = true; options(); view?.fit(true); }; $('cameraFit').onclick = () => view?.fit();
+  $('cameraIso').onclick = () => view?.fit(); $('cameraTop').onclick = () => { $('isolateFloor').checked = true; $('showRoofs').checked = false; options(); view?.fit(true); }; $('cameraFit').onclick = () => view?.fit();
   const wholeBuilding = separation => {
     $('isolateFloor').checked = false; $('showExterior').checked = true; $('floorSeparation').value = separation;
+    $('showRoofs').checked = separation === 1;
     options(); selectView('3d'); view?.fit();
   };
   $('cameraBuilding').onclick = () => wholeBuilding(1);
@@ -274,10 +280,10 @@ async function init() {
   $('btnImport').onclick = () => $('csvFiles').click();
   $('csvFiles').onchange = event => importFiles([...event.target.files]);
   $('btnClearImport').onclick = () => { imported = []; importedRows = []; importInfo = ''; refreshData(); };
-  for (const id of ['signalSelect', 'showHeat', 'showPoints', 'isolateFloor', 'floorSpacing', 'showExterior', 'showWalls', 'showRooms', 'showPlans', 'wallHeight']) $(id).onchange = options;
+  for (const id of ['signalSelect', 'showHeat', 'showPoints', 'isolateFloor', 'floorSpacing', 'showExterior', 'showRoofs', 'showWalls', 'showRooms', 'showPlans', 'wallHeight']) $(id).onchange = options;
   $('floorSeparation').oninput = options;
   $('modelRoom').onchange = () => chooseRoom(modelFloor?.rooms.find(r => r.id === $('modelRoom').value) || null);
-  $('btnFocusRoom').onclick = () => { if (selectedRoom) { $('isolateFloor').checked = true; options(); selectView('3d'); view?.focusRoom(selectedRoom); } };
+  $('btnFocusRoom').onclick = () => { if (selectedRoom) { $('isolateFloor').checked = true; $('showRoofs').checked = false; options(); selectView('3d'); view?.focusRoom(selectedRoom); } };
   $('btnRoomPoint').onclick = () => {
     if (!selectedRoom || S.collecting || S.locating || estimating || importing) return;
     const floor = S.buildings[S.building].floors.find(f => f.id === S.floor);
@@ -290,7 +296,7 @@ async function init() {
   };
   const downloadModel = (exporter, extension) => {
     if (!architecture) return;
-    const text = exporter(architecture, S.buildings[S.building], { wallHeight: Number($('wallHeight').value), spacing: Number($('floorSpacing').value), exterior: $('showExterior').checked });
+    const text = exporter(architecture, S.buildings[S.building], { wallHeight: Number($('wallHeight').value), spacing: Number($('floorSpacing').value), exterior: $('showExterior').checked, roofs: $('showRoofs').checked });
     const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' })), link = document.createElement('a');
     link.href = url; link.download = `${S.building}-rooms-walls.${extension}`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
   };
@@ -299,7 +305,7 @@ async function init() {
   $('btnEstimate').onclick = () => runEstimate(); $('btnEstimateJson').onclick = () => runEstimate(true);
   $('btnFocusEstimate').onclick = () => {
     if (!estimate?.ok || S.collecting || S.locating) return;
-    api.setFloor(estimate.floor); if (view) selectView('3d'); $('isolateFloor').checked = true; options(); view?.fit(true);
+    api.setFloor(estimate.floor); if (view) selectView('3d'); $('isolateFloor').checked = true; $('showRoofs').checked = false; options(); view?.fit(true);
   };
   window.addEventListener('bevotag:change', event => {
     syncBuilding();

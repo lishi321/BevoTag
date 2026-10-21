@@ -6,7 +6,9 @@ import { BuildingView } from '../model-view.mjs';
 import { wallGeometry } from '../architecture-geometry.mjs';
 
 const ecj = JSON.parse(readFileSync(new URL('../buildings/ECJ/building.json', import.meta.url)));
+const eer = JSON.parse(readFileSync(new URL('../buildings/EER/building.json', import.meta.url)));
 const rectangle = x => ({ outline: [[x, 0], [x + 8, 0], [x + 8, 1], [x, 1]], holes: [] });
+const roof = (id, anchor) => ({ ...rectangle(0), id, label: id, kind: 'roof', anchor, status: 'inferred' });
 const close = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 1e-6, `${message}: ${actual} vs ${expected}`);
 
 function wallGroup(polygons) {
@@ -22,11 +24,12 @@ function wallGroup(polygons) {
 // Exercise the real layout method with actual Three.js transforms and meshes.
 // Only WebGL, DOM labels and repaint scheduling are replaced: neither is needed
 // to measure the geometry that would reach the renderer.
-function fixture() {
+function fixture(building = ecj) {
   const view = Object.create(BuildingView.prototype);
-  view.building = structuredClone(ecj);
+  view.building = structuredClone(building);
   view.architecture = {
-    floors: ecj.floors.map(config => ({
+    envelope_review: { roof_thickness_ft: .5 },
+    floors: building.floors.map(config => ({
       id: config.id,
       walls: [rectangle(0), rectangle(12)], rooms: [],
       envelope: {
@@ -35,12 +38,14 @@ function fixture() {
         ...(config.id === '11' ? {
           context_walls: [rectangle(100)],
           top: { elevation_ft: 159, status: 'unverified', note: 'Fixture envelope top.' },
+          roofs: [roof('penthouse-top', 'top'), roof('lower-roof', 'base')],
         } : {}),
+        ...(building.id === 'EER' && config.id === '8' ? { roofs: [roof('tower-top', 'top')] } : {}),
       },
     })),
   };
   view.options = {
-    spacing: 14, separation: 1, wallHeight: 10, exterior: true,
+    spacing: 14, separation: 1, wallHeight: 10, exterior: true, roofs: false,
     walls: true, rooms: true, plans: false, heat: false, points: false, isolate: false,
   };
   view.floor = '11';
@@ -54,15 +59,17 @@ function fixture() {
     const group = new THREE.Group(), architectureGroup = new THREE.Group();
     const walls = wallGroup(model.walls), contextWalls = wallGroup(model.envelope.context_walls || []);
     const exterior = wallGroup(model.envelope.walls), rooms = new THREE.Group();
+    const roofs = wallGroup(model.envelope.roofs || []);
+    roofs.children.forEach((mesh, index) => { mesh.userData.roofId = model.envelope.roofs[index].id; });
     const plan = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial());
     const outline = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial());
     const heat = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial());
     const markers = new THREE.Group();
-    architectureGroup.add(walls, contextWalls, exterior, rooms);
+    architectureGroup.add(walls, contextWalls, exterior, rooms, roofs);
     group.add(architectureGroup, plan, outline, heat, markers);
     view.scene.add(group);
     view.floorGroups.set(model.id, {
-      group, model, walls, contextWalls, exterior, rooms, plan, outline, heat, markers,
+      group, model, walls, contextWalls, exterior, rooms, roofs, plan, outline, heat, markers,
       architectureGroup, label: { classList: { toggle() {} } },
     });
   }
@@ -170,4 +177,68 @@ test('plan-wall visibility and exterior-enclosure visibility remain independent 
   layout(view, { walls: true, exterior: false });
   assert.equal(visibleInScene(view.floorGroups.get('11').walls), true);
   assert.equal(visibleInScene(view.floorGroups.get('11').exterior), false);
+});
+
+test('removable ECJ roof solids end at the 142 ft and 159 ft surfaces instead of adding thickness above them', () => {
+  const view = fixture();
+  layout(view, { roofs: true });
+  const floor = view.floorGroups.get('11');
+  const top = floor.roofs.children.find(mesh => mesh.userData.roofId === 'penthouse-top');
+  const lower = floor.roofs.children.find(mesh => mesh.userData.roofId === 'lower-roof');
+  close(bounds(top).min.y, 158.5, 'penthouse roof underside');
+  close(bounds(top).max.y, 159, 'penthouse roof surface');
+  close(bounds(lower).min.y, 141.5, 'lower roof underside');
+  close(bounds(lower).max.y, 142, 'lower roof surface at the storey base');
+  close(bounds(top).getSize(new THREE.Vector3()).y, .5, 'roof display thickness');
+  close(bounds(top).max.y, bounds(floor.exterior).max.y, 'roof surface meets the enclosure top');
+});
+
+test('roofs reenabled in an exploded view follow their owning floor without stretching local offsets or thickness', () => {
+  const view = fixture();
+  layout(view, { roofs: true });
+  const floor = view.floorGroups.get('11');
+  const original = floor.roofs.children.map(mesh => ({ mesh, box: bounds(mesh) }));
+  layout(view, { roofs: false, separation: 3 });
+  assert.equal(visibleInScene(floor.roofs), false, 'exploded preset can hide caps');
+  layout(view, { roofs: true });
+  assert.equal(visibleInScene(floor.roofs), true, 'user can reenable caps in the exploded view');
+  for (const { mesh, box } of original) {
+    const moved = bounds(mesh);
+    close(moved.min.y - box.min.y, 284, 'roof translates with its owning level 11 base');
+    close(moved.max.y - moved.min.y, .5, 'roof thickness does not triple');
+  }
+  const top = floor.roofs.children.find(mesh => mesh.userData.roofId === 'penthouse-top');
+  close(bounds(top).max.y - floor.group.position.y, 17, 'penthouse roof retains its local offset');
+  close(bounds(top).max.y, bounds(floor.exterior).max.y, 'exploded cap still meets its enclosure top');
+});
+
+test('roof visibility is independent of wall layers and toggling it preserves every mesh and source surface', () => {
+  const view = fixture();
+  const floor = view.floorGroups.get('11'), meshes = floor.roofs.children.slice();
+  const source = JSON.stringify(floor.model);
+  layout(view, { roofs: true, exterior: false, walls: false, rooms: false });
+  assert.ok(meshes.every(visibleInScene), 'roof-only inspection works');
+  assert.equal(visibleInScene(floor.exterior), false);
+  assert.equal(visibleInScene(floor.walls), false);
+  layout(view, { roofs: false, exterior: true, walls: true, rooms: true });
+  assert.ok(meshes.every(mesh => !visibleInScene(mesh)), 'all caps are hidden together');
+  assert.equal(visibleInScene(floor.exterior), true, 'hiding caps does not hide the enclosure');
+  assert.equal(visibleInScene(floor.contextWalls), true, 'hiding caps does not hide plan-wall context');
+  assert.equal(JSON.stringify(floor.model), source, 'visibility does not mutate source geometry');
+  assert.deepEqual(floor.roofs.children, meshes, 'toggle reuses intact roof meshes');
+  layout(view, { roofs: true });
+  assert.ok(meshes.every(visibleInScene));
+});
+
+test('unverified EER roof elevation follows display settings while its assumed thickness remains fixed', () => {
+  const view = fixture(eer);
+  view.floor = '8';
+  layout(view, { roofs: true });
+  const floor = view.floorGroups.get('8'), mesh = floor.roofs.children[0];
+  close(bounds(mesh).max.y, 108, 'schematic eighth-level roof at default spacing');
+  assert.equal(floor.roofSurfaces[0].elevationStatus, 'assumed');
+  layout(view, { spacing: 20, wallHeight: 12 });
+  close(bounds(mesh).max.y, 152, 'roof follows the changed schematic level and final-band height');
+  close(bounds(mesh).getSize(new THREE.Vector3()).y, .5, 'display slab thickness is independent of wall height');
+  assert.equal(floor.roofSurfaces[0].elevationStatus, 'assumed', 'controls never promote a display height to sourced');
 });

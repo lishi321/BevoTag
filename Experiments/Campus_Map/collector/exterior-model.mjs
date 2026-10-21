@@ -73,3 +73,28 @@ export function exteriorBand(architecture, building, floorId, { spacing = 14, wa
     status, geometryStatus: 'inferred', base, top, note,
   };
 }
+
+/** Removable inferred roof solids extend downward from their surface elevation. */
+export function roofSurfaces(architecture, building, floorId, options = {}) {
+  const floor = architecture.floors.find(item => item.id === floorId);
+  if (!floor?.envelope?.roofs) return [];
+  const roofs = floor.envelope.roofs;
+  if (!Array.isArray(roofs)) throw new Error('Invalid roof surface list');
+  if (!roofs.length) return [];
+  const band = exteriorBand(architecture, building, floorId, options);
+  if (!band) return [];
+  const thickness = architecture.envelope_review?.roof_thickness_ft ?? .5;
+  if (!positive(thickness)) throw new Error('Roof display thickness must be a positive finite number');
+  const ids = new Set();
+  return roofs.map(roof => {
+    if (!text(roof.id) || ids.has(roof.id) || !text(roof.label) || !['roof', 'skylight', 'terrace'].includes(roof.kind)
+      || !['base', 'top'].includes(roof.anchor) || roof.status !== 'inferred') throw new Error('Invalid or duplicate inferred roof surface');
+    ids.add(roof.id); validatePolygon(roof);
+    const elevation = { ...band[roof.anchor] };
+    return {
+      ...roof, elevationFt: elevation.elevationFt, baseFt: elevation.elevationFt - thickness, heightFt: thickness,
+      geometryStatus: 'inferred', thicknessStatus: 'assumed', elevationStatus: elevation.status, elevation,
+      note: `Inferred ${roof.kind} surface; footprint, construction and attachment to this model level require verification. ${thickness} ft display thickness extends below the surface and is not measured slab thickness. Anchor elevation: ${elevation.note}`,
+    };
+  });
+}

@@ -52,16 +52,37 @@ def apply_exterior_review(data, review, source_sha256=None):
     thickness = review.get('wall_thickness_ft')
     if not isinstance(thickness, (int, float)) or not math.isfinite(thickness) or thickness <= 0:
         raise ValueError('Exterior wall thickness must be positive')
+    roof_thickness = review.get('roof_thickness_ft', .5)
+    if not isinstance(roof_thickness, (int, float)) or not math.isfinite(roof_thickness) or roof_thickness <= 0:
+        raise ValueError('Roof display thickness must be positive')
     levels = {row['floor_id']: row for row in review['levels']}
     if len(levels) != len(review['levels']):
         raise ValueError('Duplicate exterior review floor')
     profiles = {key: _polygon(value) for key, value in review['profiles'].items()}
+    roof_ids = set()
+    source_ids = {source['id'] for source in review['sources']}
+    for spec in review['levels']:
+        for roof in spec.get('roofs', []):
+            if (not roof.get('id') or roof['id'] in roof_ids or not isinstance(roof.get('label'), str)
+                    or not roof['label'] or roof.get('kind') not in ('roof', 'terrace', 'skylight')
+                    or roof.get('anchor') not in ('base', 'top') or roof.get('status') != 'inferred'
+                    or spec['role'] != 'storey' or not roof.get('review', {}).get('note')
+                    or not roof.get('review', {}).get('evidence')
+                    or not set(roof['review']['evidence']).issubset(source_ids)):
+                raise ValueError('Invalid reviewed roof metadata')
+            roof_ids.add(roof['id'])
+            _polygon(roof)
+        for i, roof in enumerate(spec.get('roofs', [])):
+            for other in spec['roofs'][i + 1:]:
+                if roof['anchor'] == other['anchor'] and _polygon(roof).intersection(_polygon(other)).area > .001:
+                    raise ValueError('Reviewed roofs overlap at the same anchor')
     result = copy.deepcopy(data)
     digest = hashlib.sha256(json.dumps(review, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     result['envelope_review'] = {
         'file': 'exterior-review.json', 'source_sha256': expected, 'sha256': digest,
         'reviewed': review['reviewed'], 'status': 'inferred', 'method': review['method'],
         'wall_thickness_ft': thickness, 'wall_thickness_status': 'assumed',
+        'roof_thickness_ft': roof_thickness, 'roof_thickness_status': 'assumed',
         'sources': copy.deepcopy(review['sources']), 'limitations': review['limitations'],
     }
     for floor in result['floors']:
@@ -83,6 +104,7 @@ def apply_exterior_review(data, review, source_sha256=None):
             'footprints': [_rings(p) for p in _polygons(shape)],
             'walls': [_rings(p) for p in _polygons(band)],
             'wall_thickness_ft': thickness, 'wall_thickness_status': 'assumed',
+            'roofs': [{**copy.deepcopy(roof), **_rings(_polygon(roof))} for roof in spec.get('roofs', [])],
             'review': {'note': spec['note'], 'evidence': spec['evidence'], 'profile_ids': ids,
                        'profile_notes': [review['profiles'][key]['note'] for key in ids]},
         }

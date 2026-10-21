@@ -29,7 +29,13 @@ export function validateArchitecture(data, building) {
     if (envelope && (!['storey', 'internal', 'reference'].includes(envelope.role) || envelope.source_page !== floor.source_page || !Array.isArray(envelope.footprints) || !Array.isArray(envelope.walls))) throw new Error('Invalid exterior envelope');
     if (envelope?.role === 'storey' && (!envelope.footprints.length || !envelope.walls.length)) throw new Error('Exterior storey is missing its profile');
     if (envelope?.context_walls !== undefined && !Array.isArray(envelope.context_walls)) throw new Error('Invalid exterior context walls');
-    for (const polygon of [...floor.walls, ...floor.rooms, ...(envelope?.footprints || []), ...(envelope?.walls || []), ...(envelope?.context_walls || [])]) {
+    if (envelope?.roofs !== undefined && !Array.isArray(envelope.roofs)) throw new Error('Invalid roof surfaces');
+    const roofIds = new Set();
+    for (const roof of envelope?.roofs || []) {
+      if (envelope.role !== 'storey' || !roof.id || roofIds.has(roof.id) || !['roof', 'skylight', 'terrace'].includes(roof.kind) || !['base', 'top'].includes(roof.anchor)) throw new Error('Invalid roof surface');
+      roofIds.add(roof.id);
+    }
+    for (const polygon of [...floor.walls, ...floor.rooms, ...(envelope?.footprints || []), ...(envelope?.walls || []), ...(envelope?.context_walls || []), ...(envelope?.roofs || [])]) {
       for (const ring of [polygon.outline, ...(polygon.holes || [])]) {
         if (!Array.isArray(ring) || ring.length < 3 || ring.some(p => !Array.isArray(p) || p.length !== 2 || !p.every(Number.isFinite))) throw new Error('Invalid model polygon');
       }

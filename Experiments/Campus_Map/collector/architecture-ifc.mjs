@@ -1,9 +1,10 @@
 import { validateArchitecture } from './architecture.mjs';
 import { elevationInfo, verticalSummary } from './vertical-model.mjs';
-import { exteriorBand, selectExteriorContextWalls } from './exterior-model.mjs';
+import { exteriorBand, roofSurfaces, selectExteriorContextWalls } from './exterior-model.mjs';
 
-// IFC4 subset: spatial hierarchy, swept wall profiles and room footprint curves.
-// No slab thickness, room volume, material, opening height or surveyed datum is invented.
+// IFC4 subset: spatial hierarchy, swept profiles and room footprint curves.
+// Roof thickness is explicitly assumed; room volume, material, opening height and
+// a surveyed datum are not asserted.
 // Schema references:
 // https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcgeometricmodelresource/lexical/ifcextrudedareasolid.htm
 // https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcproductextension/lexical/ifcspace.htm
@@ -61,7 +62,7 @@ function orientedRing(points, clockwise = false) {
 }
 
 /** Export reconstructed geometry, retaining source evidence and unknown heights. */
-export function exportArchitectureIFC(architecture, building, { wallHeight = 10, spacing = 14, exterior = true } = {}) {
+export function exportArchitectureIFC(architecture, building, { wallHeight = 10, spacing = 14, exterior = true, roofs = exterior } = {}) {
   if (!Number.isFinite(wallHeight) || wallHeight <= 0 || !Number.isFinite(spacing) || spacing <= 0) {
     throw new Error('Model heights must be positive finite numbers');
   }
@@ -127,8 +128,9 @@ export function exportArchitectureIFC(architecture, building, { wallHeight = 10,
     GeometrySourceRegistry: textValue(json(building.geometry_review)),
     EnvelopeReview: textValue(json(architecture.envelope_review)),
     EnvelopeInterpretation: textValue(exterior ? 'Optional inferred enclosure bands are IfcBuildingElementProxy objects, separate from reconstructed IfcWall solids. Enclosure thickness, opening treatment and geometry are not surveyed. Internal mezzanine and composite reference wall solids are omitted; their storeys and space footprint curves remain as unverified source references. Reviewed context walls replace projection linework only where supplied. Export exterior=false to retain all original walls.' : 'Inferred exterior enclosure objects excluded from this export; all original wall and space geometry retained.'),
+    RoofInterpretation: textValue(roofs ? 'Removable inferred roof, terrace and skylight solids are separate IfcBuildingElementProxy objects. Their assumed display thickness extends below the surface elevation; these are not surveyed roof construction assemblies.' : 'Removable inferred roof surfaces excluded from this export.'),
     ExplodedView: textValue('Excluded. Placement uses unexpanded model coordinates; unknown Z values remain schematic.'),
-    Limitations: textValue('Wall heights are display assumptions. Spaces are footprints only. No room volume, slab thickness, ceiling, opening height, or material assignment is inferred.'),
+    Limitations: textValue('Wall heights are display assumptions. Spaces are footprints only. Roof display thickness is assumed; no measured slab thickness, room volume, ceiling, opening height, or material assignment is established.'),
   });
   // Navigable references retain the actual evidence URL; a project reference does
   // not turn an unsupported height into a documented storey elevation.
@@ -241,6 +243,39 @@ export function exportArchitectureIFC(architecture, building, { wallHeight = 10,
         ReviewSHA256: textValue(architecture.envelope_review?.sha256 || ''),
       });
     }
+    const roofProducts = [];
+    if (roofs) for (const roof of roofSurfaces(architecture, building, floor.id, { wallHeight, spacing })) {
+      const polygon = rings(roof), outer = polyline(polygon.outer), inner = polygon.holes.map(hole => polyline(hole));
+      const profile = inner.length
+        ? add('IfcArbitraryProfileDefWithVoids', '.AREA.', '$', outer, list(inner))
+        : add('IfcArbitraryClosedProfileDef', '.AREA.', '$', outer);
+      const solid = add('IfcExtrudedAreaSolid', profile, originAxes, zDirection, real(roof.heightFt * METRES_PER_FOOT));
+      const representation = add('IfcShapeRepresentation', bodyContext, stepText('Body'), stepText('SweptSolid'), list([solid]));
+      const key = `${floorKey}/inferred-roof/${roof.id}`;
+      const product = root('IfcBuildingElementProxy', key, `${building.id} ${floor.id} ${roof.label}`,
+        `Removable inferred ${roof.kind}; display thickness and construction are not surveyed.`,
+        stepText(`Inferred ${roof.kind} surface`), placement(storeyPlacement, (roof.baseFt - info.elevationFt) * METRES_PER_FOOT), productShape(representation), stepText(key), '.NOTDEFINED.');
+      roofProducts.push(product);
+      propertySet([product], `${key}/evidence`, 'BevoTag_InferredRoofEvidence', {
+        RoofId: textValue(roof.id),
+        RoofKind: textValue(roof.kind),
+        Anchor: textValue(roof.anchor),
+        GeometryStatus: textValue(roof.geometryStatus),
+        SurfaceElevationMetres: lengthValue(roof.elevationFt * METRES_PER_FOOT),
+        BaseElevationMetres: lengthValue(roof.baseFt * METRES_PER_FOOT),
+        DisplayThicknessMetres: lengthValue(roof.heightFt * METRES_PER_FOOT),
+        ThicknessStatus: textValue(roof.thicknessStatus),
+        ElevationStatus: textValue(roof.elevationStatus),
+        ElevationEvidence: textValue(json(roof.elevation)),
+        ElevationInterpretation: textValue('Elevation status describes the selected model anchor. A documented storey elevation alone does not verify that this inferred roof or terrace lies on that plane.'),
+        Interpretation: textValue(roof.note),
+        GeometryReview: textValue(json(roof.review)),
+        SourcePlanPage: textValue(floor.envelope.source_page ?? floor.source_page ?? ''),
+        SourceSHA256: textValue(architecture.envelope_review?.source_sha256 || ''),
+        ReviewSHA256: textValue(architecture.envelope_review?.sha256 || ''),
+      });
+    }
+    if (roofProducts.length) root('IfcRelContainedInSpatialStructure', `${floorKey}/roofs`, 'Removable inferred roof surfaces', '', list(roofProducts), storey);
     const spaces = [];
     for (const room of floor.rooms) {
       const polygon = rings(room), curves = [polygon.outer, ...polygon.holes].map(ring => polyline(ring, 3));

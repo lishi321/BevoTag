@@ -59,8 +59,9 @@
       <div class="card-title"><h2>Building model</h2><span class="section-number">CAD VIEW</span></div>
       <p id="architectureSummary" class="small muted" role="status">Loading wall and room geometry…</p>
       <p id="heightStatus" class="height-status" role="status">Floor elevations unverified</p>
-      <div class="layer-checks"><label class="check"><input id="showExterior" type="checkbox" checked> Continuous exterior</label><label class="check"><input id="showWalls" type="checkbox" checked> Plan walls</label><label class="check"><input id="showRooms" type="checkbox" checked> Room surfaces</label><label class="check"><input id="showPlans" type="checkbox"> Plan reference</label><label class="check"><input id="isolateFloor" type="checkbox" checked> Active floor only</label></div>
+      <div class="layer-checks"><label class="check"><input id="showExterior" type="checkbox" checked> Continuous exterior</label><label class="check"><input id="showRoofs" type="checkbox"> Roofs</label><label class="check"><input id="showWalls" type="checkbox" checked> Plan walls</label><label class="check"><input id="showRooms" type="checkbox" checked> Room surfaces</label><label class="check"><input id="showPlans" type="checkbox"> Plan reference</label><label class="check"><input id="isolateFloor" type="checkbox" checked> Active floor only</label></div>
       <p id="exteriorNote" class="small muted" role="status"></p>
+      <p id="roofNote" class="small muted" role="status"></p>
       <label>Room / enclosed space<select id="modelRoom"><option value="">Select a room in the model</option></select></label>
       <p id="roomDetail" class="small muted">Click a room surface or choose one above.</p>
       <div class="btnrow architecture-actions"><button id="btnFocusRoom" disabled>Focus room</button><button id="btnRoomPoint" disabled>Use room center</button></div>
@@ -74,7 +75,7 @@
         <p id="heightResearchNote" class="small muted"></p>
         <ul id="heightSources" class="height-sources"></ul>
         <div class="btnrow"><button id="btnExportIFC" disabled>Export CAD / BIM IFC</button><button id="btnExportModel" disabled>Export building OBJ</button></div>
-        <p class="small muted">IFC keeps levels, wall solids and room footprints as separate objects in metres. When Continuous exterior is on, exports include its separate inferred shell objects. OBJ is a mesh in feet. Both retain height evidence and exclude visual separation.</p>
+        <p class="small muted">IFC keeps levels, wall solids and room footprints as separate objects in metres. Continuous exterior and Roofs control their separate inferred objects in both exports. OBJ is a mesh in feet. Both retain height evidence and exclude visual separation.</p>
       </details>
       <details class="model-settings"><summary>Geometry evidence &amp; review</summary>
         <p id="geometryReviewNote" class="small muted"></p>

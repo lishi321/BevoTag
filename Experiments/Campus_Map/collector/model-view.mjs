@@ -3,7 +3,7 @@ import { OrbitControls } from './vendor/OrbitControls.js';
 import { toFrame, fromFrame, floorElevation, interpolate, signalColor, signalAt } from './signal-model.mjs';
 import { roomAt } from './architecture.mjs';
 import { wallGeometry, roomGeometry } from './architecture-geometry.mjs';
-import { exteriorBand } from './exterior-model.mjs';
+import { exteriorBand, roofSurfaces } from './exterior-model.mjs';
 
 const rgb = values => new THREE.Color(`rgb(${values.join(',')})`);
 const dispose = group => group.traverse(object => {
@@ -29,7 +29,7 @@ export class BuildingView {
     this.controls.addEventListener('change', () => this.invalidate());
     this.buildingGroup = new THREE.Group(); this.scene.add(this.buildingGroup);
     this.floorGroups = new Map(); this.generation = 0; this.points = [];
-    this.options = { spacing: 14, separation: 1, wallHeight: 10, exterior: true, walls: true, rooms: true, plans: false, heat: true, points: true, isolate: true, bssid: '*' };
+    this.options = { spacing: 14, separation: 1, wallHeight: 10, exterior: true, roofs: false, walls: true, rooms: true, plans: false, heat: true, points: true, isolate: true, bssid: '*' };
     this.raycaster = new THREE.Raycaster();
     const floorHit = event => {
       const floor = this.floorGroups.get(this.floor);
@@ -38,6 +38,9 @@ export class BuildingView {
       this.raycaster.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2), this.camera);
       const point = this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -floor.group.position.y), new THREE.Vector3());
       if (!point) return null;
+      const roofMeshes = [...this.floorGroups.values()].filter(f => f.group.visible && f.roofs.visible).flatMap(f => f.roofs.children);
+      const roofHit = this.raycaster.intersectObjects(roofMeshes, false)[0];
+      if (roofHit && roofHit.distance < this.camera.position.distanceTo(point) - 0.01) return null;
       const pixel = fromFrame(floor.config, point.x, -point.z), [x0, y0, x1, y1] = floor.config.fit;
       return pixel && pixel.x >= x0 && pixel.x <= x1 && pixel.y >= y0 && pixel.y <= y1 ? { point, pixel, floor } : null;
     };
@@ -110,7 +113,7 @@ export class BuildingView {
       const heat = new THREE.Mesh(geometry.clone(), new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, opacity: 0.62 }));
       heat.position.y = 0.18; heat.visible = false;
       const markers = new THREE.Group(), overlay = new THREE.Group();
-      const walls = new THREE.Group(), contextWalls = new THREE.Group(), exterior = new THREE.Group(), rooms = new THREE.Group(), architectureGroup = new THREE.Group();
+      const walls = new THREE.Group(), contextWalls = new THREE.Group(), exterior = new THREE.Group(), roofs = new THREE.Group(), rooms = new THREE.Group(), architectureGroup = new THREE.Group();
       const model = architecture?.floors.find(f => f.id === floor.id);
       for (const wall of model?.walls || []) {
         const geometry = wallGeometry(wall); geometry.rotateX(-Math.PI / 2);
@@ -128,16 +131,24 @@ export class BuildingView {
         const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 25), new THREE.LineBasicMaterial({ color: '#718c88', transparent: true, opacity: 0.5 }));
         exterior.add(mesh, edges);
       }
+      for (const roof of model?.envelope?.roofs || []) {
+        const geometry = wallGeometry(roof); geometry.rotateX(-Math.PI / 2);
+        const skylight = roof.kind === 'skylight';
+        const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: skylight ? '#639ca8' : '#aeb8b4', roughness: skylight ? 0.2 : 0.92, transparent: skylight, opacity: skylight ? 0.82 : 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+        mesh.userData.roofId = roof.id;
+        mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 25), new THREE.LineBasicMaterial({ color: skylight ? '#326774' : '#627d79' })));
+        roofs.add(mesh);
+      }
       for (const room of model?.rooms || []) {
         const geometry = roomGeometry(room); geometry.rotateX(-Math.PI / 2);
         const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: '#d2dcd9', roughness: 1, side: THREE.DoubleSide }));
         mesh.position.y = 0.04; mesh.userData.room = room; rooms.add(mesh);
       }
-      architectureGroup.add(walls, contextWalls, exterior, rooms);
+      architectureGroup.add(walls, contextWalls, exterior, rooms, roofs);
       group.add(plan, outline, architectureGroup, heat, markers, overlay); this.buildingGroup.add(group);
       const label = document.createElement('div'); label.className = 'floor-label'; label.textContent = `LEVEL ${floor.id}`; this.labels.appendChild(label);
       const anchor = toFrame(floor, floor.fit[0], floor.fit[3]);
-      this.floorGroups.set(floor.id, { group, plan, outline, heat, markers, overlay, label, anchor, config: floor, model, walls, contextWalls, exterior, rooms, architectureGroup });
+      this.floorGroups.set(floor.id, { group, plan, outline, heat, markers, overlay, label, anchor, config: floor, model, walls, contextWalls, exterior, rooms, roofs, architectureGroup });
       box.expandByObject(model?.walls.length ? architectureGroup : plan);
       loads.push(new Promise(resolve => {
         const image = new Image();
@@ -185,6 +196,16 @@ export class BuildingView {
       f.exterior.visible = this.options.exterior && !!band;
       f.exterior.scale.y = band?.heightFt || 1;
       f.exteriorBand = band;
+      f.roofSurfaces = roofSurfaces(this.architecture, this.building, id, this.options);
+      f.roofs.visible = !!this.options.roofs;
+      for (const mesh of f.roofs.children) {
+        const roof = f.roofSurfaces.find(item => item.id === mesh.userData.roofId);
+        mesh.visible = !!roof;
+        if (roof) {
+          mesh.position.y = roof.baseFt - floorElevation(this.building, id, this.options.spacing);
+          mesh.scale.y = roof.heightFt;
+        }
+      }
       f.rooms.visible = this.options.rooms;
       f.plan.visible = this.options.plans;
       f.outline.visible = this.options.plans;
@@ -292,7 +313,8 @@ export class BuildingView {
     if (!top && !this.options.isolate) {
       const visible = [...this.floorGroups.values()].filter(f => f.group.visible);
       bounds.min.y = Math.min(...visible.map(f => f.group.position.y));
-      bounds.max.y = Math.max(...visible.map(f => f.group.position.y + Math.max(this.options.wallHeight, f.exterior.visible ? f.exteriorBand.heightFt : 0)));
+      bounds.max.y = Math.max(...visible.map(f => f.group.position.y + Math.max(this.options.wallHeight, f.exterior.visible ? f.exteriorBand.heightFt : 0,
+        ...(f.roofs.visible ? f.roofs.children.filter(mesh => mesh.visible).map(mesh => mesh.position.y + mesh.scale.y) : []))));
     }
     const center = bounds.getCenter(new THREE.Vector3()), size = bounds.getSize(new THREE.Vector3());
     const halfFov = THREE.MathUtils.degToRad(this.camera.fov / 2);

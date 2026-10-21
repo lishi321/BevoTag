@@ -5,19 +5,25 @@
   "source_sha256": "5ad3f1f17a2201f3e1226ebb9fbe1e615b66fb22e57607446502bb8524acd4c4",
   "wall_thickness_ft": 0.5,
   "method": "Source plan outlines were reviewed in the existing registered building frame. This is coarse exterior massing: door/window gaps are closed, glazing and masonry are not distinguished, small facade returns/columns/entrance canopies are simplified. No room, original wall, height, material or measured thickness is inferred from these profiles.",
-  "limitations": "Horizontal traces and existing floor registration are approximate; lower-level source clipping, facade recesses, terraces, shafts and renovation currency remain unverified. The 0.5 ft inward shell thickness is display-only. Closed shell surfaces include doors and windows without claiming their locations/materials. This is not an as-built envelope, weatherproofing model, or RF obstruction model.",
+  "limitations": "Horizontal traces and existing floor registration are approximate; lower-level source clipping, facade recesses, terraces, shafts and renovation currency remain unverified. The 0.5 ft inward shell thickness is display-only. Closed shell surfaces include doors and windows without claiming their locations/materials. This is not an as-built envelope, weatherproofing model, or RF obstruction model. Roofs are removable flat massing caps with 0.5 ft assumed display thickness extending downward from their anchor. Actual roof slopes, pleats, assemblies, penetrations, drains, parapets and landscaping remain unmodeled. Terrace/ground-cover caps close exposed lower profiles without verifying use or grade.",
   "sources": [
     {
       "id": "registered-floor-plans",
       "title": "UT ECJ floor-plan set in the project",
       "file": "ECJ.pdf",
-      "evidence": "PDF pages1\u201315: broad basement/first-floor podium, repeating rectangular tower facade on pages4\u201312, and recessed mechanical penthouse on page13. Page14 is an internal mezzanine, while page15 is a composite roof sheet marked ROOF(TBD)."
+      "evidence": "PDF pages 1\u201315: broad basement/first-floor podium, repeating rectangular tower facade on pages 4\u201312, and recessed mechanical penthouse on page 13. Page14 is an internal mezzanine, while page 15 is a composite roof sheet marked ROOF(TBD)."
     },
     {
       "id": "ecj-record-penthouse-roof",
-      "title": "Sarlo2018 dissertation Appendix C: WJE2013 record elevations",
+      "title": "Sarlo 2018 dissertation Appendix C: WJE 2013 record elevations",
       "url": "https://vtechworks.lib.vt.edu/bitstreams/b9653165-72de-4e1e-9470-21996593bbe9/download#page=189",
-      "evidence": "PDF pages189\u2013190, WJE sheetsS3.2/S3.1: penthouse roof elevation711ft and Level1 elevation552ft imply a159ft relative penthouse top. This is a historical drawing elevation with original vertical datum unspecified; it does not assign a unique elevation to the composite R sheet."
+      "evidence": "PDF pages 189\u2013190, WJE sheets S3.2/S3.1: penthouse roof elevation711 ft and Level 1 elevation552 ft imply a159 ft relative penthouse top. This is a historical drawing elevation with original vertical datum unspecified; it does not assign a unique elevation to the composite R sheet."
+    },
+    {
+      "id": "ecj-roof-planes",
+      "title": "UT ECJ roof replacement RFQ and historical record elevations",
+      "url": "https://construction.utexas.edu/26dbl001-cp2001733-ecj-roof-replacement-rfq",
+      "evidence": "The official RFQ distinguishes Level 11 lower roof / mechanical-penthouse floor from the upper penthouse roof. WJE record sheets S3.2/S3.1 reproduced in Sarlo 2018 give lower roof EL 694 and penthouse roof EL 711, relative to Level 1 EL 552: +142 ft and +159 ft. Roof geometry is simplified to registered plan footprints; parapets and buildup are not resolved."
     }
   ],
   "profiles": {
@@ -175,7 +181,7 @@
         ]
       ],
       "holes": [],
-      "note": "Pages4\u201312 repeat the tower facade/glazing plane between projecting corner/edge columns. The complete rectangle is visible on page4 even though the automatic room detector missed the large northwest lobby. Grid134x102ft corroborates the scale; tiny column projections/corner chamfers and exterior entrance porch/steps are omitted. These facade dimensions are traced from registered plans, not surveyed."
+      "note": "Pages4\u201312 repeat the tower facade/glazing plane between projecting corner/edge columns. The complete rectangle is visible on page 4 even though the automatic room detector missed the large northwest lobby. Grid134x102 ft corroborates the scale; tiny column projections/corner chamfers and exterior entrance porch/steps are omitted. These facade dimensions are traced from registered plans, not surveyed."
     },
     "penthouse": {
       "outline": [
@@ -208,10 +214,11 @@
       "profile_ids": [
         "sub-basement"
       ],
-      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level 6 is estimated and SB placement remains schematic.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "B",
@@ -220,9 +227,135 @@
       "profile_ids": [
         "basement"
       ],
-      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level 6 is estimated and SB placement remains schematic.",
       "evidence": [
         "registered-floor-plans"
+      ],
+      "roofs": [
+        {
+          "id": "ecj-B-podium-cap-1",
+          "label": "Level B podium / ground-cover cap (1)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              -113.5,
+              40.0
+            ],
+            [
+              -102.5,
+              40.0
+            ],
+            [
+              -102.5,
+              53.0
+            ],
+            [
+              -86.0,
+              53.0
+            ],
+            [
+              -86.0,
+              123.2
+            ],
+            [
+              152.4,
+              123.2
+            ],
+            [
+              152.4,
+              124.0
+            ],
+            [
+              20.0,
+              124.0
+            ],
+            [
+              20.0,
+              137.2
+            ],
+            [
+              -22.0,
+              137.2
+            ],
+            [
+              -22.0,
+              124.0
+            ],
+            [
+              -105.5,
+              124.0
+            ],
+            [
+              -105.5,
+              58.0
+            ],
+            [
+              -113.5,
+              58.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Coarse closure of the exposed LevelB podium where the Level 1 footprint steps back in the registered plans. This may represent a roof, terrace or ground-cover slab; the ground interface and actual use are not established. Open areaways/retaining outlines already excluded from enclosure profiles remain excluded. Surface is placed at the lower exterior band top; assembly, penetrations and slopes remain unverified.",
+            "evidence": [
+              "registered-floor-plans"
+            ]
+          }
+        },
+        {
+          "id": "ecj-B-podium-cap-2",
+          "label": "Level B podium / ground-cover cap (2)",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              152.4,
+              -16.0
+            ],
+            [
+              152.4,
+              -15.5
+            ],
+            [
+              -86.0,
+              -15.5
+            ],
+            [
+              -102.5,
+              -15.5
+            ],
+            [
+              -102.5,
+              -16.0
+            ],
+            [
+              -38.0,
+              -16.0
+            ],
+            [
+              -38.0,
+              -33.8
+            ],
+            [
+              -25.5,
+              -33.8
+            ],
+            [
+              -25.5,
+              -16.0
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Coarse closure of the exposed LevelB podium where the Level 1 footprint steps back in the registered plans. This may represent a roof, terrace or ground-cover slab; the ground interface and actual use are not established. Open areaways/retaining outlines already excluded from enclosure profiles remain excluded. Surface is placed at the lower exterior band top; assembly, penetrations and slopes remain unverified.",
+            "evidence": [
+              "registered-floor-plans"
+            ]
+          }
+        }
       ]
     },
     {
@@ -232,9 +365,74 @@
       "profile_ids": [
         "first"
       ],
-      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level 6 is estimated and SB placement remains schematic.",
       "evidence": [
         "registered-floor-plans"
+      ],
+      "roofs": [
+        {
+          "id": "ecj-1-podium-cap",
+          "label": "Level 1 podium / ground-cover cap",
+          "kind": "terrace",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              -102.5,
+              -15.5
+            ],
+            [
+              -86.0,
+              -15.5
+            ],
+            [
+              152.4,
+              -15.5
+            ],
+            [
+              152.4,
+              123.2
+            ],
+            [
+              -86.0,
+              123.2
+            ],
+            [
+              -86.0,
+              53.0
+            ],
+            [
+              -102.5,
+              53.0
+            ]
+          ],
+          "holes": [
+            [
+              [
+                135.45,
+                1.35
+              ],
+              [
+                1.35,
+                1.35
+              ],
+              [
+                1.35,
+                103.65
+              ],
+              [
+                135.45,
+                103.65
+              ]
+            ]
+          ],
+          "review": {
+            "note": "Coarse closure of the exposed Level 1 podium where the Level 2 footprint steps back in the registered plans. This may represent a roof, terrace or ground-cover slab; the ground interface and actual use are not established. Open areaways/retaining outlines already excluded from enclosure profiles remain excluded. Surface is placed at the lower exterior band top; assembly, penetrations and slopes remain unverified.",
+            "evidence": [
+              "registered-floor-plans"
+            ]
+          }
+        }
       ]
     },
     {
@@ -244,10 +442,11 @@
       "profile_ids": [
         "typical-tower"
       ],
-      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level 6 is estimated and SB placement remains schematic.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "3",
@@ -256,10 +455,11 @@
       "profile_ids": [
         "typical-tower"
       ],
-      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level 6 is estimated and SB placement remains schematic.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "4",
@@ -268,10 +468,11 @@
       "profile_ids": [
         "typical-tower"
       ],
-      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level 6 is estimated and SB placement remains schematic.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "5",
@@ -280,10 +481,11 @@
       "profile_ids": [
         "typical-tower"
       ],
-      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level 6 is estimated and SB placement remains schematic.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "6",
@@ -292,10 +494,11 @@
       "profile_ids": [
         "typical-tower"
       ],
-      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level 6 is estimated and SB placement remains schematic.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "7",
@@ -304,10 +507,11 @@
       "profile_ids": [
         "typical-tower"
       ],
-      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level 6 is estimated and SB placement remains schematic.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "8",
@@ -316,10 +520,11 @@
       "profile_ids": [
         "typical-tower"
       ],
-      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level 6 is estimated and SB placement remains schematic.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "9",
@@ -328,10 +533,11 @@
       "profile_ids": [
         "typical-tower"
       ],
-      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level 6 is estimated and SB placement remains schematic.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "10",
@@ -340,10 +546,11 @@
       "profile_ids": [
         "typical-tower"
       ],
-      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level 6 is estimated and SB placement remains schematic.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "11",
@@ -361,8 +568,97 @@
         "elevation_ft": 159,
         "status": "documented",
         "source_id": "ecj-record-penthouse-roof",
-        "note": "Historical penthouse roof EL711 minus Level1 EL552 =159ft relative. This top applies only to the penthouse shell, not to ambiguous floorR. Survey datum, roof buildup and parapets remain unverified."
-      }
+        "note": "Historical penthouse roof EL 711 minus Level 1 EL 552 =159 ft relative. This top applies only to the penthouse shell, not to ambiguous floorR. Survey datum, roof buildup and parapets remain unverified."
+      },
+      "roofs": [
+        {
+          "id": "ecj-lower-roof",
+          "label": "Lower roof around penthouse",
+          "kind": "roof",
+          "anchor": "base",
+          "status": "inferred",
+          "outline": [
+            [
+              1.35,
+              103.65
+            ],
+            [
+              1.35,
+              1.35
+            ],
+            [
+              135.45,
+              1.35
+            ],
+            [
+              135.45,
+              103.65
+            ]
+          ],
+          "holes": [
+            [
+              [
+                124.15,
+                12.65
+              ],
+              [
+                12.65,
+                12.65
+              ],
+              [
+                12.65,
+                92.15
+              ],
+              [
+                124.15,
+                92.15
+              ]
+            ]
+          ],
+          "review": {
+            "note": "Explicit lower-roof ring: typical tower outline minus the recessed mechanical-penthouse outline on plan page 13. The anchor is Level 11 base (+142 ft from historical EL 694\u2212EL 552), not composite floorR. Geometry is inferred; actual roof slab outline, parapets, slopes and openings remain unverified.",
+            "evidence": [
+              "registered-floor-plans",
+              "ecj-roof-planes",
+              "ecj-record-penthouse-roof"
+            ]
+          }
+        },
+        {
+          "id": "ecj-penthouse-roof",
+          "label": "Penthouse roof",
+          "kind": "roof",
+          "anchor": "top",
+          "status": "inferred",
+          "outline": [
+            [
+              12.65,
+              12.65
+            ],
+            [
+              124.15,
+              12.65
+            ],
+            [
+              124.15,
+              92.15
+            ],
+            [
+              12.65,
+              92.15
+            ]
+          ],
+          "holes": [],
+          "review": {
+            "note": "Flat cap over the inner penthouse enclosure. The anchored surface uses the documented historical roof top +159 ft (EL 711\u2212EL 552); its flat profile and 0.5 ft downward display thickness are inferred. This does not assign a single elevation to composite floorR and does not model parapets, slopes, mechanical equipment or the real roofing buildup.",
+            "evidence": [
+              "registered-floor-plans",
+              "ecj-roof-planes",
+              "ecj-record-penthouse-roof"
+            ]
+          }
+        }
+      ]
     },
     {
       "floor_id": "11M",
@@ -372,7 +668,8 @@
       "note": "Internal elevator/mechanical mezzanine. No separate exterior storey or shell; elevation remains unknown. It must not interrupt the full penthouse exterior span.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     },
     {
       "floor_id": "R",
@@ -382,7 +679,10 @@
       "note": "Composite roof reference sheet, explicitly marked ROOF(TBD). It does not define a new occupied storey or single reliable floor elevation.",
       "evidence": [
         "registered-floor-plans"
-      ]
+      ],
+      "roofs": []
     }
-  ]
+  ],
+  "roof_thickness_ft": 0.5,
+  "roof_thickness_status": "assumed"
 }
