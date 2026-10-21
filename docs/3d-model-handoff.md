@@ -5,13 +5,16 @@ estimation, on branch **`3d-model`**, explicitly without a `codex/` prefix. They
 development and will switch to ChatGPT Work when shutting down the computer.
 They clarified that the model must be **CAD-like at room and wall level, with empty interiors**.
 That geometry is now implemented; the original textured-plan-only view has been replaced.
+The [status note](3d-model-status.md) summarizes completed work, missing features, geometry
+uncertainty, and what the position estimates do and do not establish.
 
 ## Repository and transfer
 
-- Local checkout: `C:\Users\lishi\Code\BevoTag`, branch `3d-model`.
-- Base: `origin/main` at `1dddf550a24fbe1fb16952fea1b584c871a80970`.
-- Branch `3d-model` is pushed to [GitHub](https://github.com/lishi321/BevoTag/tree/3d-model) and tracks
-  `origin/3d-model`. A cloud session with repository access can check out that branch and continue.
+- Local checkout: `C:\Users\lishi\Code\BevoTag`. Development branch: `3d-model`; integration target: `main`.
+- Original feature base: `1dddf550a24fbe1fb16952fea1b584c871a80970`.
+- The user requested integration into [main](https://github.com/lishi321/BevoTag/tree/main).
+  Continue from current `main` after integration; `3d-model` is retained as the development branch.
+  A cloud session with repository access can check out the integrated code and continue.
   Inspect `git status` and `git log -1` for the latest checkpoint. No cloud task or deployment was created.
 - Existing untracked `.claude/` content is unrelated and must be preserved/excluded from this feature.
 - The earlier Codex CLI cloud-environment picker returned no configured environments. ChatGPT Work
@@ -144,8 +147,8 @@ Those paths are specific to this computer; cloud work should install its own bui
 
 ## Suggested continuation prompt
 
-> Continue BevoTag on branch `3d-model` (no prefix). Read `docs/3d-model-handoff.md` and the collector
-> README first. The 3D signal workspace, CSV import, fingerprint estimates and protocol-compatible
+> Continue BevoTag from current `main`. Read `docs/3d-model-status.md`, `docs/3d-model-handoff.md`, and the
+> collector README first. The 3D signal workspace, CSV import, fingerprint estimates and protocol-compatible
 > firmware plus CAD-style room/wall meshes are implemented and locally tested. Verify the transferred
 > checkpoint, read `docs/floor-height-sources.md`, rerun the 35 Node
 > tests and firmware build, then work on the remaining validation or refinements I request. Preserve
