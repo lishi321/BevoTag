@@ -29,12 +29,15 @@ const S = {
   mode: 'none',           // 'none' | 'serial' | 'sim'
   device: null,           // hello info
   collecting: false,
+  locating: false,
+  nextScanId: Date.now() % 1000000000, // fits the ESP32's signed 32-bit request id
   stop: false,
   waiter: null,
   session: new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '') + '-' + Math.random().toString(36).slice(2, 6),
 };
 
 const $ = id => document.getElementById(id);
+const notifyStudio = kind => window.dispatchEvent(new CustomEvent('bevotag:change', { detail: { kind } }));
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16);
@@ -106,7 +109,7 @@ function currentLabel() {
 const RawLog = {
   handle: null,   // file picked with showSaveFilePicker (Chrome/Edge); rows are appended every FLUSH_MS
   mem: null,      // fallback without the File System Access API: rows kept in memory, downloaded on stop
-  buf: [], rows: 0, name: '', timer: null, chain: Promise.resolve(), failed: false,
+  buf: [], rows: 0, name: '', timer: null, chain: Promise.resolve(), failed: false, stopping: false,
   on() { return !!(this.handle || this.mem); },
   async start() {
     const name = `bevotag_${S.session}.csv`;
@@ -122,18 +125,19 @@ const RawLog = {
       this.mem = [CSV_HEAD.join(',')]; this.name = name;
       toast('This browser can\'t write files directly: the CSV downloads when you stop logging', 5000);
     }
-    this.buf = []; this.rows = 0; this.failed = false;
+    this.buf = []; this.rows = 0; this.failed = false; this.stopping = false;
+    this.add('app', JSON.stringify({ type: 'session', source: S.mode, ...S.device }), 'session');
     this.timer = setInterval(() => { this.flush(); renderLogState(); }, FLUSH_MS);
     log(`CSV log started: ${this.name}`);
     renderLogState();
   },
   // dir: 'in' device -> laptop, 'out' laptop -> device, 'app' a note from the app itself (e.g. discard)
-  add(dir, line, type = '', batch) {
-    if (!this.on()) return;
+  add(dir, line, type = '', batch, labeled = S.collecting) {
+    if (!this.on() || this.stopping) return;
     const L = currentLabel();
     const fr = L.x_px == null ? null : toFrame(L);
     const row = [new Date().toISOString(), S.session, L.building, L.floor, L.room, L.x_px, L.y_px, L.x_ft, L.y_ft,
-      fr?.x, fr?.y, L.operator, L.note, S.collecting ? 1 : 0, batch ?? L.batch, dir, type, line].map(csvq).join(',');
+      fr?.x, fr?.y, L.operator, L.note, labeled ? 1 : 0, batch ?? (labeled ? L.batch : null), dir, type, line].map(csvq).join(',');
     (this.mem || this.buf).push(row);
     this.rows++;
     if (this.rows % 50 === 0) renderLogState();
@@ -142,25 +146,36 @@ const RawLog = {
   async write() {
     if (!this.handle || !this.buf.length) return;
     const rows = this.buf; this.buf = [];
+    let w;
     try {
       // keepExistingData + seek to the end appends; close() commits, so a crash loses at most FLUSH_MS of rows
       const size = (await this.handle.getFile()).size;
-      const w = await this.handle.createWritable({ keepExistingData: true });
+      w = await this.handle.createWritable({ keepExistingData: true });
       await w.seek(size); await w.write(rows.join('\n') + '\n'); await w.close();
       if (this.failed) { this.failed = false; renderLogState(); }
     } catch (e) {
+      try { await w?.abort(); } catch { /* preserve rows even if the stream already closed */ }
       this.buf = rows.concat(this.buf);              // keep them for the next try
       if (!this.failed) { log('CSV write failed: ' + e, 'errl'); toast('Writing the CSV failed, retrying: ' + e.message, 4000); }
       this.failed = true; renderLogState();
     }
   },
   async stop() {
+    if (this.stopping) return;
+    // Define a precise recording cutoff before the asynchronous final flush.
+    this.stopping = true;
+    updateCollectState();
     clearInterval(this.timer); this.timer = null;
     await this.flush();
+    if (this.handle && this.buf.length) {
+      this.stopping = false;
+      this.timer = setInterval(() => { this.flush(); renderLogState(); }, FLUSH_MS);
+      toast(`Could not save ${this.buf.length} rows. Log remains open and will retry.`, 6000);
+      renderLogState(); updateCollectState(); return;
+    }
     if (this.mem) download(this.name, this.mem.join('\n') + '\n', 'text/csv');
-    if (this.handle && this.buf.length) toast(`${this.buf.length} rows could not be written to ${this.name}`, 6000);
     log(`CSV log stopped: ${this.rows} rows in ${this.name}`);
-    this.handle = null; this.mem = null; this.buf = [];
+    this.handle = null; this.mem = null; this.buf = []; this.stopping = false;
     renderLogState(); updateCollectState();
   },
 };
@@ -225,7 +240,7 @@ function centerOn(x, y, s) {
 }
 
 function setBuilding(bid) {
-  if (S.collecting) { toast('Stop collecting before switching buildings'); return false; }
+  if (S.collecting || S.locating) { toast('Wait for the current scan before switching buildings'); return false; }
   if (!bld(bid)) { toast(`Unknown building "${bid}"`); return false; }
   if (bid === S.building) return true;
   S.building = bid; S.floor = null; S.point = null; prefs.set('building', bid);
@@ -237,7 +252,7 @@ function setBuilding(bid) {
 
 // bid: switch building first (e.g. jumping to a room from the dataset table)
 function setFloor(id, keepView = false, bid = S.building) {
-  if (S.collecting) { toast('Stop collecting before switching floors'); return; }
+  if (S.collecting || S.locating) { toast('Wait for the current scan before switching floors'); return; }
   if (!setBuilding(bid)) return;
   if (!floorCfg(id)) { toast(`Unknown floor "${id}" in ${bid}`); return; }
   const changed = id !== S.floor;
@@ -257,6 +272,8 @@ function setFloor(id, keepView = false, bid = S.building) {
     img.src = src;
   } else applyView();
   updatePointUI();
+  notifyStudio('floor');
+  return true;
 }
 
 function renderOverlay() {
@@ -365,11 +382,12 @@ function renderOverlay() {
 })();
 
 function setPoint(x, y) {
-  if (S.collecting) { toast('Collecting… stop first to move the point'); return; }
+  if (S.collecting || S.locating) { toast('Wait for the current scan before moving the point'); return; }
   S.point = { x: Math.round(x), y: Math.round(y) };
   $('hint').style.display = 'none';
   updatePointUI(); renderOverlay();
   $('room').focus();
+  notifyStudio('point');
 }
 function updatePointUI() {
   const p = S.point;
@@ -512,7 +530,8 @@ function onLine(line) {
   log(line, 'in');
   let msg = null;
   if (line[0] === '{') { try { msg = JSON.parse(line); } catch { /* not JSON: logged as text */ } }
-  RawLog.add('in', line, msgType(msg));
+  const late = msg?.type === 'scan' && S.waiter?.id != null && msg.id != null && +msg.id !== S.waiter.id;
+  RawLog.add('in', line, msgType(msg), undefined, S.collecting && !late);
   if (msg && typeof msg === 'object') onMsg(msg);
 }
 function onMsg(msg) {
@@ -529,6 +548,7 @@ function onMsg(msg) {
     }
     if (S.waiter) { const w = S.waiter; S.waiter = null; clearTimeout(w.timer); w.resolve(scan); }
   } else if (msg.type === 'err') {
+    if (S.waiter?.id != null && msg.id != null && +msg.id !== S.waiter.id) return;
     toast('Device error: ' + msg.msg, 3500);
     if (S.waiter) { const w = S.waiter; S.waiter = null; clearTimeout(w.timer); w.reject(new Error(msg.msg)); }
   }
@@ -537,8 +557,10 @@ function normalizeScan(m) {
   if (!Array.isArray(m.aps)) { log('scan without aps[] (ignored)', 'errl'); return null; }
   const aps = [];
   for (const a of m.aps) {
-    if (!a || typeof a.bssid !== 'string' || !Number.isFinite(+a.rssi)) continue;
-    aps.push({ bssid: a.bssid.toLowerCase(), ssid: a.ssid ?? '', rssi: Math.round(+a.rssi), ch: a.ch ?? null });
+    if (!a || typeof a.bssid !== 'string' || !/^(?:[0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(a.bssid) ||
+      a.rssi == null || a.rssi === '' || !Number.isFinite(+a.rssi) || +a.rssi > 0 || +a.rssi < -120) continue;
+    aps.push({ bssid: a.bssid.toLowerCase(), ssid: String(a.ssid ?? ''), rssi: Math.round(+a.rssi),
+      ch: Number.isInteger(+a.ch) && +a.ch > 0 && +a.ch <= 233 ? +a.ch : null });
   }
   return { id: m.id ?? null, seq: m.seq ?? null, ms: m.ms ?? null, dur_ms: m.dur_ms ?? null, aps };
 }
@@ -565,15 +587,20 @@ function setMode(mode) {
   bs.disabled = mode === 'serial';
   Sim.syncStream();
   updateCollectState();
+  if (RawLog.on()) RawLog.add('app', JSON.stringify({ type: 'session', source: mode, ...S.device }), 'session');
+  notifyStudio('device');
 }
 
 // ---------------------------------------------------------------- collection
 function updateCollectState() {
   const b = $('btnCollect'), m = $('collectMsg');
+  $('btnDiscard').disabled = !S.samples.length || S.collecting || S.locating || RawLog.stopping;
   if (S.collecting) { b.disabled = false; b.textContent = 'Stop'; return; }
   b.textContent = 'Collect';
   const room = $('room').value.trim();
-  const why = !RawLog.on() ? 'Start the CSV log first.'
+  const why = S.locating ? 'Waiting for the position-estimation scan.'
+    : RawLog.stopping ? 'Finishing the CSV log.'
+    : !RawLog.on() ? 'Start the CSV log first.'
     : S.mode === 'none' ? 'Connect a device (or start the simulator).'
     : !S.point ? 'Click the map where the DAQ module is.'
     : !room ? 'Enter the room number.' : '';
@@ -583,22 +610,24 @@ function updateCollectState() {
 
 async function collect() {
   if (S.collecting) { S.stop = true; $('collectMsg').textContent = 'Stopping after current scan…'; return; }
+  updateCollectState();
+  if ($('btnCollect').disabled) return;
   const n = Math.max(1, Math.min(100, parseInt($('nScans').value, 10) || 1));
   const stream = $('streamMode').checked;
   const batch = uuid();
   const label = { ...currentLabel(), batch };   // x_px/y_px: raw click on the floor image; everything else derives from these
   S.label = label;
-  S.collecting = true; S.stop = false; updateCollectState(); renderOverlay();
-  let ok = 0, fails = 0, cmdId = Date.now() % 1e6;
+  S.collecting = true; S.stop = false; updateCollectState(); renderOverlay(); notifyStudio('busy');
+  let ok = 0, fails = 0;
   const bar = $('progBar'); bar.style.width = '0%';
   while (ok < n && !S.stop && S.mode !== 'none') {
     $('collectMsg').textContent = `Scan ${ok + 1} / ${n}…`;
     try {
-      const id = stream ? null : ++cmdId;
+      const id = stream ? null : ++S.nextScanId;
       const wait = waitScan(SCAN_TIMEOUT_MS, id);
       if (!stream) await send({ cmd: 'scan', id });
       const scan = await wait;
-      S.samples.push({ ...label, t: new Date().toISOString(), scan });   // the scan itself is already in the CSV
+      S.samples.push({ ...label, session: S.session, simulated: S.mode === 'sim' || S.device?.chip === 'SIMULATOR', t: new Date().toISOString(), scan });   // the scan itself is already in the CSV
       ok++; fails = 0;
       bar.style.width = (100 * ok / n) + '%';
       refreshDataset();
@@ -609,10 +638,26 @@ async function collect() {
     }
   }
   S.collecting = false; S.waiter = null; S.label = null;
+  notifyStudio('busy');
   updateCollectState(); renderOverlay();
   $('collectMsg').textContent = `Logged ${ok} scan${ok === 1 ? '' : 's'} for ${label.room} (${label.building} floor ${label.floor}). Click the next point.`;
   if (ok) toast(`Logged ${ok} × ${label.room}`);
   setTimeout(() => { if (!S.collecting) bar.style.width = '0%'; }, 1500);
+}
+
+// A localization query is never added to the labeled training set.
+async function probe() {
+  if (S.collecting || S.locating || S.waiter) throw new Error('A scan is already in progress.');
+  if (S.mode === 'none') throw new Error('Connect an ESP32 first, or explore the demo.');
+  S.locating = true; updateCollectState(); notifyStudio('busy');
+  try {
+    const stream = $('streamMode').checked, id = stream ? null : ++S.nextScanId;
+    const wait = waitScan(SCAN_TIMEOUT_MS, id);
+    if (!stream) await send({ cmd: 'scan', id });
+    return await wait;
+  } finally {
+    S.locating = false; updateCollectState(); notifyStudio('busy');
+  }
 }
 
 function showScan(scan) {
@@ -658,12 +703,13 @@ function refreshDataset() {
   });
   $('btnDiscard').disabled = !S.samples.length;
   renderOverlay();
+  notifyStudio('dataset');
 }
 
 $('roomTable').addEventListener('click', e => {
   const tr = e.target.closest('tr[data-room]'); if (!tr) return;
   const { building, floor, room } = tr.dataset;
-  if (S.collecting) return;
+  if (S.collecting || S.locating) return;
   setFloor(floor, true, building);
   $('room').value = room; updateCollectState();
   const go = () => centerOn(+tr.dataset.x, +tr.dataset.y);
@@ -672,7 +718,7 @@ $('roomTable').addEventListener('click', e => {
 
 // the CSV is append-only, so "undo" writes a discard row carrying the last point's batch id; drop that batch in analysis
 function discardLast() {
-  if (!S.samples.length || S.collecting) return;
+  if (!S.samples.length || S.collecting || S.locating || RawLog.stopping) return;
   const last = S.samples.reduce((a, b) => (a.t > b.t ? a : b));
   const n = S.samples.filter(x => x.batch === last.batch).length;
   if (!RawLog.on()) return toast('Start the CSV log first: the discard row goes into it');
@@ -705,11 +751,17 @@ function init() {
   $('baud').addEventListener('change', () => prefs.set('baud', $('baud').value));
   $('btnDiscard').onclick = discardLast;
   $('btnRawLog').onclick = async () => {
-    if (!RawLog.on()) { await RawLog.start(); updateCollectState(); return; }
-    if (S.collecting) return toast('Stop collecting before stopping the log');
-    await RawLog.stop();
+    $('btnRawLog').disabled = true;
+    try {
+      if (!RawLog.on()) { await RawLog.start(); updateCollectState(); return; }
+      if (S.collecting) return toast('Stop collecting before stopping the log');
+      await RawLog.stop();
+    } finally { $('btnRawLog').disabled = false; }
   };
-  $('btnSend').onclick = () => { const t = $('rawCmd').value.trim(); if (t) send(t); };
+  $('btnSend').onclick = () => {
+    if (S.collecting || S.locating) return toast('Wait for the current scan before sending a command');
+    const t = $('rawCmd').value.trim(); if (t) send(t);
+  };
   $('rawCmd').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnSend').click(); });
   window.addEventListener('beforeunload', e => {
     if (S.collecting || RawLog.on()) { RawLog.flush(); e.preventDefault(); e.returnValue = ''; }
@@ -729,7 +781,7 @@ function openFloor() {
   setFloor(floorCfg(f) ? f : (bld().default_floor || floorsOf()[0].id));
 }
 
-(async () => {
+const ready = (async () => {
   try { await loadBuildings(); } catch (e) {
     toast('Could not load buildings. Serve this folder over http (see README).', 8000);
     log('Loading buildings failed: ' + e, 'errl'); return;
@@ -740,7 +792,8 @@ function openFloor() {
   const b = prefs.get('building', null);
   setBuilding(bld(b) ? b : Object.keys(S.buildings)[0]);
   openFloor();
+  return true;
 })();
 
 // exposed for debugging / automated tests
-window.BevoTag = { S, Sim, RawLog, setPoint, setFloor, setBuilding, toFrame, collect, onLine };
+window.BevoTag = { S, Sim, RawLog, setPoint, setFloor, setBuilding, toFrame, collect, onLine, probe, ready, fitView };

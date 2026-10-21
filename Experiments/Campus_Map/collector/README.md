@@ -1,4 +1,4 @@
-# BevoTag survey collector
+# BevoTag Signal Studio — 3D survey collector
 
 A browser app for collecting labeled data inside campus buildings (EER, ASE, ECJ). You click your spot on
 the floor plan and type the room number. The app tells the ESP32 DAQ module, plugged in over USB, to take N
@@ -8,14 +8,69 @@ WiFi scans at that spot.
 readings, CSI and debug prints. The app doesn't check the format, so the firmware can send new kinds of
 data without app changes.
 
-Plain HTML/JS: no build step, works offline.
+Plain HTML/JS: no build step. Three.js and all floor plans are served locally; no CDN or network service
+is needed once this repository is on the laptop. Serve over HTTP rather than opening `index.html` directly.
+
+## 3D model and signal layers
+
+The default workspace stacks the registered floor plans for **EER (9 levels), ASE (7), and ECJ (15)**.
+Drag to orbit and scroll to zoom. Choose a floor, then use **Top view** to isolate it or **Perspective**
+to reset the camera. Toggle **Active floor only** off to restore the complete stack. Double-click the
+active floor to place the collector's survey point; the same point appears in **2D survey**.
+
+Click **Explore demo** for clearly labeled synthetic coverage and a sample position estimate without
+hardware. This demo is separate from the serial **Simulator**, which tests collection and raw logging.
+Neither source contributes to the real survey model.
+
+For real measurements, choose **My surveys** and **Import CSV files**, or collect new hardware scans
+using the controls below Position estimate. Choose **Strongest observed signal** or a specific BSSID
+to color the sample markers and heatmap. The heatmap interpolates samples on each floor within 60 ft;
+blank regions have no supporting measurements. It is not a radio-propagation simulation or an AP-location map.
+
+Horizontal geometry uses each plan's existing affine registration in feet. This is a stack of textured
+floor plans, not a wall/room mesh or BIM import. Heights are **approximate**: ordered levels default to
+14 ft spacing, including basements and mezzanines. Adjust this under **Model & height settings**.
+Optional `elevation_ft` on a floor overrides the spacing rule. **Visual floor separation** exaggerates
+vertical spacing only; it does not affect matching or exported coordinates.
+
+## Position estimation
+
+1. Collect or import at least **3 distinct survey points** with overlapping Wi-Fi BSSIDs.
+2. Connect the DAQ and select **Scan & estimate position**, or expand **Use a recorded scan** and paste
+   a JSON object containing an `aps` array. No position label is required for the query.
+3. The teal marker shows the estimate. Dashed lines connect matching survey points; the circle shows
+   their spatial spread. **Show estimated floor** focuses the result, even if another floor was selected.
+
+The estimator averages repeat scans at each physical point, compares up to 32 strongest query BSSIDs
+against survey fingerprints using RMS RSSI difference (missing BSSID = −100 dBm), and weights the five
+nearest matches. Candidates need at least 3 shared BSSIDs, 25% query overlap, and at most 22 dB RMS
+difference. It votes for a floor before averaging coordinates on that floor. Sparse or unfamiliar scans
+return an insufficient-overlap message. The query never enters its own training set or receives a
+`collecting=1` CSV label. Collection and localization cannot run simultaneously.
+
+This is an experimental fingerprint baseline. **Neighbor spread is not accuracy or a confidence radius.**
+Floor ambiguity is called out in the result. Real positioning accuracy still needs held-out surveys
+from the target DAQ board; synthetic demo results are only a functional check.
+
+### Import rules
+
+- Only incoming `scan` rows with `collecting=1`, a batch, room, valid raw pixel coordinates, a registered
+  floor, and valid BSSID/RSSI pairs enter the model. Building coordinates are recomputed from raw pixels.
+- Discard records exclude their `(session, batch)` across every imported file, regardless of row order.
+- Simulator `hello` or session metadata excludes that entire session conservatively. Start a fresh
+  page/session before a real survey if you previously used the simulator.
+- Reimporting the same rows does not duplicate them. Files may contain quoted JSON, commas, and newlines.
+  Malformed CSV is rejected without replacing existing imports. Limits: 50 MB/file and 300,000 rows/page.
+- Imports and live samples remain in page memory; reload clears them. CSV files are the durable record.
+  **Clear imports** removes imported data from the page and leaves live collected samples intact.
+- Older simulator logs with no identity marker cannot be detected reliably; do not import those as real data.
 
 ## Quick start
 
 1. Serve the folder. Web Serial needs **desktop Chrome or Edge** on `localhost` or https:
    ```bash
    cd Experiments/Campus_Map/collector
-   python3 -m http.server 8000
+   python -m http.server 8000 --bind 127.0.0.1
    ```
    Open <http://localhost:8000>.
 2. Click **Connect ESP32** and pick the board's port. To try it without hardware, click **Simulator**
@@ -24,7 +79,8 @@ Plain HTML/JS: no build step, works offline.
 
 ## Collecting
 
-1. Pick the building and floor, then **click where the DAQ module is**. Drag to pan; scroll or pinch to zoom.
+1. Pick the building and floor, then **double-click the active floor in 3D**, or switch to **2D survey**
+   and click where the DAQ module is. In 2D, drag to pan; scroll or pinch to zoom.
 2. Type the **room number** as printed on the plan, e.g. `2.610`. Corridors have numbers too, e.g. `2.817`.
 3. Set **scans per point** (5 is a good start) and press **Collect**, or Enter in the room box.
 4. Move and repeat. Take **several points per room** (corners and center) rather than many scans at one spot.
@@ -35,8 +91,10 @@ Plain HTML/JS: no build step, works offline.
 
 ## CSV format
 
-One row per serial line, in both directions, committed to the file every 2 s. A crash loses at most
-the last 2 s. Browsers without direct file writing (Firefox, Safari) keep the log in memory and download
+One row per serial line, in both directions, normally committed to the file every 2 s. A crash can lose
+uncommitted rows, especially during disk errors. Failed writes retain buffered rows and retry; a failed
+final flush keeps the log open. Stop defines a recording cutoff before the final write.
+Browsers without direct file writing (Firefox, Safari) keep the log in memory and download
 it when you press Stop.
 
 | Column | Meaning |
@@ -53,7 +111,10 @@ it when you press Stop.
 | `line` | the raw line, exactly as received |
 
 **Discarded points:** rows with `type` = `discard` name a `batch`. Drop every row with that batch.
-**Simulator logs** contain a `hello` row with `"chip":"SIMULATOR"`. Don't train on them.
+**Simulator logs** contain a `hello` or app `session` row with `"chip":"SIMULATOR"` or `"source":"sim"`.
+Session metadata is also written when logging starts, so starting the log after `hello` is safe.
+Late scan replies with mismatched request IDs remain in the raw log with `collecting=0` and no batch.
+Don't train on simulator or unlabeled rows.
 
 ### Loading in pandas
 
