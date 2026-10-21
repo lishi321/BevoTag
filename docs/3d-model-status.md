@@ -2,7 +2,8 @@
 
 Updated **2026-10-21**, on branch **`3d-model`**. This source-review pass has not yet been merged to `main`.
 
-**Current status:** the DAQ app has CAD-style room-and-wall geometry, IFC4 and OBJ export,
+**Current status:** the DAQ app has CAD-style room-and-wall geometry, inferred continuous EER/ECJ
+exteriors, assembled/exploded views, IFC4 and OBJ export,
 and Wi-Fi fingerprint position estimation. The geometry is reconstructed from plans; it is
 not a native architectural authoring model or verified as-built CAD. Real positioning accuracy
 has not been measured.
@@ -19,11 +20,16 @@ The current assets contain **3,403 wall/space polygons across 31 plan levels**, 
 interiors. A space polygon may represent a room, circulation, or several connected spaces;
 these counts are not a certified room inventory. Wall counts describe connected reconstructed
 polygons, not individual architectural wall elements. All levels share their building's
-registered XY frame in feet. ECJ R is a roof plan; ASE level 6 is an attic plan.
+registered XY frame in feet. ECJ R is a composite roof plan; ASE level 6 is an attic plan.
+The original wall/room arrays are preserved. Separate coarse exterior profiles add **22 storey
+enclosures: 9 EER and 13 ECJ**. ASE has no continuous exterior profile yet.
 
 - Orbit, zoom, top/perspective views, active-floor isolation, and a source-plan overlay are
   available. Room selection, approximate area, focus, and interior survey-point placement
   synchronize with the original 2D collector.
+- **Whole building** assembles at 1×; **Exploded** uses 3× visual separation. **Continuous exterior**
+  switches the inferred enclosure layer on/off. Separation moves floor bases without stretching
+  exterior bands or plan walls.
 - **IFC4 export** converts feet to metres and retains a project/building/storey hierarchy.
   Walls use analytic extruded polygon profiles, including holes. Spaces are named footprint
   boundary curves, with no invented room volume or slab thickness. Evidence and height status
@@ -31,6 +37,11 @@ registered XY frame in feet. ECJ R is a roof plan; ASE level 6 is an attic plan.
   other storeys retain explicitly unverified placements.
 - **OBJ export** contains named wall and room meshes in building X/Y, Z up, in **feet**, with
   evidence comments. Both exports exclude exploded-view separation, signals, and plan textures.
+- With Continuous exterior enabled, default exports include separate inferred shell objects.
+  IFC identifies them as `IfcBuildingElementProxy`, distinct from reconstructed `IfcWall` solids.
+  Exterior exports use reviewed level 11 context walls and omit 11M/R wall solids; IFC retains all
+  space footprint reference curves, while OBJ also omits those reference surfaces. Toggle the exterior
+  off, or pass `exterior: false`, to restore all original geometry in the export.
 - Signal layers show survey points, strongest observed RSSI or a selected BSSID, and interpolated
   coverage. Demo signals are explicitly synthetic and separate from real surveys.
 - CSV import filters discarded/unlabeled/simulator samples when identifiable, deduplicates
@@ -40,6 +51,21 @@ registered XY frame in feet. ECJ R is a roof plan; ASE level 6 is an attic plan.
   collection/localization exclusion, and CSV write-retry behavior are implemented.
 
 ## Improvements from this source-review pass
+
+**Continuous exterior:** source-plan perimeters now define coarse storey enclosures with major
+holes and setbacks, using an assumed **0.5 ft inward shell**. Enclosures span to the next exterior
+level instead of stopping at the 10 ft plan-wall display height. Door/window gaps are closed for
+this display; their actual openings, materials and assemblies are not inferred. EER's levels remain
+unverified, and the final EER band still uses a schematic top. Roof coverings, parapets, detailed
+facade projections and terraces remain incomplete. These profiles are not an as-built envelope
+or an RF obstruction model.
+
+ECJ level 11 follows the inner penthouse perimeter with a historical top of **+159 ft**, from record
+EL 711 minus Level 1 EL 552. This applies only to that enclosure; it does not resolve the R sheet's
+multiple surfaces. Whole-exterior mode suppresses internal 11M and composite R as extra storeys and
+uses clipped context walls on level 11. Disabling the exterior or isolating those source levels
+restores the original geometry. Source hashes, profile assumptions and level roles are recorded in
+the EER/ECJ `exterior-review.json` files, applied reproducibly by `exterior_review.py`.
 
 **ECJ elevations:** 2013 record elevations reproduced in Sarlo's 2018 dissertation now support
 11 historical elevations, normalized by subtracting Level 1 EL 552 ft. Basement is −16 ft;
@@ -73,13 +99,14 @@ Those notices supply no replacement room layouts; their partition changes have n
 | --- | --- |
 | Floor elevations | **19 unknown**, **1 estimated**, **11 documented historical values**. EER and ASE still have no verified numerical level schedule. ECJ's unresolved roof surfaces need separate identification. |
 | Unknown-level placement | Schematic interpolation between entered levels, or a **14 ft default display step** beyond an anchor. This does not establish basement, mezzanine, or roof spacing. |
-| Wall height | **10 ft default display extrusion**, editable; not a measured clear height, ceiling height, or storey height. |
+| Plan-wall height | **10 ft default display extrusion**, editable; not a measured clear height, ceiling height, or storey height. |
+| Exterior enclosure | Coarse plan-traced perimeter with a **0.5 ft assumed inward shell** and closed door/window gaps. Bands span exterior levels; only the ECJ penthouse has a separately sourced top at +159 ft. No measured thickness, glazing, material or completed roof assembly is claimed. |
 | Vertical datum | Local Level 1 = 0 ft. ECJ is normalized from record EL 552 ft; original survey datum and finished-floor versus slab reference remain unspecified. EER/ASE zero is only a display reference. |
-| Visual separation | Defaults to **1×**. Larger values produce an exploded view without changing model/export coordinates. |
+| Visual separation | Defaults to **1×**; the Exploded preset uses **3×**. Floor bases move, but band and wall heights do not stretch. Model/export coordinates stay unchanged. |
 | XY registration | Agreement with source plans and cross-floor alignment, not surveyed as-built accuracy or localization error. |
 | Walls, openings and spaces | PDF-stroke reconstruction plus targeted reviewed corrections. Short returns/openings may be missing; adjacent spaces may merge; drawing artifacts may remain. Doors, glazing and materials are not fully modeled. |
 | Labels and areas | OCR labels and inferred areas may be wrong. ASE 1.102, for example, shares a reconstructed region with circulation labels. The added EER bridge is labeled from plan review. |
-| CAD scope | IFC wall solids and space footprints, plus OBJ meshes. No native parametric architectural editing, constraints, STEP export, or GLB/OBJ/STEP/IFC import. IFC delivery does not make the model as-built. |
+| CAD scope | IFC wall solids, space footprints and separate inferred enclosure proxies, plus OBJ meshes. No native parametric architectural editing, constraints, STEP export, or GLB/OBJ/STEP/IFC import. IFC delivery does not make the model as-built. |
 
 An entered `elevation_ft` overrides display spacing but remains unverified without a complete,
 resolved citation and declared provenance. A justified source-based estimate stays estimated.
@@ -129,20 +156,24 @@ within the winning floor. At least three survey points are required. The
 
 ## Verification and handoff
 
-This pass passed **47 Node tests and 9 Python tests**. The actual generator's EER level 6
-diagnostic run applied the review and restored the bridge. Checks cover source hashes, exclusions,
-geometry validity, rotation, elevation provenance, exports and collection/estimation behavior.
+The exterior revision passed **60/60 Node tests and 15/15 Python tests**. An ECJ level 11 partial
+generator rebuild succeeded; an earlier EER level 6 run applied its review and restored the bridge.
+Checks cover source hashes, rotation, elevation provenance, profiles, exports, collection/estimation
+and actual Three.js world-space geometry. Assembled bands meet, exploded bands retain their height,
+and source geometry remains available when switching views.
 
-IfcOpenShell 0.9.0.post1 parsed all three IFC4 exports with zero EXPRESS/schema errors and
-tessellated **all 1,852 wall solids**. Every wall volume matched reconstructed footprint area
-times the assumed 10 ft extrusion after conversion to metres. Unicode and escaped text
-round-tripped. This verifies the exporter, not the physical dimensions; no manual Revit or
-FreeCAD import was performed.
+IfcOpenShell 0.9.0.post1 validated all three exterior-enabled IFC4 exports with **zero schema or solid
+failures**. All **1,879 solids** tessellated: 1,852 selected context walls plus 27 inferred enclosure
+proxies (14 EER, 13 ECJ). All **31 storeys and 1,551 space references** remain. Volumes matched
+footprint area × the applicable extrusion after metre conversion; maximum relative error was
+**2.71 × 10⁻¹⁰**. Unicode and escaped text round-tripped. This verifies file consistency, not physical
+dimensions; no manual Revit/FreeCAD import was performed.
 
-Browser checks verified corrected ECJ level 4 (50 spaces, 78 walls, +44 ft documented), the
-level 6 conflict note, unknown-height controls without shifting documented levels, EER's west
-bridge aligned with the 2D plan, a synthetic EER level 6 estimate, IFC download without console
-errors, and a 390 px mobile layout without horizontal overflow.
+Browser checks verified EER/ECJ whole-building and exploded views, exterior-off source restoration,
+isolated 11M/R access, and ASE's disabled unavailable exterior control. A **390 × 844** viewport had
+no horizontal overflow, with zero browser warnings or errors. Earlier checks covered corrected ECJ
+level 4 (50 spaces, 78 walls, +44 ft documented), the level 6 conflict, fixed documented elevations,
+EER's bridge-to-plan alignment, a synthetic estimate and IFC download.
 
 Firmware previously compiled for `esp32dev` with PlatformIO 6.2.0 and Espressif32 8.0.0; no board
 was flashed. These checks establish functional consistency, not physical accuracy. See the

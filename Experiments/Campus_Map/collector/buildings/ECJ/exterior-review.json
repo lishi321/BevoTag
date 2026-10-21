@@ -1,0 +1,388 @@
+{
+  "schema": 1,
+  "building": "ECJ",
+  "reviewed": "2026-10-21",
+  "source_sha256": "5ad3f1f17a2201f3e1226ebb9fbe1e615b66fb22e57607446502bb8524acd4c4",
+  "wall_thickness_ft": 0.5,
+  "method": "Source plan outlines were reviewed in the existing registered building frame. This is coarse exterior massing: door/window gaps are closed, glazing and masonry are not distinguished, small facade returns/columns/entrance canopies are simplified. No room, original wall, height, material or measured thickness is inferred from these profiles.",
+  "limitations": "Horizontal traces and existing floor registration are approximate; lower-level source clipping, facade recesses, terraces, shafts and renovation currency remain unverified. The 0.5 ft inward shell thickness is display-only. Closed shell surfaces include doors and windows without claiming their locations/materials. This is not an as-built envelope, weatherproofing model, or RF obstruction model.",
+  "sources": [
+    {
+      "id": "registered-floor-plans",
+      "title": "UT ECJ floor-plan set in the project",
+      "file": "ECJ.pdf",
+      "evidence": "PDF pages1\u201315: broad basement/first-floor podium, repeating rectangular tower facade on pages4\u201312, and recessed mechanical penthouse on page13. Page14 is an internal mezzanine, while page15 is a composite roof sheet marked ROOF(TBD)."
+    },
+    {
+      "id": "ecj-record-penthouse-roof",
+      "title": "Sarlo2018 dissertation Appendix C: WJE2013 record elevations",
+      "url": "https://vtechworks.lib.vt.edu/bitstreams/b9653165-72de-4e1e-9470-21996593bbe9/download#page=189",
+      "evidence": "PDF pages189\u2013190, WJE sheetsS3.2/S3.1: penthouse roof elevation711ft and Level1 elevation552ft imply a159ft relative penthouse top. This is a historical drawing elevation with original vertical datum unspecified; it does not assign a unique elevation to the composite R sheet."
+    }
+  ],
+  "profiles": {
+    "sub-basement": {
+      "outline": [
+        [
+          -102.5,
+          -16
+        ],
+        [
+          152.4,
+          -16
+        ],
+        [
+          152.4,
+          124
+        ],
+        [
+          -105.5,
+          124
+        ],
+        [
+          -105.5,
+          58
+        ],
+        [
+          -102.5,
+          58
+        ]
+      ],
+      "holes": [],
+      "note": "Page1 broad podium enclosure, simplified at minor service recesses. Western retaining walls, southern areaway, internal pits and overhead ramp projection are excluded from the exterior massing footprint. Level elevation is unknown."
+    },
+    "basement": {
+      "outline": [
+        [
+          -102.5,
+          -16
+        ],
+        [
+          -38,
+          -16
+        ],
+        [
+          -38,
+          -33.8
+        ],
+        [
+          -25.5,
+          -33.8
+        ],
+        [
+          -25.5,
+          -16
+        ],
+        [
+          152.4,
+          -16
+        ],
+        [
+          152.4,
+          124
+        ],
+        [
+          20,
+          124
+        ],
+        [
+          20,
+          137.2
+        ],
+        [
+          -22,
+          137.2
+        ],
+        [
+          -22,
+          124
+        ],
+        [
+          -105.5,
+          124
+        ],
+        [
+          -105.5,
+          58
+        ],
+        [
+          -113.5,
+          58
+        ],
+        [
+          -113.5,
+          40
+        ],
+        [
+          -102.5,
+          40
+        ]
+      ],
+      "holes": [],
+      "note": "Page2 broader podium outline with north ramp/stair enclosure and south service projection. Open areaway/retaining boundaries are excluded. The northern ramp region is a coarse massing closure; above-grade facade and ground interface remain unverified."
+    },
+    "first": {
+      "outline": [
+        [
+          -86,
+          -15.5
+        ],
+        [
+          152.4,
+          -15.5
+        ],
+        [
+          152.4,
+          123.2
+        ],
+        [
+          -86,
+          123.2
+        ],
+        [
+          -86,
+          53
+        ],
+        [
+          -102.5,
+          53
+        ],
+        [
+          -102.5,
+          -15.5
+        ]
+      ],
+      "holes": [],
+      "note": "Page3 first-floor occupied podium perimeter simplified to facade/glazing plane. Open external retaining walls and north ramp/steps are not extruded as enclosed rooms; small entry recesses are simplified. It is deliberately smaller than the basement podium."
+    },
+    "typical-tower": {
+      "outline": [
+        [
+          1.35,
+          1.35
+        ],
+        [
+          135.45,
+          1.35
+        ],
+        [
+          135.45,
+          103.65
+        ],
+        [
+          1.35,
+          103.65
+        ]
+      ],
+      "holes": [],
+      "note": "Pages4\u201312 repeat the tower facade/glazing plane between projecting corner/edge columns. The complete rectangle is visible on page4 even though the automatic room detector missed the large northwest lobby. Grid134x102ft corroborates the scale; tiny column projections/corner chamfers and exterior entrance porch/steps are omitted. These facade dimensions are traced from registered plans, not surveyed."
+    },
+    "penthouse": {
+      "outline": [
+        [
+          12.65,
+          12.65
+        ],
+        [
+          124.15,
+          12.65
+        ],
+        [
+          124.15,
+          92.15
+        ],
+        [
+          12.65,
+          92.15
+        ]
+      ],
+      "holes": [],
+      "note": "Page13 inner wall rectangle around the mechanical spaces is the penthouse facade; its outer nested rectangles are lower-roof/parapet projections and must not become another tall storey. Plan coordinates are approximate registered feet. Page15 roof outline independently follows approximately the same inner rectangle."
+    }
+  },
+  "levels": [
+    {
+      "floor_id": "SB",
+      "source_page": 1,
+      "role": "storey",
+      "profile_ids": [
+        "sub-basement"
+      ],
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "B",
+      "source_page": 2,
+      "role": "storey",
+      "profile_ids": [
+        "basement"
+      ],
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "1",
+      "source_page": 3,
+      "role": "storey",
+      "profile_ids": [
+        "first"
+      ],
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "2",
+      "source_page": 4,
+      "role": "storey",
+      "profile_ids": [
+        "typical-tower"
+      ],
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "3",
+      "source_page": 5,
+      "role": "storey",
+      "profile_ids": [
+        "typical-tower"
+      ],
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "4",
+      "source_page": 6,
+      "role": "storey",
+      "profile_ids": [
+        "typical-tower"
+      ],
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "5",
+      "source_page": 7,
+      "role": "storey",
+      "profile_ids": [
+        "typical-tower"
+      ],
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "6",
+      "source_page": 8,
+      "role": "storey",
+      "profile_ids": [
+        "typical-tower"
+      ],
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "7",
+      "source_page": 9,
+      "role": "storey",
+      "profile_ids": [
+        "typical-tower"
+      ],
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "8",
+      "source_page": 10,
+      "role": "storey",
+      "profile_ids": [
+        "typical-tower"
+      ],
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "9",
+      "source_page": 11,
+      "role": "storey",
+      "profile_ids": [
+        "typical-tower"
+      ],
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "10",
+      "source_page": 12,
+      "role": "storey",
+      "profile_ids": [
+        "typical-tower"
+      ],
+      "note": "Approximate plan-traced enclosure. Historical documented level elevations are used where available; Level6 is estimated and SB placement remains schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "11",
+      "source_page": 13,
+      "role": "storey",
+      "profile_ids": [
+        "penthouse"
+      ],
+      "note": "Recessed penthouse enclosure only; clip exterior-view context walls to this footprint so roof/parapet projection lines do not become full-height facade walls.",
+      "evidence": [
+        "registered-floor-plans"
+      ],
+      "clip_context_walls": true,
+      "top": {
+        "elevation_ft": 159,
+        "status": "documented",
+        "source_id": "ecj-record-penthouse-roof",
+        "note": "Historical penthouse roof EL711 minus Level1 EL552 =159ft relative. This top applies only to the penthouse shell, not to ambiguous floorR. Survey datum, roof buildup and parapets remain unverified."
+      }
+    },
+    {
+      "floor_id": "11M",
+      "source_page": 14,
+      "role": "internal",
+      "profile_ids": [],
+      "note": "Internal elevator/mechanical mezzanine. No separate exterior storey or shell; elevation remains unknown. It must not interrupt the full penthouse exterior span.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "R",
+      "source_page": 15,
+      "role": "reference",
+      "profile_ids": [],
+      "note": "Composite roof reference sheet, explicitly marked ROOF(TBD). It does not define a new occupied storey or single reliable floor elevation.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    }
+  ]
+}

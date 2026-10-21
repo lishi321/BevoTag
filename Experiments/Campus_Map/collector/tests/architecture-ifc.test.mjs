@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { exportArchitectureIFC } from '../architecture-ifc.mjs';
 import { elevationInfo } from '../vertical-model.mjs';
+import { exteriorBand, selectExteriorContextWalls } from '../exterior-model.mjs';
 
 // Small STEP argument reader used to inspect relationships and actual measures,
 // including nested aggregates and quoted commas/apostrophes in evidence.
@@ -163,7 +164,7 @@ test('IFC rejects invalid geometry, duplicate floors and invalid measures', () =
   assert.throws(() => exportArchitectureIFC(flat, building));
 });
 
-test('all real building exports retain each level, reconstructed wall and space', () => {
+test('all real building exports retain each level, selected context wall and space reference', () => {
   for (const id of ['EER', 'ECJ', 'ASE']) {
     const load = file => JSON.parse(readFileSync(new URL(`../buildings/${id}/${file}`, import.meta.url)));
     const model = load('architecture.json'), building = load('building.json');
@@ -171,7 +172,7 @@ test('all real building exports retain each level, reconstructed wall and space'
     const parsed = parse(exportArchitectureIFC(model, building));
     assert.equal(JSON.stringify({ model, building }), before, 'export does not mutate source geometry or evidence');
     assert.equal(parsed.of('IFCBUILDINGSTOREY').length, building.floors.length);
-    assert.equal(parsed.of('IFCWALL').length, model.floors.reduce((n, floor) => n + floor.walls.length, 0));
+    assert.equal(parsed.of('IFCWALL').length, model.floors.reduce((n, floor) => n + selectExteriorContextWalls(floor).length, 0));
     assert.equal(parsed.of('IFCSPACE').length, model.floors.reduce((n, floor) => n + floor.rooms.length, 0));
     for (const [index, storey] of parsed.of('IFCBUILDINGSTOREY').entries()) {
       const info = elevationInfo(building, model.floors[index].id);
@@ -179,4 +180,46 @@ test('all real building exports retain each level, reconstructed wall and space'
       else assert.equal(storey.args[9], '$', 'uncited elevations and estimates remain unset');
     }
   }
+});
+
+test('IFC inferred envelope proxies use metric unexpanded spans and preserve partition heights', () => {
+  const { model, building } = fixture();
+  const source = building.vertical.sources[0];
+  model.envelope_review = { sources: [source], source_sha256: model.source.sha256, sha256: 'c'.repeat(64) };
+  for (const floor of model.floors) floor.envelope = {
+    role: 'storey', source_page: floor.source_page, footprints: [square], walls: [square],
+    review: { note: 'Inferred enclosure follows reviewed footprint.' },
+    ...(floor.id === '2' ? { top: { elevation_ft: 43, status: 'documented', source_id: source.id, note: 'Separate roof elevation.' } } : {}),
+  };
+  const text = exportArchitectureIFC(model, building, { wallHeight: 9, spacing: 16, separation: 7 });
+  const parsed = parse(text), proxies = parsed.of('IFCBUILDINGELEMENTPROXY');
+  assert.equal(proxies.length, 3);
+  assert.deepEqual(proxies.map(product => worldZ(parsed, product.args[5])), [-4.8768, 0, 4.8768]);
+  const depth = product => Number(parsed.get(refs(productShape(parsed, product)[0].args[3])[0]).args[3]);
+  assert.deepEqual(proxies.map(depth), [4.8768, 4.8768, 8.2296]);
+  assert.ok(parsed.of('IFCWALL').every(product => depth(product) === 2.7432), 'interior wall height remains independent of enclosure span');
+  for (const [index, product] of proxies.entries()) {
+    const band = exteriorBand(model, building, model.floors[index].id, { spacing: 16, wallHeight: 9 });
+    assert.ok(Math.abs(worldZ(parsed, product.args[5]) + depth(product) - band.topFt * .3048) < 1e-8);
+  }
+  for (const fragment of ['BevoTag_InferredEnvelopeEvidence', "IFCTEXT('inferred')", 'Separate roof elevation.', 'a'.repeat(64), 'c'.repeat(64), 'not a surveyed wall']) assert.ok(text.includes(fragment), fragment);
+  assert.equal(text.split('DATA;\n')[1], exportArchitectureIFC(model, building, { wallHeight: 9, spacing: 16, separation: 1 }).split('DATA;\n')[1]);
+  assert.equal(parse(exportArchitectureIFC(model, building, { exterior: false })).of('IFCBUILDINGELEMENTPROXY').length, 0);
+});
+
+test('IFC exterior mode omits internal and reference wall solids, while retaining their cited source hierarchy', () => {
+  const { model, building } = fixture();
+  model.floors[0].envelope = { role: 'internal', source_page: 1, walls: [], footprints: [] };
+  model.floors[1].envelope = { role: 'storey', source_page: 2, walls: [square], footprints: [square], context_walls: [square, square] };
+  model.floors[2].envelope = { role: 'reference', source_page: 3, walls: [], footprints: [] };
+  const text = exportArchitectureIFC(model, building), parsed = parse(text);
+  assert.equal(parsed.of('IFCWALL').length, 2, 'only the selected storey context walls are retained');
+  assert.equal(parsed.of('IFCBUILDINGELEMENTPROXY').length, 1);
+  assert.equal(parsed.of('IFCBUILDINGSTOREY').length, 3);
+  assert.equal(parsed.of('IFCSPACE').length, 3, 'reference space curves remain inspectable, without volumes');
+  assert.ok(text.includes('Composite reference sheet retained for source inspection.'));
+  assert.ok(text.includes('Wall footprints clipped to the reviewed enclosure boundary'));
+  const original = parse(exportArchitectureIFC(model, building, { exterior: false }));
+  assert.equal(original.of('IFCWALL').length, 3);
+  assert.equal(original.of('IFCBUILDINGELEMENTPROXY').length, 0);
 });

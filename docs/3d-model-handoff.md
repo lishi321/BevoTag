@@ -4,7 +4,8 @@ Updated **2026-10-21**. The user wants a 3D DAQ webapp with signal-strength visu
 position estimation, using **CAD-like room and wall geometry with empty interiors**. They asked
 to work on branch **`3d-model`**, without a `codex/` prefix, and will transfer to ChatGPT Work
 when shutting down this computer. This pass improves the earlier model with more source evidence,
-targeted geometry corrections, and IFC export. It has not yet been merged to `main`.
+targeted geometry corrections, IFC export, and inferred continuous EER/ECJ exteriors with whole-building
+and exploded presets. It has not yet been merged to `main`.
 
 Read [current status and limitations](3d-model-status.md), the
 [height-source audit](floor-height-sources.md), and the [CAD source review](cad-source-review.md)
@@ -33,6 +34,14 @@ The app in `Experiments/Campus_Map/collector/` is buildless HTML/JS served over 
   overlay, orbit/zoom, top/perspective/fit, floor isolation, RSSI heatmaps/markers, estimate and
   matched-neighbor display, and picking synchronized with the original 2D collector. Rebuilds
   dispose GPU resources; stale image loads cannot replace the current building.
+- **Whole building** sets 1× separation; **Exploded** sets 3×. **Continuous exterior** controls a
+  separate inferred enclosure layer. Bands span exterior levels while plan walls keep their own
+  10 ft default extrusion; exploding moves bases without stretching either geometry.
+- `exterior_review.py`, `buildings/EER/exterior-review.json`, `buildings/ECJ/exterior-review.json`:
+  coarse source-plan perimeters with holes/setbacks and an assumed 0.5 ft inward shell. Reviews
+  are bound to PDF hashes/pages, preserve original room/wall arrays, and produce 22 exterior
+  storey enclosures (9 EER, 13 ECJ). `exterior-model.mjs` shares span/context rules across the
+  renderer and exporters. ASE has no exterior profile.
 - `build_architecture.py`, `buildings/*/architecture.json`: vector-PDF reconstruction with paired
   wall faces, inferred openings, enclosed-space polygons/holes, OCR labels and source hashes.
   Virtual door closures define regions and are never physical walls. PDF display rotation is now
@@ -50,6 +59,11 @@ The app in `Experiments/Campus_Map/collector/` is buildless HTML/JS served over 
   slab thickness, ceiling/opening height or material is inferred. Evidence/status accompany geometry;
   only documented levels receive semantic IFC `Elevation`. Unknown and estimated storey placements
   remain explicitly unverified. Both exports omit visual separation, signals and reference textures.
+  With Continuous exterior enabled, both also include separate inferred enclosures; IFC uses
+  `IfcBuildingElementProxy` so these are not represented as verified walls. Exterior exports use
+  reviewed level 11 context and omit 11M/R wall solids. IFC retains all storeys and space reference
+  curves; OBJ omits those reference surfaces too. Disable the toggle or export with `exterior: false`
+  to retain every original wall/room without the shell.
 - `vertical-model.mjs` and building metadata: **11 documented historical ECJ levels, 1 ECJ estimate,
   and 19 unknown levels** overall. ECJ normalizes record levels by subtracting Level 1 EL 552 ft.
   Level 6 is +72 ft **estimated**, because its printed elevation tag contradicts the dimension chain.
@@ -77,8 +91,9 @@ Current checked-in asset inventory:
 | ASE | 7 | 105 | 178 |
 | Total | 31 | 1,852 | 1,551 |
 
-The **3,403 polygons** are reconstructed connected regions, not certified architectural object
-counts. ECJ level 4 now has 78 wall and 50 space polygons. No furniture/interior detail was added.
+The **3,403 original room/wall polygons** are reconstructed connected regions, not certified architectural
+object counts; separate enclosure profiles are additional. ECJ level 4 now has 78 wall and 50 space
+polygons. No furniture/interior detail was added.
 
 ## Evidence that must remain explicit
 
@@ -94,21 +109,35 @@ counts. ECJ level 4 now has 78 wall and 50 space polygons. No furniture/interior
   Notices and scheduled dates do not prove installed geometry or construction completion.
 - The approximate 175 ft ECJ overall-height context does not define the model roof elevation.
   Its roof sheet contains surfaces that need separate identification, not one sourced flat plane.
+- ECJ level 11's inner penthouse enclosure has a historical +159 ft top: record roof EL 711 minus
+  Level 1 EL 552. That bound does not resolve floor R, roof buildup or parapets. Whole-exterior
+  mode hides 11M (internal) and R (composite reference), and uses level 11 context walls clipped
+  to the penthouse footprint. Isolate a source level or disable exterior to see the original geometry.
+- Exterior profiles close door/window gaps and simplify facade detail. Their 0.5 ft thickness is
+  assumed, EER elevations and final top remain schematic, and roof coverings, glazing, materials,
+  parapets, recesses and terraces remain incomplete. Do not use this layer as an RF obstruction,
+  weatherproofing or as-built model.
 
 ## Verification checkpoint
 
-This pass passed **47 Node tests and 9 Python tests**, covering registrations, polygon containment/
-triangulation, source hashes, rotation, source-bound EER exclusions/bridge preservation, elevation
-provenance, export geometry/units/hierarchy, and collection/import/estimation behavior. An actual
-EER level 6 generator diagnostic run successfully applied the review and added the bridge.
+The exterior revision passed **60/60 Node tests and 15/15 Python tests**, covering registrations,
+source hashes, rotation, reviewed geometry, elevation evidence, profiles/spans, exports and
+collection/import/estimation. Renderer tests measure real Three.js world-space bounds and reversible
+source-level visibility. An ECJ level 11 partial rebuild succeeded; an earlier EER level 6 generator
+run applied the review and restored the bridge.
 
-IfcOpenShell 0.9.0.post1 parsed all three IFC4 exports with zero EXPRESS/schema errors and tessellated
-all **1,852 wall solids**. Each wall volume matched its polygon area times the assumed 10 ft height
-after metre conversion. Unicode, apostrophe, backslash and newline text round-tripped. Verification
-was repeated after geometry-review property sets were corrected. No manual Revit/FreeCAD import was
-performed; intended downstream application support and physical accuracy remain separate checks.
+IfcOpenShell 0.9.0.post1 validated all three exterior-enabled IFC4 files with **zero schema or solid
+failures**. All **1,879 solids** tessellated: 1,852 selected context walls and 27 inferred enclosure
+proxies. EER has 1,109 walls/14 proxies/804 spaces; ECJ has 638/13/569; ASE has 105/0/178. All 31 storeys
+and 1,551 space reference curves remain. Volumes matched footprint area × the applicable extrusion
+after metre conversion, with maximum relative error **2.71 × 10⁻¹⁰**. Unicode and escaped text
+round-tripped. No manual Revit/FreeCAD import or physical accuracy validation was performed.
 
-Browser checks verified ECJ level 4's 50 spaces/78 walls/+44 ft documented elevation, level 6's
+The exterior browser pass verified EER/ECJ Whole building and Exploded presets, exterior-off source
+restoration, isolated 11M/R access, and ASE's disabled unavailable exterior control. A **390 × 844**
+viewport had no horizontal overflow; the browser reported zero warnings or errors.
+
+Earlier browser checks verified ECJ level 4's 50 spaces/78 walls/+44 ft documented elevation, level 6's
 conflict note, and unknown-step controls without changing documented levels. With a 6 ft display
 step, unknown SB/11M/R became −22/+148/+154 ft, explicitly schematic. EER's west bridge marker
 aligned with the original 2D plan, a demo estimated EER level 6, and the IFC button downloaded
@@ -146,7 +175,8 @@ python -m platformio run -e esp32dev
 
 Inspect previews before accepting regeneration. Full runs replace runtime assets; `--floor` runs
 produce diagnostic output only. Review masks are applied automatically when `geometry-review.json`
-exists. A source-hash mismatch must be re-reviewed; do not bypass it. Preserve OCR labels by using
+exists; `exterior-review.json` is applied separately afterward. A source-hash mismatch must be
+re-reviewed; do not bypass it. Preserve OCR labels by using
 `--ocr`, and clear the OCR cache when source PDF or registration changes.
 
 Local tools live below
@@ -178,6 +208,7 @@ commit environment folders, diagnostic images, or firmware `.pio/` output.
 > Inspect Git state and read `docs/3d-model-status.md`, `docs/3d-model-handoff.md`, the collector README,
 > `docs/floor-height-sources.md`, and `docs/cad-source-review.md`. Preserve ECJ elevation provenance and
 > the source-bound EER review masks/bridge. Run current Node and Python tests, inspect geometry against
-> source plans, and validate IFC in the target tool before claiming interoperability. Work on the remaining
+> source plans, preserve separate inferred exterior profiles and original room/wall arrays, and validate
+> IFC in the target tool before claiming interoperability. Work on the remaining
 > refinements requested. Preserve 2D collection and synthetic/real data separation, and distinguish
 > reconstructed geometry, unknown dimensions and unmeasured positioning accuracy. Do not deploy a website.

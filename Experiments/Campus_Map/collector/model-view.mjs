@@ -3,6 +3,7 @@ import { OrbitControls } from './vendor/OrbitControls.js';
 import { toFrame, fromFrame, floorElevation, interpolate, signalColor, signalAt } from './signal-model.mjs';
 import { roomAt } from './architecture.mjs';
 import { wallGeometry, roomGeometry } from './architecture-geometry.mjs';
+import { exteriorBand } from './exterior-model.mjs';
 
 const rgb = values => new THREE.Color(`rgb(${values.join(',')})`);
 const dispose = group => group.traverse(object => {
@@ -28,11 +29,11 @@ export class BuildingView {
     this.controls.addEventListener('change', () => this.invalidate());
     this.buildingGroup = new THREE.Group(); this.scene.add(this.buildingGroup);
     this.floorGroups = new Map(); this.generation = 0; this.points = [];
-    this.options = { spacing: 14, separation: 1, wallHeight: 10, walls: true, rooms: true, plans: false, heat: true, points: true, isolate: true, bssid: '*' };
+    this.options = { spacing: 14, separation: 1, wallHeight: 10, exterior: true, walls: true, rooms: true, plans: false, heat: true, points: true, isolate: true, bssid: '*' };
     this.raycaster = new THREE.Raycaster();
     const floorHit = event => {
       const floor = this.floorGroups.get(this.floor);
-      if (!floor) return null;
+      if (!floor?.group.visible) return null;
       const rect = this.renderer.domElement.getBoundingClientRect();
       this.raycaster.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2), this.camera);
       const point = this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -floor.group.position.y), new THREE.Vector3());
@@ -109,7 +110,7 @@ export class BuildingView {
       const heat = new THREE.Mesh(geometry.clone(), new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, opacity: 0.62 }));
       heat.position.y = 0.18; heat.visible = false;
       const markers = new THREE.Group(), overlay = new THREE.Group();
-      const walls = new THREE.Group(), rooms = new THREE.Group(), architectureGroup = new THREE.Group();
+      const walls = new THREE.Group(), contextWalls = new THREE.Group(), exterior = new THREE.Group(), rooms = new THREE.Group(), architectureGroup = new THREE.Group();
       const model = architecture?.floors.find(f => f.id === floor.id);
       for (const wall of model?.walls || []) {
         const geometry = wallGeometry(wall); geometry.rotateX(-Math.PI / 2);
@@ -117,16 +118,26 @@ export class BuildingView {
         const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 25), new THREE.LineBasicMaterial({ color: '#7d9191', transparent: true, opacity: 0.6 }));
         walls.add(mesh, edges);
       }
+      for (const wall of model?.envelope?.context_walls || []) {
+        const geometry = wallGeometry(wall); geometry.rotateX(-Math.PI / 2);
+        contextWalls.add(new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: '#e3e4df', roughness: 0.9 })));
+      }
+      for (const profile of model?.envelope?.walls || []) {
+        const geometry = wallGeometry(profile); geometry.rotateX(-Math.PI / 2);
+        const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: '#c5d2ce', roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 25), new THREE.LineBasicMaterial({ color: '#718c88', transparent: true, opacity: 0.5 }));
+        exterior.add(mesh, edges);
+      }
       for (const room of model?.rooms || []) {
         const geometry = roomGeometry(room); geometry.rotateX(-Math.PI / 2);
         const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: '#d2dcd9', roughness: 1, side: THREE.DoubleSide }));
         mesh.position.y = 0.04; mesh.userData.room = room; rooms.add(mesh);
       }
-      architectureGroup.add(walls, rooms);
+      architectureGroup.add(walls, contextWalls, exterior, rooms);
       group.add(plan, outline, architectureGroup, heat, markers, overlay); this.buildingGroup.add(group);
       const label = document.createElement('div'); label.className = 'floor-label'; label.textContent = `LEVEL ${floor.id}`; this.labels.appendChild(label);
       const anchor = toFrame(floor, floor.fit[0], floor.fit[3]);
-      this.floorGroups.set(floor.id, { group, plan, outline, heat, markers, overlay, label, anchor, config: floor, model, walls, rooms, architectureGroup });
+      this.floorGroups.set(floor.id, { group, plan, outline, heat, markers, overlay, label, anchor, config: floor, model, walls, contextWalls, exterior, rooms, architectureGroup });
       box.expandByObject(model?.walls.length ? architectureGroup : plan);
       loads.push(new Promise(resolve => {
         const image = new Image();
@@ -160,11 +171,20 @@ export class BuildingView {
     let lowest = Infinity;
     for (const [id, f] of this.floorGroups) {
       const active = id === this.floor;
+      const assembledExterior = this.options.exterior && !this.options.isolate;
+      const referenceOnly = ['internal', 'reference'].includes(f.model?.envelope?.role);
+      const useContextWalls = assembledExterior && Array.isArray(f.model?.envelope?.context_walls);
+      const band = exteriorBand(this.architecture, this.building, id, this.options);
       f.group.position.y = floorElevation(this.building, id, this.options.spacing) * this.options.separation;
-      lowest = Math.min(lowest, f.group.position.y);
-      f.group.visible = !this.options.isolate || active;
-      f.walls.visible = this.options.walls;
+      f.group.visible = (!this.options.isolate || active) && !(assembledExterior && referenceOnly);
+      if (f.group.visible) lowest = Math.min(lowest, f.group.position.y);
+      f.walls.visible = this.options.walls && !useContextWalls;
       f.walls.scale.y = this.options.wallHeight;
+      f.contextWalls.visible = this.options.walls && useContextWalls;
+      f.contextWalls.scale.y = this.options.wallHeight;
+      f.exterior.visible = this.options.exterior && !!band;
+      f.exterior.scale.y = band?.heightFt || 1;
+      f.exteriorBand = band;
       f.rooms.visible = this.options.rooms;
       f.plan.visible = this.options.plans;
       f.outline.visible = this.options.plans;
@@ -270,8 +290,9 @@ export class BuildingView {
     const active = this.floorGroups.get(this.floor);
     const bounds = (top || this.options.isolate) && active ? new THREE.Box3().setFromObject(active.model?.walls.length ? active.architectureGroup : active.plan) : this.bounds.clone();
     if (!top && !this.options.isolate) {
-      const heights = [...this.floorGroups.values()].map(f => f.group.position.y);
-      bounds.min.y = Math.min(...heights); bounds.max.y = Math.max(...heights) + this.options.wallHeight;
+      const visible = [...this.floorGroups.values()].filter(f => f.group.visible);
+      bounds.min.y = Math.min(...visible.map(f => f.group.position.y));
+      bounds.max.y = Math.max(...visible.map(f => f.group.position.y + Math.max(this.options.wallHeight, f.exterior.visible ? f.exteriorBand.heightFt : 0)));
     }
     const center = bounds.getCenter(new THREE.Vector3()), size = bounds.getSize(new THREE.Vector3());
     const halfFov = THREE.MathUtils.degToRad(this.camera.fov / 2);

@@ -1,5 +1,6 @@
 import { validateArchitecture } from './architecture.mjs';
 import { elevationInfo, verticalSummary } from './vertical-model.mjs';
+import { exteriorBand, selectExteriorContextWalls } from './exterior-model.mjs';
 
 // IFC4 subset: spatial hierarchy, swept wall profiles and room footprint curves.
 // No slab thickness, room volume, material, opening height or surveyed datum is invented.
@@ -60,7 +61,7 @@ function orientedRing(points, clockwise = false) {
 }
 
 /** Export reconstructed geometry, retaining source evidence and unknown heights. */
-export function exportArchitectureIFC(architecture, building, { wallHeight = 10, spacing = 14 } = {}) {
+export function exportArchitectureIFC(architecture, building, { wallHeight = 10, spacing = 14, exterior = true } = {}) {
   if (!Number.isFinite(wallHeight) || wallHeight <= 0 || !Number.isFinite(spacing) || spacing <= 0) {
     throw new Error('Model heights must be positive finite numbers');
   }
@@ -124,6 +125,8 @@ export function exportArchitectureIFC(architecture, building, { wallHeight = 10,
     HeightSources: textValue(json(building.vertical?.sources || [])),
     GeometryReview: textValue(json(architecture.geometry_review ?? architecture.review)),
     GeometrySourceRegistry: textValue(json(building.geometry_review)),
+    EnvelopeReview: textValue(json(architecture.envelope_review)),
+    EnvelopeInterpretation: textValue(exterior ? 'Optional inferred enclosure bands are IfcBuildingElementProxy objects, separate from reconstructed IfcWall solids. Enclosure thickness, opening treatment and geometry are not surveyed. Internal mezzanine and composite reference wall solids are omitted; their storeys and space footprint curves remain as unverified source references. Reviewed context walls replace projection linework only where supplied. Export exterior=false to retain all original walls.' : 'Inferred exterior enclosure objects excluded from this export; all original wall and space geometry retained.'),
     ExplodedView: textValue('Excluded. Placement uses unexpanded model coordinates; unknown Z values remain schematic.'),
     Limitations: textValue('Wall heights are display assumptions. Spaces are footprints only. No room volume, slab thickness, ceiling, opening height, or material assignment is inferred.'),
   });
@@ -133,6 +136,7 @@ export function exportArchitectureIFC(architecture, building, { wallHeight = 10,
     ...(building.vertical?.sources || []),
     ...(building.geometry_review?.sources || []),
     ...(architecture.geometry_review?.sources || []),
+    ...(architecture.envelope_review?.sources || []),
   ];
   const seenSources = new Set();
   const uniqueSources = sources.filter(source => {
@@ -183,10 +187,16 @@ export function exportArchitectureIFC(architecture, building, { wallHeight = 10,
       FloorReview: textValue(json(floor.review)),
       GeometryExclusions: textValue(json(floor.geometry_exclusions)),
       GeometryAdditions: textValue(json(floor.geometry_additions)),
+      EnvelopeRole: textValue(floor.envelope?.role || 'unavailable'),
+      EnvelopeReview: textValue(json(floor.envelope?.review)),
+      ContextWallInterpretation: textValue(!exterior ? 'All original reconstructed wall footprints retained.' : ['internal', 'reference'].includes(floor.envelope?.role)
+        ? 'Wall solids omitted from assembled exterior; source footprint curves remain for reference only.' : floor.envelope?.context_walls
+          ? 'Wall footprints clipped to the reviewed enclosure boundary; original walls available with exterior=false.' : 'Original reconstructed wall footprints retained.'),
+      ReferenceSheetInterpretation: textValue(floor.envelope?.role === 'reference' ? 'Composite reference sheet retained for source inspection. Its wall and room objects do not establish one exterior storey or one resolved roof elevation.' : ''),
       PlacementInterpretation: textValue(info.status === 'documented' ? 'Source-documented elevation relative to the project datum.' : 'Unverified model placement; do not use as a surveyed building elevation.'),
     });
     const floorWalls = [];
-    for (const [index, wall] of floor.walls.entries()) {
+    for (const [index, wall] of selectExteriorContextWalls(floor, exterior).entries()) {
       const polygon = rings(wall), outer = polyline(polygon.outer), inner = polygon.holes.map(hole => polyline(hole));
       const profile = inner.length
         ? add('IfcArbitraryProfileDefWithVoids', '.AREA.', '$', outer, list(inner))
@@ -200,6 +210,37 @@ export function exportArchitectureIFC(architecture, building, { wallHeight = 10,
       floorWalls.push(product); allWalls.push(product);
     }
     if (floorWalls.length) root('IfcRelContainedInSpatialStructure', `${floorKey}/walls`, 'Storey walls', '', list(floorWalls), storey);
+    const band = exterior && exteriorBand(architecture, building, floor.id, { wallHeight, spacing });
+    if (band) {
+      const enclosures = [];
+      for (const [index, wall] of floor.envelope.walls.entries()) {
+        const polygon = rings(wall), outer = polyline(polygon.outer), inner = polygon.holes.map(hole => polyline(hole));
+        const profile = inner.length
+          ? add('IfcArbitraryProfileDefWithVoids', '.AREA.', '$', outer, list(inner))
+          : add('IfcArbitraryClosedProfileDef', '.AREA.', '$', outer);
+        const solid = add('IfcExtrudedAreaSolid', profile, originAxes, zDirection, real(band.heightFt * METRES_PER_FOOT));
+        const representation = add('IfcShapeRepresentation', bodyContext, stepText('Body'), stepText('SweptSolid'), list([solid]));
+        const key = `${floorKey}/inferred-envelope/${index + 1}`;
+        enclosures.push(root('IfcBuildingElementProxy', key, `${building.id} ${floor.id} inferred envelope ${index + 1}`,
+          'Inferred exterior enclosure, not a surveyed wall. Storey bounds and enclosure assumptions are recorded separately.',
+          stepText('Inferred exterior enclosure'), placement(storeyPlacement), productShape(representation), stepText(key), '.NOTDEFINED.'));
+      }
+      root('IfcRelContainedInSpatialStructure', `${floorKey}/envelopes`, 'Inferred storey enclosure', '', list(enclosures), storey);
+      propertySet(enclosures, `${floorKey}/envelope-evidence`, 'BevoTag_InferredEnvelopeEvidence', {
+        GeometryStatus: textValue(band.geometryStatus),
+        SpanStatus: textValue(band.status),
+        BaseElevationMetres: lengthValue(band.baseFt * METRES_PER_FOOT),
+        TopElevationMetres: lengthValue(band.topFt * METRES_PER_FOOT),
+        ExtrusionHeightMetres: lengthValue(band.heightFt * METRES_PER_FOOT),
+        BaseEvidence: textValue(json(band.base)),
+        TopEvidence: textValue(json(band.top)),
+        Interpretation: textValue(band.note),
+        GeometryReview: textValue(json(floor.envelope.review)),
+        SourcePlanPage: textValue(floor.envelope.source_page ?? floor.source_page ?? ''),
+        SourceSHA256: textValue(architecture.envelope_review?.source_sha256 || ''),
+        ReviewSHA256: textValue(architecture.envelope_review?.sha256 || ''),
+      });
+    }
     const spaces = [];
     for (const room of floor.rooms) {
       const polygon = rings(room), curves = [polygon.outer, ...polygon.holes].map(ring => polyline(ring, 3));

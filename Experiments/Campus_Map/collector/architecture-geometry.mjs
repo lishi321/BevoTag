@@ -1,6 +1,7 @@
 import * as THREE from './vendor/three.module.js';
 import { floorElevation } from './signal-model.mjs';
 import { verticalSummary } from './vertical-model.mjs';
+import { exteriorBand, selectExteriorContextWalls } from './exterior-model.mjs';
 
 export function polygonShape(polygon) {
   const trace = (path, ring) => {
@@ -20,7 +21,7 @@ export function wallGeometry(wall, height = 1) {
 export function roomGeometry(room) { return new THREE.ShapeGeometry(polygonShape(room)); }
 
 // OBJ keeps building x/y and z-up in feet. Unknown Z values remain schematic.
-export function exportArchitectureOBJ(architecture, building, { wallHeight = 10, spacing = 14 } = {}) {
+export function exportArchitectureOBJ(architecture, building, { wallHeight = 10, spacing = 14, exterior = true } = {}) {
   if (!Number.isFinite(wallHeight) || wallHeight <= 0 || !Number.isFinite(spacing) || spacing <= 0) throw new Error('Model heights must be positive');
   const heights = verticalSummary(building, spacing);
   const comment = value => String(value).replace(/[\r\n]/g, ' ');
@@ -32,6 +33,10 @@ export function exportArchitectureOBJ(architecture, building, { wallHeight = 10,
     '# Exploded-view separation is excluded.'];
   if (heights.counts.assumed) lines.push('# Unknown floor elevations use display spacing only. Do not use these Z values as surveyed building elevations.');
   if (building.vertical?.note) lines.push(`# Height research: ${comment(building.vertical.note)}`);
+  if (exterior && architecture.envelope_review) {
+    lines.push('# Exterior envelopes are separate inferred enclosure objects, not surveyed wall solids.',
+      `# Envelope review: ${comment(JSON.stringify(architecture.envelope_review))}`);
+  }
   for (const source of building.vertical?.sources || []) {
     lines.push(`# Research source (not a floor elevation): ${comment(source.title)}; ${comment(source.url)}; ${comment(source.evidence)}`);
   }
@@ -50,8 +55,17 @@ export function exportArchitectureOBJ(architecture, building, { wallHeight = 10,
     const info = heights.rows.find(row => row.floorId === floor.id);
     lines.push(`# Level ${comment(floor.id)}: Z=${z} ft; status=${info.status}; ${comment(info.note)}`);
     if (info.source) lines.push(`# Height source: ${comment(info.source.title)}; ${comment(info.source.url)}; ${comment(info.source.evidence)}`);
-    floor.walls.forEach((wall, i) => write(wallGeometry(wall, wallHeight), `${building.id}_${floor.id}_wall_${i + 1}`, z));
-    floor.rooms.forEach(room => write(roomGeometry(room), `${building.id}_${floor.id}_${room.label}_${room.id}`, z));
+    selectExteriorContextWalls(floor, exterior).forEach((wall, i) => write(wallGeometry(wall, wallHeight), `${building.id}_${floor.id}_wall_${i + 1}`, z));
+    const referenceOnly = exterior && ['internal', 'reference'].includes(floor.envelope?.role);
+    if (!referenceOnly) floor.rooms.forEach(room => write(roomGeometry(room), `${building.id}_${floor.id}_${room.label}_${room.id}`, z));
+    if (referenceOnly) lines.push(`# Level ${comment(floor.id)}: ${floor.envelope.role} source geometry omitted from assembled exterior; export with exterior=false for all original wall/room geometry.`);
+    if (exterior && floor.envelope?.context_walls) lines.push(`# Level ${comment(floor.id)}: context walls clipped to the reviewed exterior footprint; original source walls remain available with exterior=false.`);
+    const band = exterior && exteriorBand(architecture, building, floor.id, { wallHeight, spacing });
+    if (band) {
+      lines.push(`# Exterior envelope ${comment(floor.id)}: base=${band.baseFt} ft; top=${band.topFt} ft; span status=${band.status}; geometry=inferred.`,
+        `# ${comment(band.note)}`, `# Envelope top evidence: ${comment(JSON.stringify(band.top))}`);
+      floor.envelope.walls.forEach((wall, i) => write(wallGeometry(wall, band.heightFt), `${building.id}_${floor.id}_inferred_envelope_${i + 1}`, band.baseFt));
+    }
   }
   return lines.join('\n') + '\n';
 }

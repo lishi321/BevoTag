@@ -20,6 +20,7 @@ from shapely.geometry.polygon import orient
 from shapely.ops import unary_union
 from shapely import set_precision
 from architecture_review import apply_geometry_review
+from exterior_review import apply_exterior_review
 
 ROOT = Path(__file__).resolve().parent
 
@@ -307,6 +308,10 @@ def main():
         review_path = folder/'geometry-review.json'
         if review_path.exists():
             data = apply_geometry_review(data, json.loads(review_path.read_text(encoding='utf-8')),
+                                         source_sha256=data['source']['sha256'])
+        exterior_path = folder/'exterior-review.json'
+        if exterior_path.exists():
+            data = apply_exterior_review(data, json.loads(exterior_path.read_text(encoding='utf-8')),
                                          source_sha256=data['source']['sha256'])
         if args.preview_dir:
             args.preview_dir.mkdir(parents=True, exist_ok=True)

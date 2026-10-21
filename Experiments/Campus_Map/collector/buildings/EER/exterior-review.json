@@ -1,0 +1,537 @@
+{
+  "schema": 1,
+  "building": "EER",
+  "reviewed": "2026-10-21",
+  "source_sha256": "9cdc1a6421ce892b4e8446c461645c7bd992e4f5f395919e96a8429533a86667",
+  "wall_thickness_ft": 0.5,
+  "method": "Source plan outlines were reviewed in the existing registered building frame. This is coarse exterior massing: door/window gaps are closed, glazing and masonry are not distinguished, small facade returns/columns/entrance canopies are simplified. No room, original wall, height, material or measured thickness is inferred from these profiles.",
+  "limitations": "Horizontal traces and existing floor registration are approximate; lower-level source clipping, facade recesses, terraces, shafts and renovation currency remain unverified. The 0.5 ft inward shell thickness is display-only. Closed shell surfaces include doors and windows without claiming their locations/materials. This is not an as-built envelope, weatherproofing model, or RF obstruction model.",
+  "sources": [
+    {
+      "id": "registered-floor-plans",
+      "title": "UT EER floor-plan set in the project",
+      "file": "plan.pdf",
+      "evidence": "PDF pages1\u20139 reviewed in the registered XY frame. Pages5\u20138 repeat the two main tower footprints with the central atrium opening and east connector. These coarse exterior traces close glazed/door gaps that room reconstruction misses; no exterior elevation schedule is supplied."
+    },
+    {
+      "id": "eer-atrium-review",
+      "title": "EER reviewed atrium exclusions",
+      "file": "geometry-review.json",
+      "evidence": "Keep the reviewed central opening and separate west bridge; no convex hull across the atrium. Floor3 retains its narrower skylight projection opening; floor8 roof framing stays omitted."
+    }
+  ],
+  "profiles": {
+    "basement": {
+      "outline": [
+        [
+          0,
+          -20
+        ],
+        [
+          29,
+          -20
+        ],
+        [
+          29,
+          -113.7
+        ],
+        [
+          128,
+          -113.7
+        ],
+        [
+          128,
+          -44
+        ],
+        [
+          254.7,
+          -44
+        ],
+        [
+          254.7,
+          200
+        ],
+        [
+          160,
+          200
+        ],
+        [
+          160,
+          280
+        ],
+        [
+          0,
+          280
+        ],
+        [
+          0,
+          240
+        ],
+        [
+          -29.5,
+          240
+        ],
+        [
+          -29.5,
+          27
+        ],
+        [
+          0,
+          27
+        ]
+      ],
+      "holes": [],
+      "note": "Coarse registered basement outline: north lecture/service wing, south basement extension, and west service wing retained. The source crop truncates some east/west edges; closure at the current reconstruction bounds is inferred, not a surveyed facade. Detached retaining/lightwell outlines are omitted."
+    },
+    "first": {
+      "outline": [
+        [
+          0,
+          -18
+        ],
+        [
+          228,
+          -18
+        ],
+        [
+          228,
+          -30
+        ],
+        [
+          256.3,
+          -30
+        ],
+        [
+          256.3,
+          200
+        ],
+        [
+          146.5,
+          200
+        ],
+        [
+          146.5,
+          280
+        ],
+        [
+          0,
+          280
+        ],
+        [
+          0,
+          188
+        ],
+        [
+          -24.7,
+          188
+        ],
+        [
+          -24.7,
+          153
+        ],
+        [
+          0,
+          153
+        ],
+        [
+          0,
+          129
+        ],
+        [
+          -24.7,
+          129
+        ],
+        [
+          -24.7,
+          57
+        ],
+        [
+          0,
+          57
+        ]
+      ],
+      "holes": [],
+      "note": "Coarse first-floor footprint from page2, retaining north lecture wing and west projections/lightwell recesses. The eastern source crop is incomplete; x256.3 ft closes the existing registered model, with its mismatch against upper levels left explicit. Interior atrium openings do not define an outside courtyard on this level."
+    },
+    "second": {
+      "outline": [
+        [
+          0,
+          -18
+        ],
+        [
+          266.75,
+          -18
+        ],
+        [
+          266.75,
+          200
+        ],
+        [
+          115,
+          200
+        ],
+        [
+          115,
+          280
+        ],
+        [
+          38,
+          280
+        ],
+        [
+          38,
+          200
+        ],
+        [
+          0,
+          200
+        ],
+        [
+          0,
+          127
+        ],
+        [
+          40,
+          127
+        ],
+        [
+          40,
+          57
+        ],
+        [
+          0,
+          57
+        ]
+      ],
+      "holes": [],
+      "note": "Page3 exterior outline simplified around the north library wing and recessed west atrium entrance. Detached landscape/roof projection lines at y-50 and y298 are excluded. The atrium open-to-below region is inside this storey enclosure, not an exterior courtyard."
+    },
+    "third": {
+      "outline": [
+        [
+          0,
+          -16
+        ],
+        [
+          13,
+          -16
+        ],
+        [
+          13,
+          -23
+        ],
+        [
+          254,
+          -23
+        ],
+        [
+          254,
+          -16
+        ],
+        [
+          266.75,
+          -16
+        ],
+        [
+          266.75,
+          201
+        ],
+        [
+          0,
+          201
+        ]
+      ],
+      "holes": [
+        [
+          [
+            58,
+            126.85
+          ],
+          [
+            208.6,
+            126.85
+          ],
+          [
+            203.1,
+            109
+          ],
+          [
+            208.65,
+            75.1
+          ],
+          [
+            203.3,
+            57.45
+          ],
+          [
+            63.3,
+            57.45
+          ],
+          [
+            58,
+            75.1
+          ],
+          [
+            63.55,
+            109
+          ]
+        ]
+      ],
+      "note": "Page4 common tower extremities and wide west/east terrace-side footprint, with the reviewed zigzag skylight projection kept open. Terrace enclosure height and facade detail remain schematic."
+    },
+    "typical-towers": {
+      "outline": [
+        [
+          0,
+          -16
+        ],
+        [
+          13,
+          -16
+        ],
+        [
+          13,
+          -23
+        ],
+        [
+          254,
+          -23
+        ],
+        [
+          254,
+          -16
+        ],
+        [
+          266.75,
+          -16
+        ],
+        [
+          266.75,
+          57.5
+        ],
+        [
+          247,
+          57.5
+        ],
+        [
+          247,
+          126.8
+        ],
+        [
+          266.75,
+          126.8
+        ],
+        [
+          266.75,
+          201
+        ],
+        [
+          0,
+          201
+        ],
+        [
+          0,
+          126.8
+        ],
+        [
+          30.9,
+          126.8
+        ],
+        [
+          30.9,
+          57.5
+        ],
+        [
+          0,
+          57.5
+        ]
+      ],
+      "holes": [
+        [
+          [
+            38.0,
+            57.5
+          ],
+          [
+            227.8,
+            57.5
+          ],
+          [
+            227.8,
+            126.8
+          ],
+          [
+            38.0,
+            126.8
+          ]
+        ]
+      ],
+      "note": "Pages5\u20138 repeat these main facade lines. A shared coarse trace avoids artificial offsets from per-page room-detection gaps; north/south towers, east connector, narrow west bridge and south facade steps are preserved. Tiny bay recesses and column faces are simplified. The west connector enclosure is inferred from its parallel plan faces; its glazing/guardrail and roof condition remain unverified."
+    },
+    "eighth": {
+      "outline": [
+        [
+          0,
+          -17
+        ],
+        [
+          266.75,
+          -17
+        ],
+        [
+          266.75,
+          57.0
+        ],
+        [
+          247,
+          57.0
+        ],
+        [
+          247,
+          126.8
+        ],
+        [
+          266.75,
+          126.8
+        ],
+        [
+          266.75,
+          201
+        ],
+        [
+          0,
+          201
+        ],
+        [
+          0,
+          126.8
+        ],
+        [
+          227.8,
+          126.8
+        ],
+        [
+          227.8,
+          57.0
+        ],
+        [
+          0,
+          57.0
+        ]
+      ],
+      "holes": [],
+      "note": "Page9 has two roof/mechanical tower rectangles and an eastern connection; the central roof/truss projection and absent west connector are not filled. The two towers remain separated by the open central area. Roof height, parapets and roof structural members are unverified."
+    }
+  },
+  "levels": [
+    {
+      "floor_id": "B",
+      "source_page": 1,
+      "role": "storey",
+      "profile_ids": [
+        "basement"
+      ],
+      "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "1",
+      "source_page": 2,
+      "role": "storey",
+      "profile_ids": [
+        "first"
+      ],
+      "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "2",
+      "source_page": 3,
+      "role": "storey",
+      "profile_ids": [
+        "second"
+      ],
+      "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "3",
+      "source_page": 4,
+      "role": "storey",
+      "profile_ids": [
+        "third"
+      ],
+      "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "4",
+      "source_page": 5,
+      "role": "storey",
+      "profile_ids": [
+        "typical-towers"
+      ],
+      "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "5",
+      "source_page": 6,
+      "role": "storey",
+      "profile_ids": [
+        "typical-towers"
+      ],
+      "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "6",
+      "source_page": 7,
+      "role": "storey",
+      "profile_ids": [
+        "typical-towers"
+      ],
+      "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "7",
+      "source_page": 8,
+      "role": "storey",
+      "profile_ids": [
+        "typical-towers"
+      ],
+      "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    },
+    {
+      "floor_id": "8",
+      "source_page": 9,
+      "role": "storey",
+      "profile_ids": [
+        "eighth"
+      ],
+      "note": "Approximate plan-traced enclosure; elevation and storey height remain schematic.",
+      "evidence": [
+        "registered-floor-plans"
+      ]
+    }
+  ]
+}

@@ -39,7 +39,7 @@ button.primary:hover:not(:disabled) { background:#9b4314; }
 .scene-heading p { font-size:11px; color:#71888b; margin:0; }
 .data-badge { position:absolute; top:29px; right:24px; border:1px solid #c8d9d8; color:#4d7272; background:#ffffffc9; border-radius:20px; font-size:9px; letter-spacing:1px; padding:7px 10px; }
 .data-badge.demo { border-color:#e1bb81; background:#fff4df; color:#96651d; }
-.camera-controls { position:absolute; right:24px; top:76px; display:flex; gap:4px; }
+.camera-controls { position:absolute; right:24px; top:76px; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px; max-width:340px; }
 .camera-controls button { font-size:10px; padding:6px 9px; background:#ffffffd9; border-color:#d2dddd; }
 .model-status { position:absolute; left:30px; top:119px; font-size:12px; color:#698184; max-width:360px; pointer-events:none; background:#edf1f1db; padding:5px 8px; border-radius:4px; }
 .floor-labels { position:absolute; inset:0; pointer-events:none; }

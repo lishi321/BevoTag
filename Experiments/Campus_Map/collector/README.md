@@ -16,10 +16,24 @@ is needed once this repository is on the laptop. Serve over HTTP rather than ope
 The default workspace renders **extruded wall meshes and room floor surfaces reconstructed from plans** for
 **EER (9 levels), ASE (7), and ECJ (15)**. Interiors are empty: there are no furniture, equipment or
 decorative assets. Drag to orbit and scroll to zoom. Choose a floor, then use **Top view** or
-**Perspective**. Toggle **Active floor only** off to see the building stack. **Plan reference** shows
-the original drawing underneath the geometry for checking alignment.
+**Perspective**. **Whole building** assembles the model at 1× spacing; **Exploded** separates the
+levels at 3× without stretching their walls. Both presets enable **Continuous exterior**. Toggle
+it off to inspect the original room-and-wall stack, or use **Active floor only** to inspect a source
+level. **Plan reference** shows the original drawing underneath the geometry for checking alignment.
 
-Current assets contain 3,403 polygons: EER 1,109 wall / 804 space polygons, ECJ 638 / 569, and
+EER and ECJ also have **22 inferred exterior storey enclosures**: 9 EER and 13 ECJ. Coarse perimeters
+traced from registered plans preserve major holes and setbacks; a **0.5 ft assumed inward shell**
+closes door/window gaps and spans to the next exterior level. The shell is a separate display layer,
+not a measured wall assembly. Glazing, doors, materials, detailed facade returns, roof coverings and
+parapets remain unresolved. EER's heights are still schematic. ASE has no exterior profiles yet.
+
+ECJ's level 11 enclosure follows the recessed penthouse, with a historically sourced top of
+**+159 ft** (record EL 711 minus Level 1 EL 552). That top does not resolve the composite R sheet.
+In whole-building exterior mode, level 11 uses clipped context walls, 11M remains an internal
+mezzanine, and R remains a composite source reference: neither creates an extra exterior storey.
+Disable **Continuous exterior**, or isolate either source level, to inspect its original geometry.
+
+The original room/wall assets contain 3,403 polygons: EER 1,109 wall / 804 space polygons, ECJ 638 / 569, and
 ASE 105 / 178. A polygon can represent a connected wall network or a merged room/circulation region;
 these are reconstructed regions, not certified room or individual architectural wall counts.
 
@@ -55,16 +69,26 @@ the [CAD source review](../../../docs/cad-source-review.md). The approximate 175
 context is not used as the roof elevation or divided among levels.
 
 Under **Heights & 3D export**, the table separates unknown elevations from schematic model Z values.
-The model uses an assumed **10 ft wall display height**. Unknown levels use schematic interpolation
+Plan walls use an assumed **10 ft wall display height**. Exterior bands use the difference between
+their base and the next exterior level, or a separately documented top. A final band without a
+resolved top uses the wall display height. Unknown levels use schematic interpolation
 between entered levels or a **14 ft default display step** beyond an anchor. These placements do
 not establish actual basement, mezzanine, or roof spacing.
-**Visual floor separation** starts at **1× (unexploded)** and only changes the view.
+**Visual floor separation** starts at **1× (unexploded)** and moves floor bases only; plan-wall and
+exterior-band heights stay unchanged when the levels separate.
 **Export CAD / BIM IFC** downloads IFC4 in **metres**, with a project/building/storey hierarchy,
 analytic extruded wall profiles (including holes), and named footprint-only `IfcSpace` boundaries.
 The export retains source/review evidence and height status. Only documented levels receive a
 semantic IFC `Elevation` value; unknown/estimated storeys retain explicitly unverified placements.
 No slab thickness, room volume, ceiling/opening height, or material assignment is inferred.
-**Export schematic OBJ** downloads wall solids and room surfaces for all levels, with named objects,
+With **Continuous exterior** enabled, the default IFC/OBJ export also includes separately labeled
+inferred shell objects. IFC represents them as `IfcBuildingElementProxy`, keeping their assumptions
+separate from reconstructed `IfcWall` objects. Level 11 uses reviewed context walls; 11M/R wall solids
+are omitted from exterior exports. IFC retains every storey and all space footprint reference curves;
+OBJ omits the 11M/R reference surfaces as well. Disable the toggle (or pass `exterior: false` to the
+export functions) to export all original wall/room geometry without the shell. The original arrays
+remain intact in the runtime assets.
+**Export building OBJ** downloads named wall and room meshes,
 building X/Y coordinates and Z up. Set the importing application's units to **feet**. Export preserves
 elevation status, research sources and limitations in comments; its unknown Z values remain schematic.
 Both exports exclude visual separation, signals and plan textures. These are reconstructed models;
@@ -84,6 +108,8 @@ their underlying coordinates. `vertical-model.mjs` centralizes these rules for t
 The checked-in `buildings/<id>/architecture.json` files are runtime assets. `architecture.mjs` validates
 them and locates points in rooms; `architecture-geometry.mjs` creates meshes and exports OBJ;
 `architecture-ifc.mjs` exports analytic walls and space footprints as IFC4.
+`exterior-model.mjs` supplies the shared enclosure-span and context-wall rules used by the renderer
+and both exporters.
 `build_architecture.py` is an optional offline authoring utility, not a browser/server dependency.
 It pairs wall faces, filters short lettering and repeated stair treads, uses door arcs and small virtual
 closures for room detection, and optionally reads room labels with local OCR. Virtual door closures
@@ -98,6 +124,12 @@ level 6's false atrium floor, and level 8 roof-member artifacts, then restores t
 from its actual plan boundaries. The bridge uses `label_source: "plan-review"`; other labels remain
 OCR/generated. Level 8 exclusions omit roof structure from the room/wall scope, not certify empty air.
 The review is targeted; other atrium/roof regions still need inspection.
+
+For EER and ECJ, `exterior_review.py` applies the separate `exterior-review.json` after room/wall
+review. The traces are bound to the source PDF hash and page; original wall and room arrays are
+preserved. It records the assumed shell thickness, source evidence, level roles and any explicit
+enclosure top. Re-review these coarse profiles after changing plans; do not treat them as measured
+facade geometry or RF obstruction materials.
 
 Renovation notices identify possible stale partitions in ECJ, EER and ASE. They do not supply
 replacement layouts, so no guessed partition changes are applied. Preserve this distinction when
@@ -119,12 +151,20 @@ Inspect the diagnostic drawings and rerun tests before accepting regenerated geo
 
 ### Verification
 
-The 2026-10-21 pass passed **47 Node tests and 9 Python tests**. IfcOpenShell 0.9.0.post1 parsed
-all three exports as IFC4 with zero EXPRESS/schema errors and tessellated all 1,852 wall solids;
-each volume matched its footprint area times the assumed 10 ft height after conversion to metres.
-Unicode, apostrophe, backslash and newline text round-trips were checked. Browser checks covered
-ECJ's corrected level 4 geometry/elevations, level 6's conflict note, unknown-height controls,
-EER's west bridge alignment with the 2D plan, a synthetic estimate, IFC download and a 390 px layout.
+The 2026-10-21 exterior revision passed **60/60 Node tests and 15/15 Python tests**, including
+source review, elevation evidence, export geometry and real Three.js layout bounds. An ECJ level 11
+partial generator rebuild succeeded. Bands meet at 1× and keep their height when exploded; original
+room/wall arrays and access to mezzanine/roof source geometry are preserved.
+
+IfcOpenShell 0.9.0.post1 validated the exterior-enabled IFC4 exports with **zero schema or solid
+failures**. All **1,879 solids** tessellated: 1,852 selected context walls and 27 inferred enclosure
+proxies. All 31 storeys and 1,551 space footprint references remain. Volumes matched their footprint
+area × extrusion after metre conversion; maximum relative error was **2.71 × 10⁻¹⁰**.
+
+Browser checks covered EER/ECJ Whole building and Exploded presets, exterior-off source restoration,
+isolated 11M/R access, and ASE's disabled unavailable exterior control. A **390 × 844** viewport had
+no horizontal overflow; the browser reported no warnings or errors. Earlier checks covered ECJ's
+level 4 correction and level 6 conflict, EER's bridge-to-plan alignment, estimation and IFC download.
 No manual Revit/FreeCAD import or physical accuracy validation was performed.
 
 ```sh
@@ -325,9 +365,11 @@ To add a building `XYZ`:
 | `model-view.mjs`, `signal-model.mjs` | renderer, signal layers, survey import and fingerprint estimation |
 | `architecture.mjs`, `architecture-geometry.mjs`, `architecture-ifc.mjs` | validation, mesh generation, OBJ in feet and IFC4 in metres |
 | `vertical-model.mjs` | elevation provenance and schematic placement rules |
+| `exterior-model.mjs`, `exterior_review.py` | inferred exterior spans, context-wall selection and source-bound profile application |
 | `PROTOCOL.md` | serial contract with the DAQ module |
 | `buildings/` | one folder per building: config, floor-plan PDF, rendered PNGs |
 | `buildings/*/VERIFICATION.md` | how each building's plan geometry was checked |
 | `make_floors.py` | renders a building's PDF into floor PNGs |
 | `build_architecture.py`, `architecture_review.py` | offline geometry reconstruction and source-bound review corrections |
 | `buildings/*/architecture.json`, `buildings/*/geometry-review.json` | runtime geometry and optional reproducible review masks/additions |
+| `buildings/EER/exterior-review.json`, `buildings/ECJ/exterior-review.json` | coarse exterior traces, assumed shell thickness, level roles and top-elevation evidence |

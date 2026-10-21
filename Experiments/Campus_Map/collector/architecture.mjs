@@ -21,10 +21,15 @@ export function roomAt(floor, x, y) {
 export function validateArchitecture(data, building) {
   if (data?.schema !== 1 || data.units !== 'ft' || data.building !== building.id || !Array.isArray(data.floors)) throw new Error('Unsupported building geometry');
   const expected = new Set(building.floors.map(f => f.id)), seen = new Set();
+  if (data.envelope_review && data.envelope_review.source_sha256 !== data.source?.sha256) throw new Error('Exterior review does not match the source plan');
   for (const floor of data.floors) {
     if (!expected.has(floor.id) || seen.has(floor.id) || !Array.isArray(floor.walls) || !Array.isArray(floor.rooms)) throw new Error('Invalid model floor');
     seen.add(floor.id);
-    for (const polygon of [...floor.walls, ...floor.rooms]) {
+    const envelope = floor.envelope;
+    if (envelope && (!['storey', 'internal', 'reference'].includes(envelope.role) || envelope.source_page !== floor.source_page || !Array.isArray(envelope.footprints) || !Array.isArray(envelope.walls))) throw new Error('Invalid exterior envelope');
+    if (envelope?.role === 'storey' && (!envelope.footprints.length || !envelope.walls.length)) throw new Error('Exterior storey is missing its profile');
+    if (envelope?.context_walls !== undefined && !Array.isArray(envelope.context_walls)) throw new Error('Invalid exterior context walls');
+    for (const polygon of [...floor.walls, ...floor.rooms, ...(envelope?.footprints || []), ...(envelope?.walls || []), ...(envelope?.context_walls || [])]) {
       for (const ring of [polygon.outline, ...(polygon.holes || [])]) {
         if (!Array.isArray(ring) || ring.length < 3 || ring.some(p => !Array.isArray(p) || p.length !== 2 || !p.every(Number.isFinite))) throw new Error('Invalid model polygon');
       }
