@@ -34,10 +34,14 @@
       <div id="modelCanvas" aria-label="Interactive 3D building. Drag to orbit, scroll to zoom, double-click the selected floor to set a survey point."></div>
       <div class="scene-heading"><div class="eyebrow">ROOM &amp; WALL MODEL</div><h1 id="sceneTitle">Building model</h1><p id="sceneSubtitle">Plan-derived geometry · building coordinates in feet</p></div>
       <span id="dataBadge" class="data-badge">NO SURVEY DATA</span>
-      <div class="camera-controls" role="group" aria-label="Camera controls"><button id="cameraBuilding" title="Assemble the continuous exterior at normal spacing">Whole building</button><button id="cameraExploded" title="Separate levels without stretching their walls">Exploded</button><button id="cameraIso" title="Reset perspective view">Perspective</button><button id="cameraTop" title="View selected floor from above">Top view</button><button id="cameraFit" title="Fit building to viewport">Fit</button></div>
+      <div class="camera-controls">
+        <div class="mode-switch" role="group" aria-label="Building view"><button id="cameraFloor" aria-pressed="true" title="Show only the selected floor (I)">Floor</button><button id="cameraBuilding" aria-pressed="false" title="Assemble the continuous exterior at normal spacing (B)">Whole building</button><button id="cameraExploded" aria-pressed="false" title="Separate levels without stretching their walls (E)">Exploded</button></div>
+        <div class="camera-actions" role="group" aria-label="Camera"><button id="cameraIso" title="Reset perspective view (P)">Perspective</button><button id="cameraTop" title="View selected floor from above (T)">Top</button><button id="cameraFit" title="Fit building to viewport (F)">Fit</button></div>
+      </div>
       <div id="modelStatus" class="model-status" role="status">Loading 3D model…</div>
+      <div id="emptyState" class="empty-state" hidden><strong>No survey data yet</strong><span>See how signal coverage looks, or bring in your own logs.</span><div class="btnrow"><button id="emptyDemo" class="primary">Explore demo</button><button id="emptyImport">Import CSV</button></div></div>
       <div id="floorLabels" class="floor-labels" aria-hidden="true"></div>
-      <div class="scene-footer"><div class="signal-legend"><span>RSSI <b>dBm</b></span><div class="spectrum"></div><div class="legend-ticks"><span>−95 weak</span><span>−65</span><span>−35 strong</span></div></div><p>Click a room · drag to orbit · scroll to zoom<br>Double-click the active floor to place a survey point</p></div>
+      <div class="scene-footer"><div id="signalLegend" class="signal-legend" hidden><span>RSSI <b>dBm</b></span><div class="spectrum"></div><div class="legend-ticks"><span>−95 weak</span><span>−65</span><span>−35 strong</span></div></div><p>Click a room · drag to orbit · scroll to zoom · <kbd>[</kbd> <kbd>]</kbd> change floor<br>Double-click the active floor to place a survey point</p></div>
     </div>
     <div id="viewport" class="viewport" hidden>
       <div id="stage" class="stage">
@@ -55,16 +59,25 @@
   </section>
 
   <aside class="panel">
+    <div class="panel-tabs" role="tablist" aria-label="Workspace panels">
+      <button id="tabModel" role="tab" aria-controls="paneModel" aria-selected="true">Model</button>
+      <button id="tabSignals" role="tab" aria-controls="paneSignals" aria-selected="false" tabindex="-1">Signals</button>
+      <button id="tabCollect" role="tab" aria-controls="paneCollect" aria-selected="false" tabindex="-1">Collect <span id="collectBadge" class="tab-badge" hidden></span></button>
+    </div>
+    <section id="paneModel" class="pane" role="tabpanel" aria-labelledby="tabModel">
     <div class="card architecture-card">
-      <div class="card-title"><h2>Building model</h2><span class="section-number">CAD VIEW</span></div>
-      <p id="architectureSummary" class="small muted" role="status">Loading wall and room geometry…</p>
+      <div class="card-title"><h2>Building model</h2><span id="architectureSummary" class="card-meta" role="status">Loading…</span></div>
       <p id="heightStatus" class="height-status" role="status">Floor elevations unverified</p>
-      <div class="layer-checks"><label class="check"><input id="showExterior" type="checkbox" checked> Continuous exterior</label><label class="check"><input id="showRoofs" type="checkbox"> Roofs</label><label class="check"><input id="showWalls" type="checkbox" checked> Plan walls</label><label class="check"><input id="showRooms" type="checkbox" checked> Room surfaces</label><label class="check"><input id="showPlans" type="checkbox"> Plan reference</label><label class="check"><input id="isolateFloor" type="checkbox" checked> Active floor only</label></div>
-      <p id="exteriorNote" class="small muted" role="status"></p>
-      <p id="roofNote" class="small muted" role="status"></p>
-      <label>Room / enclosed space<select id="modelRoom"><option value="">Select a room in the model</option></select></label>
+      <label>Find a room<select id="modelRoom"><option value="">Select a room in the model</option></select></label>
       <p id="roomDetail" class="small muted">Click a room surface or choose one above.</p>
-      <div class="btnrow architecture-actions"><button id="btnFocusRoom" disabled>Focus room</button><button id="btnRoomPoint" disabled>Use room center</button></div>
+      <div id="roomActions" class="btnrow architecture-actions" hidden><button id="btnFocusRoom" disabled>Focus room</button><button id="btnRoomPoint" disabled>Use room center</button></div>
+      <h3 class="subhead">Layers</h3>
+      <div class="layer-checks"><label class="check"><input id="showExterior" type="checkbox" checked> Exterior</label><label class="check"><input id="showRoofs" type="checkbox"> Roofs</label><label class="check"><input id="showWalls" type="checkbox" checked> Plan walls</label><label class="check"><input id="showRooms" type="checkbox" checked> Rooms</label><label class="check"><input id="showPlans" type="checkbox"> Plan image</label><label class="check"><input id="isolateFloor" type="checkbox" checked> Active floor only</label></div>
+      <details class="model-settings layer-notes"><summary>About these layers</summary>
+        <p id="exteriorNote" class="small muted" role="status"></p>
+        <p id="roofNote" class="small muted" role="status"></p>
+        <p class="small muted">Reconstructed from floor plans. Some boundaries and room labels need review. Empty interiors; no furniture.</p>
+      </details>
       <details class="model-settings"><summary>Heights &amp; 3D export</summary>
         <p id="heightDatum" class="small muted"></p>
         <div class="grid2"><label>Plan-wall / top fallback height (ft)<input id="wallHeight" type="number" min="1" max="30" step="0.5" value="10"></label><label>Unknown-level display step (ft)<input id="floorSpacing" type="number" min="6" max="40" step="1" value="14"></label></div>
@@ -82,10 +95,11 @@
         <ul id="geometryCorrections" class="small"></ul>
         <ul id="geometrySources" class="height-sources"></ul>
       </details>
-      <p class="small model-provenance">Reconstructed from floor plans. Some boundaries and room labels need review. Empty interiors; no furniture.</p>
     </div>
+    </section>
+    <section id="paneSignals" class="pane" role="tabpanel" aria-labelledby="tabSignals" hidden>
     <div class="card signal-card">
-      <div class="card-title"><h2>Signal layers</h2><span class="section-number">01</span></div>
+      <div class="card-title"><h2>Signal layers</h2></div>
       <label>Survey source<select id="surveySource"><option value="survey">My surveys</option><option value="demo">Demo · synthetic signals</option></select></label>
       <div class="btnrow import-row"><button id="btnImport">Import CSV files</button><button id="btnClearImport" title="Remove imported files from this page">Clear imports</button><input id="csvFiles" type="file" accept=".csv,text/csv" multiple hidden></div>
       <p id="surveySummary" class="small muted" role="status">Import survey logs or collect points to map signals.</p>
@@ -94,7 +108,7 @@
       <p class="small muted">Heatmap interpolates nearby samples inside modeled spaces. Blank areas lack survey support or a resolved room boundary.</p>
     </div>
     <div class="card estimate-card">
-      <div class="card-title"><h2>Position estimate</h2><span class="section-number">02</span></div>
+      <div class="card-title"><h2>Position estimate</h2></div>
       <p class="small muted">Match a new Wi-Fi scan to the surveyed fingerprints.</p>
       <button id="btnEstimate" class="primary wide">Scan &amp; estimate position</button>
       <details class="paste-scan"><summary>Use a recorded scan</summary><label>Scan JSON<textarea id="queryScan" rows="4" placeholder='{"type":"scan","aps":[…]}'></textarea></label><button id="btnEstimateJson">Estimate from JSON</button></details>
@@ -102,7 +116,9 @@
       <button id="btnFocusEstimate" class="wide" hidden>Show estimated floor</button>
       <p class="small muted">Experimental fingerprint matching. Neighbor spread describes the survey matches, not measured accuracy.</p>
     </div>
-    <details class="collection-section" open><summary>Collect labeled measurements <span>DAQ</span></summary>
+    </section>
+    <section id="paneCollect" class="pane collection-section" role="tabpanel" aria-labelledby="tabCollect" hidden>
+    <p id="collectGuide" class="collect-guide small">Pick a point: double-click the active floor in 3D, or click the map in <button id="guide2d" class="linklike">2D survey</button>.</p>
     <div class="card">
       <h2>1 · Location</h2>
       <div class="grid2">
@@ -158,7 +174,7 @@
         <button id="btnSend">Send</button>
       </div>
     </details>
-    </details>
+    </section>
   </aside>
 </main>
 

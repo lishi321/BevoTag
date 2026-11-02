@@ -244,7 +244,7 @@ export function exportArchitectureIFC(architecture, building, { wallHeight = 10,
       });
     }
     const roofProducts = [];
-    if (roofs) for (const roof of roofSurfaces(architecture, building, floor.id, { wallHeight, spacing })) {
+    if (roofs) for (const roof of roofSurfaces(architecture, building, floor.id, { wallHeight, spacing, band: exterior ? band : undefined })) {
       const polygon = rings(roof), outer = polyline(polygon.outer), inner = polygon.holes.map(hole => polyline(hole));
       const profile = inner.length
         ? add('IfcArbitraryProfileDefWithVoids', '.AREA.', '$', outer, list(inner))

@@ -74,14 +74,17 @@ export function exteriorBand(architecture, building, floorId, { spacing = 14, wa
   };
 }
 
-/** Removable inferred roof solids extend downward from their surface elevation. */
+/**
+ * Removable inferred roof solids extend downward from their surface elevation.
+ * Callers that already hold this floor's exteriorBand may pass it as options.band.
+ */
 export function roofSurfaces(architecture, building, floorId, options = {}) {
   const floor = architecture.floors.find(item => item.id === floorId);
   if (!floor?.envelope?.roofs) return [];
   const roofs = floor.envelope.roofs;
   if (!Array.isArray(roofs)) throw new Error('Invalid roof surface list');
   if (!roofs.length) return [];
-  const band = exteriorBand(architecture, building, floorId, options);
+  const band = options.band !== undefined ? options.band : exteriorBand(architecture, building, floorId, options);
   if (!band) return [];
   const thickness = architecture.envelope_review?.roof_thickness_ft ?? .5;
   if (!positive(thickness)) throw new Error('Roof display thickness must be a positive finite number');
