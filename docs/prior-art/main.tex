@@ -100,68 +100,62 @@
 \textbf{TO:} & Dr.\ Haris Vikalo \\ & Mugdha Jadhao \fieldgap
 \textbf{FROM:} & Ethan Chua \\ & Esteban Martinez \\ & Li Shi \\ & Andrew Yin \\ & Abhirit Das \fieldgap
 \textbf{SUBJECT:} & Prior Art Report for BevoTag: Wi-Fi Fingerprinting, Inertial Fusion, and
-Item-Tracking Patents That Inform Our Design \\
+Item-Tracking Patents That Inform the Design \\
 \end{tabular}
 \endgroup
 
 %----------------------------------------------------------------------------------------------------
 \section{Introduction}
 %----------------------------------------------------------------------------------------------------
-This Prior Art Report documents our search of published research, commercial products, and
-patents related to BevoTag and explains how the results have shaped our design. BevoTag is a
-small tag that locates a laptop, bag, or piece of shared equipment on the University of Texas at
-Austin campus by matching campus Wi-Fi measurements against a building survey and combining them
-with data from a motion sensor. Our Project Definition committed to this approach but left four
-questions open: whether channel state information (CSI), a detailed Wi-Fi measurement, justifies
-its cost; how much survey effort a building needs; how to combine Wi-Fi with motion data; and
-which parts of the design existing patents already cover. To answer these questions before we
-finalize the system design, we reviewed five research publications and five U.S. patents. This
-report first summarizes the design problem and then compares each publication and patent with our
-requirements. Finally, it explains how the findings have changed our plans: signal-strength
-fingerprinting will serve as our baseline and CSI as an experiment, our survey will cover more
-conditions, our choice of fusion filter has narrowed, and our contribution lies in the integrated
-tag rather than in any single algorithm.
+This Prior Art Report documents the BevoTag team's search of published research, commercial
+products, and patents related to BevoTag and explains how the results have shaped the design.
+BevoTag is a small tag that locates a laptop, bag, or piece of shared equipment on the University
+of Texas at Austin campus by using campus Wi-Fi and a motion sensor. The team's Project Definition
+committed to this approach but left four questions open: which Wi-Fi measurement to use, how much
+surveying a building requires, how to combine Wi-Fi with motion data, and which parts of the design
+existing patents already cover. To answer these questions before the system design is finalized,
+the team reviewed five research publications and five U.S. patents. This report first summarizes
+the design problem and then compares each publication and patent with BevoTag's requirements.
+Finally, it explains how the findings have changed the design: signal strength becomes the baseline
+measurement, the survey will cover more conditions, the fusion design narrows to two filters, and
+the project's contribution lies in the integrated tag rather than in a new algorithm.
 
 %----------------------------------------------------------------------------------------------------
 \section{Overview of the Design Problem}
 %----------------------------------------------------------------------------------------------------
-BevoTag is a low-cost tag that locates misplaced items on the University of Texas at Austin campus
-using existing campus Wi-Fi and a built-in motion sensor, without new infrastructure. The
-following subsections describe the need behind the project and the functions and targets that any
-design must meet.
+Students, faculty, and staff often need to find a misplaced item somewhere on campus, yet no
+existing tracker works reliably indoors without help from other people's phones. Satellite
+positioning signals, such as those of the Global Positioning System (GPS), do not penetrate
+buildings well \cite{hechan}. Consumer tags such as the Apple AirTag and the Samsung Galaxy
+SmartTag2 update an item's location only when a nearby phone from the same manufacturer detects
+them \cite{airtag}, \cite{smarttag}, so a bag left in an empty lab at night stops reporting. Wi-Fi
+positioning that relies on signal strength alone typically errs by 1 to 5~m \cite{rssi}, enough to
+report the wrong room. Customers therefore need a tag that reports its own location on any floor,
+without a passing phone and without new infrastructure such as Bluetooth beacons installed in
+every room.
 
-\subsection{Problem Definition and Customer Needs}
-Students, faculty, and staff need to find misplaced items anywhere on campus, but no existing
-tracker works reliably indoors without help from other people's phones. Satellite positioning
-signals do not penetrate buildings well \cite{hechan}. Consumer tags such as the Apple
-AirTag and the Samsung Galaxy SmartTag2 update an item's location only when a nearby phone from the
-same manufacturer detects them \cite{airtag}, \cite{smarttag}, so a bag left in an empty lab at
-night stops reporting. Wi-Fi positioning that relies on signal strength alone typically errs by 1 to
-5~m \cite{rssi}, enough to place an item in the wrong room. Our customers therefore need
-a tag that reports its own location, indoors and on any floor, without new infrastructure and
-without a passing phone.
+BevoTag addresses this need by combining two sources of position information. The tag records the
+received signal strength indicator (RSSI) of nearby access points and, where its chip supports it,
+their channel state information (CSI), which describes how each signal changes across its frequency
+subcarriers. The tag also samples an inertial measurement unit (IMU) that measures acceleration and
+rotation. A location server compares the Wi-Fi measurements with a survey recorded at known points,
+a process called fingerprinting, and fuses the result with the IMU data, because an IMU used alone
+produces a position estimate that drifts by more than 150~m within 60~s \cite{imu}. A user
+application then shows the position on a campus map.
 
-\subsection{Target Functionality and Specifications}
-Any BevoTag design must measure, transmit, estimate, and display. The tag records the received
-signal strength indicator (RSSI) and, where the chip supports it, the CSI of nearby access points,
-and it samples an inertial measurement unit (IMU) that measures acceleration and rotation. A
-location server compares the Wi-Fi measurements with a survey recorded at known points, a process
-called fingerprinting, and fuses the result with the IMU data. Fusion is essential because an IMU
-used alone produces a position estimate that drifts by more than 150~m within 60~s
-\cite{imu}. A user application then shows
-the position on a campus map. The governing targets are to place the item in the correct room in
-more than 90\% of trials, keep median error under 5~m, update at least every 10~s while the item
-moves, and run at least 24~hours on one charge, all at a parts cost of at most \$50 per tag. Our
-prototype uses an ESP32-family microcontroller, which exposes CSI to user firmware \cite{espcsi},
-and we have built a data logger and a survey application for three buildings, starting with the
+A successful design will identify the room that contains the item in more than 90\% of trials,
+keep the median position error under 5~m, update at least every 10~s while the item moves, and run
+at least 24~hours on one charge, at a parts cost of no more than \$50 per tag. The prototype uses
+an ESP32-family microcontroller, which exposes CSI to user firmware \cite{espcsi}, and the team has
+already built a data logger and a survey application for three buildings, starting with the
 Engineering Education and Research Center (EER).
 
 %----------------------------------------------------------------------------------------------------
 \section{Review of Prior Art}
 %----------------------------------------------------------------------------------------------------
-We organized our search around four research questions that the Project Definition left open.
-Each question corresponds to one of our design challenges, and we kept a source only if it gave
-evidence on at least one question:
+The search was organized around four research questions that the Project Definition left open.
+Each question corresponds to one design challenge, and a source was kept only if it gave evidence
+on at least one question:
 \begin{enumerate}
   \item \textbf{Wi-Fi measurement:} Does CSI give enough accuracy beyond RSSI to justify its cost,
     and can a low-cost chip capture it from campus access points?
@@ -169,79 +163,76 @@ evidence on at least one question:
     building need, and how quickly does a survey go out of date?
   \item \textbf{Sensor fusion:} How should the tag combine Wi-Fi fixes with IMU data to keep
     drift bounded, and how much does fusion improve accuracy?
-  \item \textbf{Freedom to operate and novelty:} Which parts of our design do existing products
+  \item \textbf{Freedom to operate and novelty:} Which parts of the design do existing products
     and patents already cover, and where can BevoTag differ?
 \end{enumerate}
 The first subsection reviews research publications that address questions 1 through 3, and the
 second reviews patents that address all four.
 
 \subsection{Prior Art Exclusive of Patent Information}
-Five research publications span the history of Wi-Fi positioning, from the first signal-strength
-fingerprinting system to CSI capture on the same microcontroller family that our tag uses. Two
-of them establish RSSI and CSI baselines, one tests our hardware's CSI capture, one measures the
-benefit of inertial fusion, and one compares many systems in a realistic, changing environment.
+Five research publications trace Wi-Fi positioning from the first signal-strength fingerprinting
+system to CSI capture on the same microcontroller family that BevoTag uses. Two of them establish
+RSSI and CSI baselines, one tests CSI capture on BevoTag's hardware, one measures the benefit of
+inertial fusion, and one compares many systems in a realistic, changing environment.
 
 \subsubsection{Search Procedure}
-We searched IEEE Xplore with keyword queries that combined ``Wi-Fi'' or ``WLAN''
-with ``fingerprint,'' ``channel state information,'' ``ESP32,'' ``pedestrian dead reckoning,''
-``inertial,'' and ``Kalman'' or ``particle filter,'' and we retrieved each candidate's full text
-from IEEE, ACM, SpringerOpen, or the authors' own pages. We kept papers that report measured
-accuracy in real buildings, use hardware comparable in cost to ours, or evaluate systems in
-environments that change, and we confirmed every result we cite against the paper's own tables.
-We discarded papers that relied only on simulation, that required infrastructure we cannot
-install, such as ultra-wideband anchors, or that addressed a task other than locating a device,
-unless they measured hardware we plan to use.
+The team searched IEEE Xplore with keyword queries that combined ``Wi-Fi'' or ``WLAN'' (wireless
+local area network) with ``fingerprint,'' ``channel state information,'' ``ESP32,'' ``pedestrian
+dead reckoning,'' ``inertial,'' and ``Kalman'' or ``particle filter,'' and it retrieved each
+candidate's full text from the publisher or the authors' own pages. The team kept papers that
+report measured accuracy in real buildings, use hardware comparable in cost to BevoTag's, or
+evaluate systems in environments that change. Papers were discarded if they relied only on simulation, required
+infrastructure that the team cannot install, such as ultra-wideband anchors, or addressed a task
+other than locating a device, unless they measured hardware that BevoTag will use.
 
 \subsubsection{RADAR: The First Wi-Fi Fingerprinting System}
-Bahl and Padmanabhan's RADAR system, presented at IEEE INFOCOM 2000, established the two-phase
-fingerprinting method that BevoTag adopts \cite{radar}. In an off-line phase, the authors recorded
-signal strength from three base stations at 70 known points on a 43.5~m by 22.5~m office floor
-with more than 50 rooms; in an on-line phase, they located a laptop by finding the survey points
-whose signal strengths were nearest in ``signal space.'' This empirical method achieved a median
-error of 2.94~m, which the authors noted is about the size of an office room, and tracking a
-walking user raised the median to 3.5~m \cite{radar}.
+Bahl and Padmanabhan's RADAR system, presented in 2000, established the two-phase fingerprinting
+method that BevoTag adopts \cite{radar}. In an off-line phase, the authors recorded signal strength
+from three base stations at 70 known points on a 43.5~m by 22.5~m office floor with more than 50
+rooms; in an on-line phase, they located a laptop by finding the survey points whose signal
+strengths were nearest in ``signal space.'' This empirical method achieved a median error of
+2.94~m, which the authors noted is about the size of an office room \cite{radar}.
 
-RADAR's results guide our survey design more than our accuracy targets. The authors found that
-about 40 survey points and three real-time samples achieved nearly all of the accuracy of the full
-data set \cite{radar}. When the survey contained only one orientation and the
-user faced the opposite way, however, the median error rose 67\% to 4.90~m, because the user's
-body changes the signal strength that each base station measures \cite{radar}. RADAR's
-median error is within our 5~m ceiling but too coarse for reliable room identification, and its
-three base stations were dedicated hardware, whereas BevoTag must use whatever campus access
-points it hears.
+RADAR's results inform BevoTag's survey design more than its accuracy targets. The authors found
+that about 40 survey points and three real-time samples achieved nearly all of the accuracy of the
+full data set \cite{radar}. When the survey contained only one orientation and the user faced the
+opposite way, however, the median error rose 67\% to 4.90~m, because the user's body changes the
+signal strength that each base station measures \cite{radar}. RADAR's median error is within
+BevoTag's 5~m ceiling but too coarse for reliable room identification, and its three base stations
+were dedicated hardware, whereas BevoTag relies on whatever campus access points it hears.
 
 \subsubsection{DeepFi: CSI Fingerprinting Compared with RSSI}
-To learn whether CSI improves on signal strength, we turned to Wang, Gao, Mao, and Pandey's DeepFi
-system, published in \emph{IEEE Transactions on Vehicular Technology}, which provides the clearest
-comparison of CSI and RSSI fingerprints measured in the same rooms \cite{deepfi}. The authors recorded the amplitudes of 30 subcarriers on each of three
-antennas of a laptop Wi-Fi card, trained a neural network for each of 50 survey points, and
-estimated position as a probability-weighted average of the survey points. They compared DeepFi
-with an earlier CSI method and with Horus, a widely cited probabilistic RSSI system
-\cite{horus}, using the same data.
+The clearest evidence on whether CSI improves on signal strength comes from Wang, Gao, Mao, and
+Pandey's DeepFi system, published in \emph{IEEE Transactions on Vehicular Technology}, which
+compares CSI and RSSI fingerprints measured in the same rooms \cite{deepfi}. The authors recorded
+the amplitudes of 30 subcarriers on each of three antennas of a laptop Wi-Fi card, trained a neural
+network for each of 50 survey points, and estimated position as a probability-weighted average of
+the survey points. They compared DeepFi with an earlier CSI method and with Horus, a widely cited
+probabilistic RSSI system \cite{horus}, using the same data.
 
 CSI fingerprints were more accurate than RSSI fingerprints in both test rooms. In a mostly empty
-4~m by 7~m living room, DeepFi's mean error was 0.94~m and Horus's was 1.54~m; in a cluttered
-6~m by 9~m computer laboratory with few line-of-sight paths, the errors were 1.81~m and 2.60~m
-\cite{deepfi}. These reductions of 39\% and 30\% support our plan to evaluate CSI. The
-study differs from BevoTag in three important ways, however: it used one access point that the
-authors controlled, a laptop card with three antennas rather than our single-antenna chip, and
-rooms much smaller than an EER floor.
+4~m by 7~m living room, DeepFi's mean error was 0.94~m and Horus's was 1.54~m; in a cluttered 6~m
+by 9~m computer laboratory with few line-of-sight paths, the errors were 1.81~m and 2.60~m
+\cite{deepfi}. These reductions of 39\% and 30\% justify evaluating CSI for BevoTag. The study
+differs from BevoTag in three important ways, however: it used one access point that the authors
+controlled, a laptop card with three antennas rather than BevoTag's single-antenna chip, and rooms
+much smaller than an EER floor.
 
 \subsubsection{ESP32 CSI Toolkit: CSI Capture on a Microcontroller}
-Because DeepFi relied on a laptop card, we also needed evidence that our own hardware can capture
-CSI. Hernandez and Bulut showed at IEEE WoWMoM 2020 that the ESP32 microcontroller can capture CSI
+Because DeepFi relied on a laptop card, evidence was also needed that BevoTag's own hardware can
+capture CSI. Hernandez and Bulut showed in 2020 that the ESP32 microcontroller can capture CSI
 without the laptops and modified drivers that earlier studies required \cite{esp32tool}. Their
 open-source toolkit runs on a module that costs less than \$10, weighs less than 10~g, and reports
 64 subcarriers from a single antenna \cite{esp32tool}. The authors used it for activity
-recognition rather than localization, but they measured the capture rates that matter to us.
+recognition rather than localization, but they measured the capture rates that matter to BevoTag.
 
-The capture rates expose a limit that bears directly on our tag. When the ESP32 was connected to
-the transmitter, it captured CSI from about 600 frames per second; when it only listened, as
-our tag must to hear many campus access points, it captured just 34.5\% as many frames, with
-greater variation from second to second, because a passive receiver cannot request retransmission
-\cite{esp32tool}. This result confirms that our hardware choice can supply CSI, but it
-suggests that our tag will collect far fewer CSI samples from campus access points than from a
-transmitter it controls.
+These capture rates reveal a limit on BevoTag's design. When the ESP32 was connected to the
+transmitter, it captured CSI from about 600 frames per second; when it only listened, as BevoTag
+will to hear many campus access points, it captured just 34.5\% as many frames, with greater
+variation from second to second, because a passive receiver cannot request retransmission
+\cite{esp32tool}. This result confirms that the chosen hardware can supply CSI, but it suggests
+that the tag will collect far fewer CSI samples from campus access points than from a transmitter
+it controls.
 
 \subsubsection{Evennou and Marx: Fusing Wi-Fi with Dead Reckoning}
 For the fusion stage, the closest published precedent is a 2006 \emph{EURASIP Journal on Applied
@@ -253,9 +244,9 @@ uses the building map to eliminate any position hypothesis that crosses a wall.
 Each step of filtering and fusion improved accuracy in their 40~m by 40~m office building with
 four access points. Along a corridor trajectory, nearest-neighbor fingerprinting gave a mean error
 of 3.32~m, a statistical fingerprint method 2.88~m, a Kalman filter 2.56~m, the map-aware particle
-filter 1.86~m, and the particle filter with inertial data 1.53~m \cite{evennou}. The
-authors also observed that the particle filter's many wall checks make it computationally expensive
-\cite{evennou}. These results support fusion and the use of floor plans, which our survey
+filter 1.86~m, and the particle filter with inertial data 1.53~m \cite{evennou}. The authors also
+observed that the particle filter's many wall checks make it computationally expensive
+\cite{evennou}. These results support fusion and the use of floor plans, which BevoTag's survey
 application already contains, but they were measured with a laptop doing the processing and a
 survey of only one point per room.
 
@@ -268,17 +259,16 @@ and a hallway, and the organizers then rearranged the furniture in one room befo
 system at 20 test points.
 
 The competition shows that Wi-Fi fingerprinting can rival custom infrastructure but degrades when
-a room changes. The best system that relied only on existing access points and phone sensors had
-a mean error of 1.6~m, better than most systems that installed their own hardware, and half of all
+a room changes. The best system that relied only on existing access points and phone sensors had a
+mean error of 1.6~m, better than most systems that installed their own hardware, and half of all
 teams achieved errors below 3~m \cite{msilc}. Most teams needed all seven hours to survey or
 install, and rearranging the furniture raised the error of the leading Wi-Fi systems by up to
-0.94~m \cite{msilc}. Because campus rooms change daily as people move chairs and walk
-through hallways, these findings warn that a one-time survey of EER will not stay accurate.
+0.94~m \cite{msilc}. Because campus rooms change daily as people move chairs and walk through
+hallways, these findings indicate that a one-time survey of EER will not stay accurate.
 
 % Style Guide 2.4: say where a table is when it is not on the citing page; recheck after edits.
-Table~\ref{tab:art} compares the five publications with BevoTag. Together, they
-support fingerprinting with inertial fusion but leave a single-antenna tag in a changing building
-untested.
+Table~\ref{tab:art} compares the five publications with BevoTag. Together, they support
+fingerprinting with inertial fusion but leave a single-antenna tag in a changing building untested.
 
 \begin{table}[!htb]
 \caption{Research Publications Compared with BevoTag Requirements}
@@ -289,10 +279,10 @@ untested.
 \toprule
 \textbf{Source} & \textbf{Question} & \textbf{Key Finding} & \textbf{Difference from BevoTag} \\
 \midrule
-RADAR \cite{radar} & 2 & 2.94~m median; survey must cover orientations & Dedicated base stations; no motion sensing \\
-DeepFi \cite{deepfi} & 1 & CSI mean error 30--39\% below RSSI & One controlled access point; three-antenna laptop card \\
-ESP32 CSI Toolkit \cite{esp32tool} & 1 & Module under \$10 captures 64-subcarrier CSI; passive rate 34.5\% of active & Used for activity sensing, not localization \\
-Evennou and Marx \cite{evennou} & 3 & Map-aware particle filter with inertial data: 1.53~m mean error & Laptop processing; one survey point per room \\
+RADAR \cite{radar} & 2 & 2.94~m median; survey should cover orientations & Dedicated base stations; no motion sensing \\ \addlinespace
+DeepFi \cite{deepfi} & 1 & CSI mean error 30--39\% below RSSI & One controlled access point; three-antenna laptop card \\ \addlinespace
+ESP32 CSI Toolkit \cite{esp32tool} & 1 & Module under \$10 captures 64-subcarrier CSI; passive rate 34.5\% of active & Used for activity sensing, not localization \\ \addlinespace
+Evennou and Marx \cite{evennou} & 3 & Map-aware particle filter with inertial data: 1.53~m mean error & Laptop processing; one survey point per room \\ \addlinespace
 Microsoft competition \cite{msilc} & 2, 3 & Best infrastructure-free system 1.6~m; furniture changes add up to 0.94~m & Two rooms and a hallway; phones, not tags \\
 \bottomrule
 \end{tabularx}
@@ -301,19 +291,19 @@ Microsoft competition \cite{msilc} & 2, 3 & Best infrastructure-free system 1.6~
 
 \subsection{Patent Search and Findings}
 Five U.S. patents cover the survey database, the CSI fingerprint, the fusion step, and the
-crowdsourced tag model that BevoTag must either build on or avoid. Two have expired, and three
-remain in force. We describe each patent's claims and compare them with our design; these
-comparisons are engineering judgments, not legal opinions.
+crowdsourced tag model that BevoTag will either build on or avoid. Each patent's claims are
+described below and compared with BevoTag's design; these comparisons are engineering judgments,
+not legal opinions.
 
 \subsubsection{Search Procedure}
-We searched Google Patents with combinations of ``Wi-Fi'' or ``wireless access point'' with
+The team searched Google Patents with combinations of ``Wi-Fi'' or ``wireless access point'' with
 ``fingerprint,'' ``channel state information,'' ``subcarrier,'' ``dead reckoning,'' ``inertial,''
-``lost and found,'' and ``tag,'' and we retrieved the full grant documents from the U.S. Patent and
-Trademark Office. For each candidate, we read the independent claims and recorded the assignee,
-grant date, and status. We kept the patents whose claims describe a function that BevoTag must
-perform. Google Patents' status and expiration dates are estimates rather than legal conclusions,
-so before we finalize the design, we will ask the Engineering Library staff to help us confirm the
-status of any patent that concerns us.
+``lost and found,'' and ``tag,'' and it retrieved the full grant documents from the U.S. Patent
+and Trademark Office. For each candidate, the team read the independent claims and recorded the
+assignee, grant date, and status, keeping the patents whose claims describe a function that
+BevoTag performs. Google Patents' status and expiration dates are estimates rather than legal
+conclusions, so before the design is finalized, the team will ask the Engineering Library staff to
+help confirm the status of any patent of concern.
 
 \subsubsection{US 7,414,988: Server for Updating a Location Beacon Database}
 Skyhook Wireless's patent, granted in 2008 to Jones \emph{et al.}, describes a server that
@@ -324,54 +314,55 @@ far from a weighted centroid, and updates the database as it discovers new acces
 patent differs from BevoTag in what it stores: it records where each access point is, whereas
 BevoTag records the signal pattern measured at each survey point inside a building. Google Patents
 lists the patent's adjusted expiration as September 30, 2026, so its outlier rejection and
-database updating are now free for us to adopt.
+database updating are now free to adopt.
 
 \subsubsection{US 9,014,718: Location Sensing Using Channel Fading Fingerprinting}
 Whereas Skyhook's patent maps access points, Intel's patent, granted in 2015 to Yang, Yang, and
-Guo, claims the core of a CSI fingerprinting system \cite{intel}. A device scans nearby access points, measures a ``channel fading profile''
-from selected subcarriers, and finds its location by matching the profile to a database recorded
-during a survey, using a minimum-distance or maximum-likelihood rule. The dependent claims allow
-the database to sit on the device or a server, which mirrors our open question of where to compute.
-This patent is the closest prior art to BevoTag's Wi-Fi stage, and it means that CSI fingerprint
-matching by itself is not patentable. Google Patents lists it as expired because its maintenance
-fee was not paid, so we may use the method freely.
+Guo, claims the core of a CSI fingerprinting system \cite{intel}. A device scans nearby access
+points, measures a ``channel fading profile'' from selected subcarriers, and finds its location by
+matching the profile to a database recorded during a survey, using a minimum-distance or
+maximum-likelihood rule. The dependent claims allow the database to sit on the device or a server,
+which mirrors BevoTag's open question of where to compute the position. This patent is the closest
+prior art to BevoTag's Wi-Fi stage, and it means that CSI fingerprint matching by itself is not
+patentable. Google Patents lists it as expired because its maintenance fee was not paid, so the
+method may be used freely.
 
 \subsubsection{US 9,632,169: Using Inertial Navigation to Calibrate an Indoor Positioning System}
 Ricoh's patent, granted in 2017 to Moraleda and Hull, addresses survey effort \cite{ricoh}. A
 surveyor walks between known points while inertial navigation tracks the path and Wi-Fi
 signatures are collected continuously; each signature is then assigned a position along a B-spline
 fitted to the path, and the surveyor may adjust the spline's control points on a display. This
-method could survey a floor far faster than stopping at each point, which matters because most
-competition teams needed all seven hours to survey or install. The patent remains in force until 2035, however, and our
-survey application currently records scans only at stationary points the surveyor selects, so we
-will avoid fitting and editing a spline path unless we confirm that our method differs from these
-claims.
+method could survey a floor far faster than stopping at each point. The patent remains in force
+until 2035, however, and BevoTag's survey application currently records scans only at stationary
+points that the surveyor selects, so the team will avoid fitting and editing a spline path unless
+it confirms that its method differs from these claims.
 
 \subsubsection{US 9,332,476: Correcting Indoor Positioning Using Wi-Fi Handovers}
 Whereas Ricoh's patent uses inertial navigation to build a survey, BlackBerry's patent, granted in
 2016 to Shatsky and Kouznetsov, uses Wi-Fi to correct dead-reckoning drift at the moment a device
 hands over to a new access point \cite{blackberry}. If the dead-reckoning position lies outside a
 ``handover spot'' around the new access point, the method of claim~1 resets the position to the
-nearest point on that spot's border. This patent confirms that drift correction from Wi-Fi
-is a recognized need, but it corrects only at handovers and only coarsely. BevoTag will instead
-correct the IMU at every fingerprint fix with a filter, the approach Evennou and Marx published in
+nearest point on that spot's border. This patent confirms that drift correction from Wi-Fi is a
+recognized need, but it corrects only at handovers and only coarsely. BevoTag will instead correct
+the IMU at every fingerprint fix with a filter, the approach that Evennou and Marx published in
 2006 \cite{evennou}, and will not reset the estimate to a handover boundary. The patent remains in
 force until 2034.
 
 \subsubsection{US 9,479,920: Power Management in a Crowdsourced Lost-and-Found Service}
 Finally, Apple's patent, granted in 2016 to Mayor, describes the crowdsourced model behind tags
-such as the AirTag \cite{apple}. A Bluetooth Low Energy tag broadcasts an identifier; low-power subsystems in a
-passing phone record that identifier and the Wi-Fi access points the phone hears, each with a time
-stamp; and the phone's main processor periodically wakes, assigns the tag the stored location of
-the access point heard at the same time, and reports it to a server. The patent locates a tag only
-as precisely as the nearest access point and only when a participating phone is nearby, which are
-the two weaknesses BevoTag is designed to overcome. Because our tag scans and reports by itself
-and uses no helper phones, our design does not practice these claims, but the patent's strategy of
-batching measurements to keep the main processor asleep applies directly to our battery target.
+such as the AirTag \cite{apple}. A Bluetooth Low Energy tag broadcasts an identifier; low-power
+subsystems in a passing phone record that identifier and the Wi-Fi access points the phone hears,
+each with a time stamp; and the phone's main processor periodically wakes, assigns the tag the
+stored location of the access point heard at the same time, and reports it to a server. The patent
+locates a tag only as precisely as the nearest access point and only when a participating phone is
+nearby, which are the two weaknesses that BevoTag is designed to overcome. Because BevoTag scans
+and reports by itself and uses no helper phones, it does not practice these claims, but the
+patent's strategy of batching measurements to keep the main processor asleep applies directly to
+BevoTag's battery target.
 
 % Style Guide 2.4: say where a table is when it is not on the citing page; recheck after edits.
-Table~\ref{tab:pat} summarizes the five patents and their status: the two
-expired patents are free for us to use, and our design avoids the claims of the three active ones.
+Table~\ref{tab:pat} summarizes the five patents and their status: the two expired patents are free
+to use, and BevoTag's design avoids the claims of the three active ones.
 
 \begin{table}[!htb]
 \caption{Patents Relevant to BevoTag}
@@ -382,10 +373,10 @@ expired patents are free for us to use, and our design avoids the claims of the 
 \toprule
 \textbf{Patent} & \textbf{Assignee} & \textbf{Relevance to BevoTag} & \textbf{Status (Google Patents)} \\
 \midrule
-US 7,414,988 \cite{skyhook} & Skyhook Wireless & Access point database with outlier rejection and updating & Expired Sept.~2026 \\
-US 9,014,718 \cite{intel} & Intel & CSI fingerprint matching against a survey database & Expired (fee related) \\
-US 9,632,169 \cite{ricoh} & Ricoh & Inertially tracked walking survey fitted with a B-spline & Active to 2035; avoid \\
-US 9,332,476 \cite{blackberry} & BlackBerry & Drift reset to a handover spot border & Active to 2034; avoid \\
+US 7,414,988 \cite{skyhook} & Skyhook Wireless & Access point database with outlier rejection and updating & Expired Sept.~2026 \\ \addlinespace
+US 9,014,718 \cite{intel} & Intel & CSI fingerprint matching against a survey database & Expired (fee related) \\ \addlinespace
+US 9,632,169 \cite{ricoh} & Ricoh & Inertially tracked walking survey fitted with a B-spline & Active to 2035; avoid \\ \addlinespace
+US 9,332,476 \cite{blackberry} & BlackBerry & Drift reset to a handover-spot border & Active to 2034; avoid \\ \addlinespace
 US 9,479,920 \cite{apple} & Apple & Crowdsourced Bluetooth tag located by phones & Active to 2035; not practiced \\
 \bottomrule
 \end{tabularx}
@@ -395,83 +386,78 @@ US 9,479,920 \cite{apple} & Apple & Crowdsourced Bluetooth tag located by phones
 %----------------------------------------------------------------------------------------------------
 \section{Impact of Prior-Art Search on Design Decision-Making}
 %----------------------------------------------------------------------------------------------------
-The search answered each of our four research questions and changed three of our design plans:
-how we treat CSI, how we survey, and how we fuse. The following subsections answer each question
-in turn and state the decision that follows.
+The search answered each of the four research questions and changed three parts of the design
+plan: the treatment of CSI, the survey protocol, and the fusion design. The following subsections
+answer each question in turn and state the decision that follows.
 
-\subsection{Wi-Fi Measurement: CSI Is Promising but Unproven on Our Hardware}
-The literature supports CSI's accuracy but leaves its feasibility on our tag in doubt. DeepFi's 30
-to 39\% error reduction \cite{deepfi} is large enough to matter for room identification,
-but it was measured with three antennas and a cooperating access point. Our single-antenna ESP32,
-listening passively, should capture only about a third of the CSI frames it could capture from a
-connected transmitter \cite{esp32tool}, and campus access points transmit frames at
-rates we do not control.
+\subsection{Wi-Fi Measurement: CSI Is Promising but Unproven on BevoTag's Hardware}
+The literature supports CSI's accuracy but leaves its feasibility on BevoTag in doubt: DeepFi's 30
+to 39\% error reduction \cite{deepfi} came from hardware far more capable than BevoTag's
+single-antenna tag, which will capture CSI passively and far less often \cite{esp32tool}.
 
-We therefore decided to make RSSI fingerprinting the baseline that every later design must beat
-and to evaluate CSI as an addition to it. Our first data logger experiment will record CSI and RSSI
+The team therefore decided to make RSSI fingerprinting the baseline for every later design and to
+evaluate CSI as an addition to it. The first data logger experiment will record CSI and RSSI
 together in EER and measure how many usable CSI frames per second the tag captures from campus
-access points while associated with the campus utexas-iot network and while listening passively. If CSI improves room
-identification on held-out survey points by a margin comparable to DeepFi's, we will keep it;
-otherwise, we will drop it and save the processing and power. Because Intel's CSI fingerprinting
-patent has expired \cite{intel}, either outcome is free of patent risk.
+access points, both while associated with the campus utexas-iot network and while listening
+passively. If CSI improves room identification on held-out survey points by a margin comparable to
+DeepFi's, the design will keep it; otherwise, the design will drop it to save processing and power.
+Because Intel's CSI fingerprinting patent has expired \cite{intel}, either outcome is free of
+patent risk.
 
 \subsection{Survey Effort: Orientation and Time Matter More than Density}
 RADAR and the competition together show that a survey's coverage of conditions matters more than
 its density. RADAR reached nearly full accuracy with about 40 points, but its median error rose
-67\% when the survey and the user faced opposite directions \cite{radar}, and the
-competition's leading Wi-Fi systems gained up to 0.94~m of error when furniture moved
-\cite{msilc}. A one-time survey with one heading per point would thus
-waste much of the effort that the competition showed to be the main cost of fingerprinting.
+67\% when the survey and the user faced opposite directions \cite{radar}, and the competition's
+leading Wi-Fi systems gained up to 0.94~m of error when furniture moved \cite{msilc}.
 
-We have accordingly revised our survey protocol in four ways. At each survey point, we will
-record scans facing at least four directions, and we will repeat the survey of each benchmark area
-at three times of day, including class changes, when hallways are crowded. We will also hold out
-the survey points from one visit for testing, so our accuracy figures reflect a survey that has
-aged. To keep the database current without full resurveys, we will adapt the outlier rejection and
-incremental updating of Skyhook's now-expired patent \cite{skyhook}. A walking survey would be
-faster, but Ricoh's active patent \cite{ricoh} covers the spline-fitted version, so we will
-continue stationary-point collection for now.
+The team has accordingly revised the survey protocol in four ways:
+\begin{enumerate}
+  \item Scans will be recorded facing at least four directions at each survey point.
+  \item Each benchmark area will be surveyed at three times of day, including class changes, when
+    hallways are crowded.
+  \item The survey points from one visit will be held out for testing, so that accuracy figures
+    reflect a survey that has aged.
+  \item The database will be kept current without full resurveys by adapting the outlier rejection
+    and incremental updating of Skyhook's now-expired patent \cite{skyhook}.
+\end{enumerate}
 
 \subsection{Sensor Fusion: A Map-Aware Filter Bounds Drift}
 Evennou and Marx's results show that fusion and floor-plan constraints together roughly halve
-fingerprinting error, from 3.32~m to 1.53~m \cite{evennou}, which suggests that our 5~m
+fingerprinting error, from 3.32~m to 1.53~m \cite{evennou}, which suggests that BevoTag's 5~m
 median target is conservative and that room identification is the harder goal. Their study, the
 competition's mix of Wi-Fi and inertial entries \cite{msilc}, and BlackBerry's patent
 \cite{blackberry} all treat Wi-Fi as the source that corrects inertial drift, confirming the
-architecture in our Project Definition.
+architecture in the Project Definition.
 
-We have narrowed our fusion design to two candidate filters. An extended Kalman filter
+The fusion design has therefore narrowed to two candidate filters. An extended Kalman filter
 \cite{welch} is light enough to run on the tag but cannot easily use walls, whereas a particle
-filter can discard paths through walls using the floor plans already in our survey application
-but is computationally expensive \cite{evennou}. Because of this trade-off, a particle
-filter would most likely run on the server, so the tag would send measurements, not positions. We will compare the two
-filters on logged EER walks before we decide, and we will correct drift at each fingerprint fix
-rather than resetting at handovers, avoiding BlackBerry's claims.
+filter can discard paths through walls using the floor plans already in the survey application but
+is computationally expensive \cite{evennou}. Because of this trade-off, a particle filter would
+most likely run on the server, and the tag would then send measurements rather than positions. The
+team will compare the two filters on logged EER walks before deciding.
 
-\subsection{Freedom to Operate and Novelty: The Combination Is Our Contribution}
-The patent search shows that each of BevoTag's building blocks is already public. Fingerprint
-databases \cite{skyhook}, CSI fingerprint matching \cite{intel}, Wi-Fi drift correction
-\cite{blackberry}, and tag location reporting \cite{apple} are all claimed, and the research
-literature has published Wi-Fi and inertial fusion since at least 2006 \cite{evennou}. No source we
-found, however, combines CSI-capable fingerprinting and inertial fusion on a self-contained,
-battery-powered tag that reports its own position without helper phones or new infrastructure.
-We will therefore build on the two expired patents and published methods, avoid the specific
-claims of the three active patents, and rest any claim of novelty on the integrated tag and its
-performance on a changing campus rather than on a new positioning algorithm.
+\subsection{Freedom to Operate and Novelty: The Combination Is the Contribution}
+The search shows that each of BevoTag's building blocks is already public: the patents in
+Table~\ref{tab:pat} claim them, and the research literature has published Wi-Fi and inertial
+fusion since at least 2006 \cite{evennou}. No source found in the search, however, combines
+CSI-capable fingerprinting and inertial fusion on a self-contained, battery-powered tag that reports
+its own position without helper phones or new infrastructure. BevoTag will therefore build on the
+two expired patents and published methods, avoid the specific claims of the three active patents,
+and rest any claim of novelty on the integrated tag and its performance on a changing campus rather
+than on a new positioning algorithm.
 
 %----------------------------------------------------------------------------------------------------
 \section{Conclusion}
 %----------------------------------------------------------------------------------------------------
-We searched the prior art to answer four open questions about BevoTag's Wi-Fi measurement, survey,
-sensor fusion, and patent landscape. The publications show that CSI can reduce error relative to
-signal strength but that our tag will capture it less often, that a survey must cover several
-orientations and times of day, and that a map-aware fusion filter can roughly halve position
-error. The patents show that BevoTag's building blocks are already claimed or published, but two
-have expired and our design avoids the other three. RSSI fingerprinting will therefore serve as
-our baseline and CSI as an experiment, and our contribution will be the integrated, self-reporting
-tag. Next, we will measure CSI capture in EER, survey the first benchmark area under the revised
-protocol, and compare two fusion filters on logged walks to decide where BevoTag computes its
-position.
+This report presented a prior-art search that answered four open questions about BevoTag's Wi-Fi
+measurement, survey, sensor fusion, and patent landscape. The publications show that CSI can reduce
+error but that the tag will capture it less often, that a survey needs to cover several
+orientations and times of day, and that a map-aware fusion filter can roughly halve position error;
+the patents show that two relevant methods are free to use and that the design avoids the other
+three. RSSI fingerprinting will therefore serve as the baseline, CSI as an experiment, and the
+integrated, self-reporting tag as the project's contribution. Next, the team will measure CSI
+capture in EER, survey a benchmark area under the revised protocol, and compare two fusion filters
+to decide where BevoTag computes its position.
 
 %----------------------------------------------------------------------------------------------------
 % REFERENCES (IEEE style, Style Guide 3.2): single-spaced entries, an empty line between entries,
