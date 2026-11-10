@@ -1,173 +1,196 @@
 #include <WiFi.h>
 #include <esp_wifi.h>
+#include <freertos/queue.h>
+
+// ---------------------------------------------------------------- session settings
+// One {"cmd":"scan"} runs a full capture session:
+//   Phase 1 (RSSI): repeated active scans over all channels, each sent as a PROTOCOL.md "scan" message
+//   Phase 2 (CSI):  promiscuous CSI capture, hopping through every 2.4 GHz channel
+static const uint32_t RSSI_PHASE_MS = 3UL * 60 * 1000;   // 3 min
+static const uint32_t CSI_PHASE_MS  = 5UL * 60 * 1000;   // 5 min, split evenly across CSI channels
+static const uint8_t  CSI_FIRST_CH  = 1;
+static const uint8_t  CSI_LAST_CH   = 13;                // 1-13 (receive-only, so 12/13 are fine to sniff)
+static const uint8_t  CSI_NUM_CH    = CSI_LAST_CH - CSI_FIRST_CH + 1;
+static const uint32_t CSI_DWELL_MS  = CSI_PHASE_MS / CSI_NUM_CH;  // ~23 s per channel
 
 uint32_t seq = 0;
 
-// Structure to track channel signal strengths across the 50 scans
-struct ChannelStats {
-  int channel;
-  int32_t max_rssi;
-  uint32_t hits;
+// ---------------------------------------------------------------- CSI capture
+// The WiFi driver calls csi_cb from its own task, so it must be fast: it only copies the packet into a
+// queue. The main loop prints queued packets. Packets that arrive while the queue is full are counted as dropped.
+static const uint16_t CSI_MAX_LEN = 384;   // LLTF + HT-LTF + STBC HT-LTF, the largest the S3 produces
+struct CsiPkt {
+  uint32_t ms;          // millis() at receive
+  uint32_t ts_us;       // radio timestamp (us)
+  uint8_t  mac[6];
+  int8_t   rssi;
+  int8_t   noise;
+  uint8_t  ch;
+  uint8_t  ch2;         // secondary channel: 0 none, 1 above, 2 below
+  uint8_t  sig_mode;    // 0 non-HT (11bg), 1 HT (11n)
+  uint8_t  cwb;         // 0 20 MHz, 1 40 MHz
+  uint8_t  first_invalid;
+  uint16_t len;
+  int8_t   data[CSI_MAX_LEN];
 };
+static QueueHandle_t csiQueue = nullptr;
+static volatile uint32_t csiDropped = 0;
 
-// Callback function triggered whenever a packet containing CSI is received
 void csi_cb(void *ctx, wifi_csi_info_t *info) {
-  if (!info || !info->buf || info->len == 0) return;
+  if (!info || !info->buf || info->len == 0 || !csiQueue) return;
+  static CsiPkt p;  // only the WiFi task calls this, so one static buffer is safe
+  p.ms = millis();
+  p.ts_us = info->rx_ctrl.timestamp;
+  memcpy(p.mac, info->mac, 6);
+  p.rssi = info->rx_ctrl.rssi;
+  p.noise = info->rx_ctrl.noise_floor;
+  p.ch = info->rx_ctrl.channel;
+  p.ch2 = info->rx_ctrl.secondary_channel;
+  p.sig_mode = info->rx_ctrl.sig_mode;
+  p.cwb = info->rx_ctrl.cwb;
+  p.first_invalid = info->first_word_invalid;
+  p.len = info->len > CSI_MAX_LEN ? CSI_MAX_LEN : info->len;
+  memcpy(p.data, info->buf, p.len);
+  if (xQueueSend(csiQueue, &p, 0) != pdTRUE) csiDropped++;
+}
 
-  Serial.printf("{\"type\":\"csi\",\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"rssi\":%d,\"len\":%d,\"data\":[",
-                info->mac[0], info->mac[1], info->mac[2], info->mac[3], info->mac[4], info->mac[5],
-                info->rx_ctrl.rssi, info->len);
+// Print every queued CSI packet as one JSON line. Returns how many were printed.
+static uint32_t drainCsi() {
+  static CsiPkt p;
+  static char line[96 + CSI_MAX_LEN * 5];
+  uint32_t n = 0;
+  while (xQueueReceive(csiQueue, &p, 0) == pdTRUE) {
+    int o = snprintf(line, sizeof line,
+      "{\"type\":\"csi\",\"ms\":%lu,\"ts_us\":%lu,\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"rssi\":%d,\"noise\":%d,"
+      "\"ch\":%u,\"ch2\":%u,\"sig_mode\":%u,\"cwb\":%u,\"first_invalid\":%u,\"len\":%u,\"data\":[",
+      (unsigned long)p.ms, (unsigned long)p.ts_us, p.mac[0], p.mac[1], p.mac[2], p.mac[3], p.mac[4], p.mac[5],
+      p.rssi, p.noise, p.ch, p.ch2, p.sig_mode, p.cwb, p.first_invalid, p.len);
+    for (uint16_t i = 0; i < p.len; i++) o += snprintf(line + o, sizeof line - o, i ? ",%d" : "%d", p.data[i]);
+    o += snprintf(line + o, sizeof line - o, "]}\n");
+    Serial.write((const uint8_t *)line, o);
+    n++;
+  }
+  return n;
+}
 
-  int8_t *csi_data = (int8_t *)info->buf;
-  for (int i = 0; i < info->len; i++) {
-    Serial.printf("%d%s", csi_data[i], (i == info->len - 1) ? "" : ",");
+// ---------------------------------------------------------------- messages
+void sendHello() {
+  Serial.printf("{\"type\":\"hello\",\"v\":1,\"fw\":\"0.2.0\",\"chip\":\"%s\",\"mac\":\"%s\","
+                "\"rssi_phase_ms\":%lu,\"csi_phase_ms\":%lu,\"csi_ch\":\"%u-%u\",\"csi_dwell_ms\":%lu}\n",
+                ESP.getChipModel(), WiFi.macAddress().c_str(),
+                (unsigned long)RSSI_PHASE_MS, (unsigned long)CSI_PHASE_MS, CSI_FIRST_CH, CSI_LAST_CH,
+                (unsigned long)CSI_DWELL_MS);
+}
+
+static long parseId(const String &line) {
+  int k = line.indexOf("\"id\":");
+  return k >= 0 ? line.substring(k + 5).toInt() : -1;
+}
+
+// Handle commands that arrive while a session is running.
+// RSSI phase: a new "scan" command only updates the id, so each reply matches what the app is waiting for.
+// CSI phase: "scan" gets an err with the time left (the app shows it and stops after 3 in a row).
+static void pollCommands(long &id, bool csiPhase, uint32_t msLeft) {
+  while (Serial.available()) {
+    String line = Serial.readStringUntil('\n');
+    if (line.indexOf("\"hello\"") >= 0) sendHello();
+    else if (line.indexOf("\"scan\"") >= 0) {
+      if (!csiPhase) id = parseId(line);
+      else Serial.printf("{\"type\":\"err\",\"msg\":\"busy: CSI capture, %lus left\"}\n", (unsigned long)(msLeft / 1000));
+    }
+  }
+}
+
+// One active scan over all channels, sent as a PROTOCOL.md v1 "scan" message
+static void scanOnce(long id) {
+  uint32_t t0 = millis();
+  int n = WiFi.scanNetworks(false, true); // blocking active scan, include hidden, 100-300 ms per channel
+  if (n < 0) { Serial.printf("{\"type\":\"err\",\"msg\":\"scan failed: %d\"}\n", n); return; }
+  uint32_t t1 = millis();
+  Serial.printf("{\"type\":\"scan\",\"v\":1,\"id\":%ld,\"seq\":%lu,\"ms\":%lu,\"dur_ms\":%lu,\"aps\":[",
+                id, (unsigned long)++seq, (unsigned long)t1, (unsigned long)(t1 - t0));
+  for (int i = 0; i < n; i++) {
+    String ssid = WiFi.SSID(i); ssid.replace("\\", "\\\\"); ssid.replace("\"", "\\\"");
+    Serial.printf("%s{\"bssid\":\"%s\",\"ssid\":\"%s\",\"rssi\":%d,\"ch\":%d}",
+                  i ? "," : "", WiFi.BSSIDstr(i).c_str(), ssid.c_str(), WiFi.RSSI(i), WiFi.channel(i));
   }
   Serial.print("]}\n");
+  WiFi.scanDelete();
 }
 
-void sendHello() {
-  Serial.printf("{\"type\":\"hello\",\"v\":1,\"fw\":\"0.1.0\",\"chip\":\"%s\",\"mac\":\"%s\"}\n",
-                ESP.getChipModel(), WiFi.macAddress().c_str());
-}
-
-// void doScan(long id) {
-//   uint32_t t0 = millis();
-//   const int TOTAL_SCANS = 50;
-
-//   // Track channels 1 to 14 in 2.4 GHz
-//   ChannelStats ch_stats[15];
-//   for (int c = 0; c <= 14; c++) {
-//     ch_stats[c].channel = c;
-//     ch_stats[c].max_rssi = -120;
-//     ch_stats[c].hits = 0;
-//   }
-
-//   Serial.printf("{\"type\":\"info\",\"msg\":\"Starting 50 RSSI scan iterations...\",\"id\":%ld}\n", id);
-
-//   // Phase 1: 50 Scan Iterations
-//   for (int scan_idx = 0; scan_idx < TOTAL_SCANS; scan_idx++) {
-//     uint32_t scan_start = millis();
-//     int n = WiFi.scanNetworks(false, true); // blocking active scan, include hidden
-
-//     if (n < 0) {
-//       Serial.printf("{\"type\":\"err\",\"msg\":\"scan iteration %d failed: %d\"}\n", scan_idx, n);
-//       delay(50);
-//       continue;
-//     }
-
-//     Serial.printf("{\"type\":\"scan_iter\",\"id\":%ld,\"iter\":%d,\"seq\":%lu,\"ms\":%lu,\"dur_ms\":%lu,\"aps\":[",
-//                   id, scan_idx + 1, ++seq, millis(), millis() - scan_start);
-
-//     for (int i = 0; i < n; i++) {
-//       String ssid = WiFi.SSID(i); 
-//       ssid.replace("\\", "\\\\"); 
-//       ssid.replace("\"", "\\\"");
-//       int ch = WiFi.channel(i);
-//       int rssi = WiFi.RSSI(i);
-
-//       Serial.printf("%s{\"bssid\":\"%s\",\"ssid\":\"%s\",\"rssi\":%d,\"ch\":%d}",
-//                     i ? "," : "", WiFi.BSSIDstr(i).c_str(), ssid.c_str(), rssi, ch);
-
-//       // Track channel metrics
-//       if (ch >= 1 && ch <= 14) {
-//         ch_stats[ch].hits++;
-//         if (rssi > ch_stats[ch].max_rssi) {
-//           ch_stats[ch].max_rssi = rssi;
-//         }
-//       }
-//     }
-//     Serial.print("]}\n");
-//     WiFi.scanDelete();
-
-//     delay(20); // brief yield to feed watchdog
-//   }
-
-//   // Find the top 4 strongest unique channels based on max observed RSSI
-//   int target_channels[4] = {0};
-//   int channel_count = 0;
-
-//   for (int slot = 0; slot < 4; slot++) {
-//     int best_ch = -1;
-//     int32_t best_rssi = -128;
-
-//     for (int c = 1; c <= 14; c++) {
-//       if (ch_stats[c].hits > 0 && ch_stats[c].max_rssi > best_rssi) {
-//         // Ensure channel wasn't already picked
-//         bool already_selected = false;
-//         for (int s = 0; s < slot; s++) {
-//           if (target_channels[s] == c) {
-//             already_selected = true;
-//             break;
-//           }
-//         }
-//         if (!already_selected) {
-//           best_rssi = ch_stats[c].max_rssi;
-//           best_ch = c;
-//         }
-//       }
-//     }
-
-//     if (best_ch != -1) {
-//       target_channels[channel_count++] = best_ch;
-//     }
-//   }
-
-//   if (channel_count == 0) {
-//     Serial.printf("{\"type\":\"err\",\"msg\":\"No APs found during 50 scans\"}\n");
-//     return;
-//   }
-
-//   // Phase 2: Lock and Sniff CSI
-//   Serial.printf("{\"type\":\"info\",\"msg\":\"50 scans completed in %lums. Starting CSI sniff on %d channels (2 min each)\"}\n",
-//                 millis() - t0, channel_count);
-
-//   WiFi.disconnect();
-//   esp_wifi_set_promiscuous(true);
-
-//   // Configure CSI collection
-//   wifi_csi_config_t csi_config;
-//   csi_config.lltf_en = true;
-//   csi_config.htltf_en = true;
-//   csi_config.stbc_htltf2_en = true;
-//   csi_config.ltf_merge_en = true;
-//   csi_config.channel_filter_en = true;
-//   csi_config.manu_scale = false;
-//   csi_config.shift = false;
-//   esp_wifi_set_csi_config(&csi_config);
-
-//   esp_wifi_set_csi_rx_cb(&csi_cb, NULL);
-//   esp_wifi_set_csi(true);
-
-//   // Dwell 2 minutes per channel
-//   for (int i = 0; i < channel_count; i++) {
-//     int ch = target_channels[i];
-//     esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
-//     Serial.printf("{\"type\":\"info\",\"msg\":\"Sniffing channel %d...\"}\n", ch);
-
-//     uint32_t dwell_start = millis();
-//     while (millis() - dwell_start < 120000) {
-//       delay(10);
-//     }
-//   }
-
-//   // Cleanup
-//   esp_wifi_set_csi(false);
-//   esp_wifi_set_promiscuous(false);
-//   Serial.printf("{\"type\":\"info\",\"msg\":\"Scan sequence complete. Waiting for next command.\"}\n");
-// }
-
-// Use this for detecting AP MAC Address  
+// ---------------------------------------------------------------- capture session
 void doScan(long id) {
+  uint32_t t0 = millis();
+  Serial.printf("{\"type\":\"session\",\"event\":\"start\",\"id\":%ld,\"ms\":%lu,\"rssi_phase_ms\":%lu,\"csi_phase_ms\":%lu}\n",
+                id, (unsigned long)t0, (unsigned long)RSSI_PHASE_MS, (unsigned long)CSI_PHASE_MS);
+
+  // Phase 1: RSSI. Keep scanning until 3 min have passed (the scan in progress finishes, so it can run ~3 s over).
+  uint32_t scans = 0;
+  while (millis() - t0 < RSSI_PHASE_MS) {
+    pollCommands(id, false, 0);
+    scanOnce(id);
+    scans++;
+    delay(10);
+  }
+  uint32_t t1 = millis();
+  Serial.printf("{\"type\":\"session\",\"event\":\"rssi_done\",\"id\":%ld,\"ms\":%lu,\"scans\":%lu,\"dur_ms\":%lu}\n",
+                id, (unsigned long)t1, (unsigned long)scans, (unsigned long)(t1 - t0));
+
+  // Phase 2: CSI. Promiscuous mode gives CSI for every packet heard on the channel, not just our own AP's.
+  wifi_csi_config_t csi_config = {};
+  csi_config.lltf_en = true;
+  csi_config.htltf_en = true;
+  csi_config.stbc_htltf2_en = true;
+  csi_config.ltf_merge_en = true;
+  csi_config.channel_filter_en = true;
+  csi_config.manu_scale = false;
+  csi_config.shift = 0;
+
+  xQueueReset(csiQueue);
+  csiDropped = 0;
+  esp_wifi_set_promiscuous(true);
+  esp_wifi_set_csi_config(&csi_config);
+  esp_wifi_set_csi_rx_cb(&csi_cb, NULL);
+  esp_wifi_set_csi(true);
+
+  uint32_t csiTotal = 0;
+  for (uint8_t ch = CSI_FIRST_CH; ch <= CSI_LAST_CH; ch++) {
+    esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
+    uint32_t c0 = millis(), chPkts = 0, dropped0 = csiDropped;
+    Serial.printf("{\"type\":\"session\",\"event\":\"csi_channel\",\"id\":%ld,\"ms\":%lu,\"ch\":%u,\"dwell_ms\":%lu}\n",
+                  id, (unsigned long)c0, ch, (unsigned long)CSI_DWELL_MS);
+    while (millis() - c0 < CSI_DWELL_MS) {
+      chPkts += drainCsi();
+      pollCommands(id, true, CSI_PHASE_MS - (millis() - t1));
+      delay(1);
+    }
+    chPkts += drainCsi();
+    csiTotal += chPkts;
+    Serial.printf("{\"type\":\"session\",\"event\":\"csi_channel_done\",\"id\":%ld,\"ms\":%lu,\"ch\":%u,\"pkts\":%lu,\"dropped\":%lu}\n",
+                  id, (unsigned long)millis(), ch, (unsigned long)chPkts, (unsigned long)(csiDropped - dropped0));
+  }
+
+  esp_wifi_set_csi(false);
+  esp_wifi_set_promiscuous(false);
+  drainCsi();
+  uint32_t t2 = millis();
+  Serial.printf("{\"type\":\"session\",\"event\":\"done\",\"id\":%ld,\"ms\":%lu,\"rssi_scans\":%lu,\"csi_pkts\":%lu,"
+                "\"csi_dropped\":%lu,\"dur_ms\":%lu}\n",
+                id, (unsigned long)t2, (unsigned long)scans, (unsigned long)csiTotal,
+                (unsigned long)csiDropped, (unsigned long)(t2 - t0));
+}
+
+// Use this for detecting AP MAC Address. Triggered by {"cmd":"strongest"}; never returns (reset to exit).
+void doStrongestApLoop(long id) {
   Serial.printf("{\"type\":\"info\",\"msg\":\"Starting continuous scan loop for strongest AP\",\"id\":%ld}\n", id);
-  
-  // Infinite loop as requested
+
   while (true) {
     int n = WiFi.scanNetworks(false, true); // blocking active scan, include hidden
-    
+
     if (n > 0) {
       int best_rssi = -128;
       int best_idx = -1;
-      
+
       // Find the AP with the highest RSSI
       for (int i = 0; i < n; i++) {
         if (WiFi.RSSI(i) > best_rssi) {
@@ -175,12 +198,12 @@ void doScan(long id) {
           best_idx = i;
         }
       }
-      
+
       if (best_idx != -1) {
         String ssid = WiFi.SSID(best_idx);
-        ssid.replace("\\", "\\\\"); 
+        ssid.replace("\\", "\\\\");
         ssid.replace("\"", "\\\"");
-        
+
         Serial.printf("{\"type\":\"strongest_ap\",\"mac\":\"%s\",\"ssid\":\"%s\",\"rssi\":%d}\n",
                       WiFi.BSSIDstr(best_idx).c_str(),
                       ssid.c_str(),
@@ -189,16 +212,15 @@ void doScan(long id) {
     } else {
       Serial.println("{\"type\":\"err\",\"msg\":\"No APs found in this cycle\"}");
     }
-    
+
     WiFi.scanDelete();
-    
-    // Mandatory delay to prevent the FreeRTOS watchdog timer from crashing the ESP32
-    delay(2000); 
+    delay(2000);
   }
 }
 
 void setup() {
   Serial.begin(115200);
+  csiQueue = xQueueCreate(32, sizeof(CsiPkt));   // 32 x ~410 B = ~13 KB
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   delay(100);
@@ -208,9 +230,8 @@ void setup() {
 void loop() {
   if (!Serial.available()) return;
   String line = Serial.readStringUntil('\n');
+  long id = parseId(line);
   if (line.indexOf("\"hello\"") >= 0) sendHello();
-  else if (line.indexOf("\"scan\"") >= 0) {
-    int k = line.indexOf("\"id\":");
-    doScan(k >= 0 ? line.substring(k + 5).toInt() : -1);
-  }
+  else if (line.indexOf("\"scan\"") >= 0) doScan(id);
+  else if (line.indexOf("\"strongest\"") >= 0) doStrongestApLoop(id);
 }
