@@ -20,6 +20,19 @@ Course requirements come from *Instructions for the Oral Design Review* (ECE 364
 - Cite sources at the bottom of any slide whose data or images need citation.
 - Required sections: Introduction, Design Objectives, Status Update, Conclusion, Questions.
 
+## Speakers
+
+The first line of each slide's speaker notes names its speaker. Times assume about 1 minute per slide.
+
+| Speaker | Slides | Section | Approx. time |
+|---|---|---|---|
+| Ethan | 1 to 4 | Introduction: team, opener, problem statement, agenda | 3 min |
+| Andrew | 5 to 9 | Requirements, standards, design vs. buy, concept and technical alternatives | 5 min |
+| Esteban | 10 to 14 | Block diagram, plan vs. now, capture setup, risk reductions 1 (antenna) and 2 (firmware) | 5 min |
+| Li | 15 to 17 | Risk reductions 3 (collector), 4 (3D model), and 5 (data collection) | 3 min |
+| Abhirit | 18 to 20 | Floor finding, residual risks, team contributions | 3 min |
+| Ethan | 21 to 22 | Conclusion; moderates questions | 1 min + Q&A |
+
 ## Format
 
 - PowerPoint, 22 slides. The talk is slides 2 to 20: 19 slides in 20 minutes, about 1 minute each. If rehearsal runs long, cut slide 4 (agenda) or slide 6 (standards) first.
@@ -30,7 +43,7 @@ Course requirements come from *Instructions for the Oral Design Review* (ECE 364
 
 ## Introduction
 
-1. **Title.** BevoTag, team SP11, the five team members, Dr. Haris Vikalo (mentor), Mugdha Jadhao (TA), date.
+1. **Title.** BevoTag, team SP11, the five team members, Dr. Haris Vikalo (mentor), Mugdha Jadhao (TA), November 10, 2026.
 2. **Opener.** A laptop is left in an empty EER lab at night. An AirTag can report it only when a passing iPhone hears it, and GPS errors between tall buildings exceed 9 m (Yoder, cited in the Project Definition).
 3. **Problem statement.** One sentence, then the four targets: correct room in more than 90% of trials, median position error under 5 m, an update at least every 10 s while moving, and at least 24 h per charge.
 4. **Agenda.** The topics of the talk, in BevoTag terms.

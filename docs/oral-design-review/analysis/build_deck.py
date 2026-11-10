@@ -222,7 +222,7 @@ sub = s.placeholders[1]
 sub.text_frame.text = "Oral Design Review  ·  Team SP11"
 for line in ["Ethan Chua, Abhirit Das, Esteban Martinez, Li Shi, Andrew Yin",
              "Faculty Mentor: Dr. Haris Vikalo  ·  Technical TA: Mugdha Jadhao",
-             "[Date]"]:
+             "November 10, 2026"]:
     p = sub.text_frame.add_paragraph()
     p.text = line
 for p in sub.text_frame.paragraphs:
@@ -714,6 +714,30 @@ for p in ph.text_frame.paragraphs:
     etree.SubElement(pPr, "{http://schemas.openxmlformats.org/drawingml/2006/main}buNone")
     pPr.set("marL", "0")
     pPr.set("indent", "0")
+
+# ================================================================= speakers
+# One contiguous section per person, matched to each member's role. The first line of every slide's notes
+# names the speaker.
+SPEAKERS = {}
+for numbers, name in (
+    (range(1, 5), "Ethan"),      # Introduction: title, opener, problem statement, agenda
+    (range(5, 10), "Andrew"),    # Design objectives and alternatives
+    (range(10, 15), "Esteban"),  # Block diagram, plan vs. now, capture setup, antenna, firmware
+    (range(15, 18), "Li"),       # Survey collector, 3D model, data collection
+    (range(18, 21), "Abhirit"),  # Floor finding, residual risks, team contributions
+    (range(21, 23), "Ethan"),    # Conclusion; Ethan moderates questions
+):
+    for n in numbers:
+        SPEAKERS[n] = name
+for n, sl in enumerate(prs.slides, start=1):
+    if n == 23:
+        line = "Speaker: none (not presented)"
+    elif n == 22:
+        line = "Speaker: Ethan moderates; each person answers questions about their own section"
+    else:
+        line = f"Speaker: {SPEAKERS[n]}"
+    tf = sl.notes_slide.notes_text_frame
+    tf.text = line + "\n\n" + tf.text
 
 prs.save(OUT)
 print("wrote", OUT, "slides:", len(prs.slides))
