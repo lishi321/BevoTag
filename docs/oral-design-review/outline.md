@@ -1,6 +1,16 @@
 # Oral Design Review: Slide Outline
 
-Status: **draft for team review**. No slides have been built yet.
+Status: **deck built** as [BevoTag-Design-Review.pptx](BevoTag-Design-Review.pptx) (23 slides). Rebuild it with
+`py -3 analysis/build_deck.py` from this folder; chart numbers come from `analysis/chart_data.py`.
+
+Changes in the built deck compared with the outline below:
+
+- Risk reduction 5 takes two slides: slide 17 (RSSI stability, APs heard per scan) and slide 18 (the AP list
+  alone does not identify the floor). Slides 18 to 22 below became 19 to 23.
+- Antenna result, measured one scan against one scan: typical change 3 → 2 dB, largest 10 → 5 dB.
+- UT IT's access point list took about 1 week (requested week 3, received week 4), not 2.
+- Slide 13 uses the ESP32 + Linx antenna photo. No photo of the 10/11 onboard-antenna setup exists, so the deck has no photo placeholders.
+- Slide 19 lists the two residual risks the instructions ask for; CSI rate, power, and IMU fusion are a footnote.
 
 Course requirements come from *Instructions for the Oral Design Review* (ECE 364D):
 
@@ -109,7 +119,17 @@ Each of slides 13 to 17 has the same four parts: **Goal / What we did / Result /
     - Picture: the survey points on the EER level 2 floor plan.
     - Chart: RSSI over 3 minutes for the 5 strongest APs; each varies by less than 1 dB.
     - Stat: 29 to 36 APs heard per scan indoors vs. 101 to 104 on the outdoor plaza.
+    - Finding: the list of APs the ESP32 hears does not identify the floor it is on. At both level 2 spots, most of the strongest UT access points are installed on other floors (table below, from the 11/8 captures and UT IT's AP list; the 10/11 captures agree). The likely cause is that both spots are in EER's open central area, where APs on other floors have a clear path to the tag.
+
+      | Spot (EER level 2) | Strongest 5 UT APs by average RSSI, by installed room |
+      |---|---|
+      | 2.813 south corridor | 3.854, 1.834, 2.601, 2.501, 3.603 |
+      | 2.701 staircase corner | 3.603, 0.601, 2.501, 2.601, 0.907 |
+
+    - Chart: the strongest 10 APs at the corridor spot, colored by the floor each AP is installed on.
+    - Wording limit: no floor classifier has been run yet. The claim is that the AP list alone does not point to floor 2, not a measured floor-identification rate.
 18. **Residual risks and plan.**
+    - Floor identification (target: correct floor in more than 95% of indoor trials) is at risk in open areas, because APs on other floors are heard as strongly as those on the tag's floor. Plan: add CSI and RSSI patterns across many APs instead of the AP list alone, use the IMU to detect floor changes on stairs and elevators, and survey points away from the open area for comparison.
     - Room-level accuracy has not been measured. Plan: survey EER level 2 facing 4 directions at 3 times of day, and test on points held out of the survey.
     - CSI capture rate, power, and IMU fusion on the tag are unproven against the 24 h battery target.
 19. **Team contributions.** A table with one row per member, filled from the weekly reports. **[DRAFT: team to confirm]**
@@ -132,5 +152,5 @@ Each of slides 13 to 17 has the same four parts: **Goal / What we did / Result /
 | 9/1 proposal form, 9/20 brainstorm notes | Slide 8 |
 | Weekly status reports, weeks 1 to 7 | Slides 11, 19, 20 |
 | 10/11 and 11/8 EER capture CSVs | Slides 12 to 17 |
-| UT IT access point lists (`waps-eer.csv`, `waps-ecj.csv`) | Slides 7, 14 |
+| UT IT access point lists (`waps-eer.csv`, `waps-ecj.csv`) | Slides 7, 14, 17 |
 | `Experiments/Campus_Map/collector` web app | Slides 15, 16, 17 |
