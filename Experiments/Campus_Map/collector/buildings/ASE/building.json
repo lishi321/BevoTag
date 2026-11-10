@@ -1,0 +1,27 @@
+{
+  "id": "ASE",
+  "name": "Aerospace Engineering Building",
+  "osm_way": 38624864,
+  "default_floor": "1",
+  "plan": {
+    "pdf": "ASE.pdf",
+    "dpi": 250,
+    "ft_per_in": 16,
+    "note": "UT floor-plan set (bldg 0983), 1/16\" = 1'-0\" on every sheet; pages 2-3 are titled North Office Building A (NOA), same building number. Column bays measure 20.0-23.0 ft at that scale."
+  },
+  "frame": {
+    "units": "ft",
+    "origin": "south-west outer corner of the exterior walls (west face of the west wing, south face of the south wing)",
+    "axes": "x = right on the sheet, y = up on the sheet; sheet up is about 4.5-5 deg east of true north",
+    "registration": "every floor placed by matching structural columns to floor 2 (residual 0.004-0.05 ft; floor 6 attic ~0.33 ft); see VERIFICATION.md"
+  },
+  "floors": [
+    {"id": "B", "name": "Basement", "page": 1, "image": "floors/B.png", "fit": [540, 350, 2420, 3150], "to_frame": [0.064, 0, -37.647, 0, -0.064, 197.202]},
+    {"id": "1", "name": "First", "page": 2, "image": "floors/1.png", "fit": [453, 424, 2281, 3302], "to_frame": [0.064, 0, -31.596, 0, -0.064, 206.386]},
+    {"id": "2", "name": "Second", "page": 3, "image": "floors/2.png", "fit": [446, 415, 2373, 3798], "to_frame": [0.064, 0, -31.1, 0, -0.064, 216.67]},
+    {"id": "3", "name": "Third", "page": 4, "image": "floors/3.png", "fit": [516, 402, 2441, 3148], "to_frame": [0.064, 0, -35.613, 0, -0.064, 198.961]},
+    {"id": "4", "name": "Fourth", "page": 5, "image": "floors/4.png", "fit": [547, 252, 2417, 3505], "to_frame": [0.064, 0, -37.59, 0, -0.064, 196.945]},
+    {"id": "5", "name": "Fifth", "page": 6, "image": "floors/5.png", "fit": [547, 371, 2356, 3117], "to_frame": [0.064, 0, -37.587, 0, -0.064, 196.961]},
+    {"id": "6", "name": "Sixth", "page": 7, "image": "floors/6.png", "fit": [345, 503, 2404, 3375], "to_frame": [0.064, 0, -32.96, 0, -0.064, 213.456]}
+  ]
+}

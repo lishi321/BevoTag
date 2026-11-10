@@ -1,6 +1,6 @@
 # BevoTag survey collector
 
-A browser app for collecting labeled data inside campus buildings (EER for now). You click your spot on
+A browser app for collecting labeled data inside campus buildings (EER, ASE, ECJ). You click your spot on
 the floor plan and type the room number. The app tells the ESP32 DAQ module, plugged in over USB, to take N
 WiFi scans at that spot.
 
@@ -87,7 +87,7 @@ Non-JSON lines are in `line` as is. Parse them however the firmware formats them
 | Fields | Frame |
 |---|---|
 | `x_px`, `y_px` | the click: pixel on that floor's image, origin top-left, y down |
-| `x_ft`, `y_ft` | the same point in feet (`px × ft_per_in / dpi`) |
+| `x_ft`, `y_ft` | the same point in feet (`px × ft_per_in / dpi`, using the floor's `ft_per_in` if it has one) |
 | `fx_ft`, `fy_ft` | building frame in feet, shared by all floors, y up. Empty if the floor isn't registered |
 
 `fx_ft`/`fy_ft` are computed when the row is written. If a floor's registration changes later, recompute
@@ -97,6 +97,15 @@ them from `x_px`, `y_px` and the floor's new `to_frame`.
 x right and y up on the sheet; sheet up is about 5° east of true north. Distances are good to about an
 inch plus click precision. See [buildings/EER/VERIFICATION.md](buildings/EER/VERIFICATION.md) for how
 this was checked. Not built yet: converting the building frame to latitude/longitude.
+
+**ASE:** all floors (B–6) are registered. The origin is the south-west outer corner of the exterior
+walls; sheet up is about 4.5–5° east of true north. Floors B–5 agree to a few hundredths of a foot; the
+floor 6 attic to about 0.3 ft. See [buildings/ASE/VERIFICATION.md](buildings/ASE/VERIFICATION.md).
+
+**ECJ:** all floors (SB–11, 11M, roof) are registered. The origin is the south-west outer corner of the
+tower's exterior walls; sheet up is about 5° east of true north. Tower floors agree to a few hundredths
+of a foot; SB, B and 1 (drawn at 1/32", so they set their own `ft_per_in`) and 11M to about 0.1–0.3 ft.
+See [buildings/ECJ/VERIFICATION.md](buildings/ECJ/VERIFICATION.md).
 
 ## Device protocol
 
@@ -133,6 +142,7 @@ To add a building `XYZ`:
 |---|---|
 | `plan.dpi`, `plan.ft_per_in` | render resolution and drawing scale; sheet feet per px = `ft_per_in / dpi` |
 | `floors[].page` | 1-based PDF page for that floor |
+| `floors[].ft_per_in` | optional: this sheet's drawing scale when it differs from `plan.ft_per_in` |
 | `floors[].to_frame` | affine `[a, b, c, d, e, f]` from image px to the building frame in ft: `X = a·x + b·y + c`, `Y = d·x + e·y + f`. `null` = not registered yet |
 | `frame` | human description of the building frame (origin, axes) |
 | `default_floor`, `osm_way` | optional: floor shown first, OpenStreetMap footprint id |
@@ -144,5 +154,5 @@ To add a building `XYZ`:
 | `index.html`, `style.css`, `app.js` | the app |
 | `PROTOCOL.md` | serial contract with the DAQ module |
 | `buildings/` | one folder per building: config, floor-plan PDF, rendered PNGs |
-| `buildings/EER/VERIFICATION.md` | how the EER plan geometry was checked |
+| `buildings/*/VERIFICATION.md` | how each building's plan geometry was checked |
 | `make_floors.py` | renders a building's PDF into floor PNGs |
