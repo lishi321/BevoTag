@@ -43,7 +43,7 @@ The first line of each slide's speaker notes names its speaker. Times assume abo
 
 ## Introduction
 
-1. **Title.** BevoTag, team SP11, the five team members, Dr. Haris Vikalo (mentor), Mugdha Jadhao (TA), November 10, 2026.
+1. **Title.** BevoTag, team SP11, the five team members, Dr. Haris Vikalo (mentor), Michael Zhao (technical TA), Mugdha Jadhao (writing TA), November 10, 2026.
 2. **Opener.** A laptop is left in an empty EER lab at night. An AirTag can report it only when a passing iPhone hears it, and GPS errors between tall buildings exceed 9 m (Yoder, cited in the Project Definition).
 3. **Problem statement.** One sentence, then the four targets: correct room in more than 90% of trials, median position error under 5 m, an update at least every 10 s while moving, and at least 24 h per charge.
 4. **Agenda.** The topics of the talk, in BevoTag terms.
@@ -145,7 +145,7 @@ Each of slides 13 to 17 has the same four parts: **Goal / What we did / Result /
     - Floor identification (target: correct floor in more than 95% of indoor trials) is at risk in open areas, because APs on other floors are heard as strongly as those on the tag's floor. Plan: add CSI and RSSI patterns across many APs instead of the AP list alone, use the IMU to detect floor changes on stairs and elevators, and survey points away from the open area for comparison.
     - Room-level accuracy has not been measured. Plan: survey EER level 2 facing 4 directions at 3 times of day, and test on points held out of the survey.
     - CSI capture rate, power, and IMU fusion on the tag are unproven against the 24 h battery target.
-19. **Team contributions.** A table with one row per member, filled from the weekly reports. **[DRAFT: team to confirm]**
+19. **Team contributions.** A table with one row per member, filled from the weekly reports.
 
 ## Conclusion
 

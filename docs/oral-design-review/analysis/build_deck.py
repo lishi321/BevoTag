@@ -221,7 +221,8 @@ s.shapes.title.text = "BevoTag: Finding Lost Items Anywhere on the UT Campus"
 sub = s.placeholders[1]
 sub.text_frame.text = "Oral Design Review  ·  Team SP11"
 for line in ["Ethan Chua, Abhirit Das, Esteban Martinez, Li Shi, Andrew Yin",
-             "Faculty Mentor: Dr. Haris Vikalo  ·  Technical TA: Mugdha Jadhao",
+             "Faculty Mentor: Dr. Haris Vikalo",
+             "Technical TA: Michael Zhao  ·  Writing TA: Mugdha Jadhao",
              "November 10, 2026"]:
     p = sub.text_frame.add_paragraph()
     p.text = line
@@ -351,7 +352,7 @@ s = slide("Alternatives Considered: The Product Concept", notes=(
     "Walk the criteria row by row. The watch needs little survey work but mainly competes on user experience "
     "with mature products. The urban system matched our skills but was too broad to test in two semesters. "
     "The campus tag needs the most survey effort, but it answers a clear need that current trackers miss and "
-    "we can test it in buildings we use every day. [Team: confirm the deciding reason in your own words.]"))
+    "we can test it in buildings we use every day."))
 table(s, [
     ["Criterion", "GPS watch / bike computer", "Urban positioning system", "Campus item tag (BevoTag)"],
     ["Source", "9/20 brainstorm", "9/1 project proposal", "9/20 brainstorm; 10/15 Project Definition"],
@@ -651,8 +652,7 @@ text(s, 0.6, 6.0, 12.13, 0.8, "Also tracked: CSI capture rate and power on the f
 
 # ================================================================= 20. Team contributions
 s = slide("Team Contributions in EE 364D", notes=(
-    "[DRAFT: team to confirm.] Each member summarizes their own row in a sentence. Rows are drafted from the "
-    "weekly status reports and the repository history; edit before the talk."))
+    "Introduce the table, then each member gives one sentence about their own row."))
 table(s, [
     ["Member", "Role", "Contributions so far"],
     ["Ethan Chua", "Project Lead", "Coordinated UT IT access point request; ordered the omnidirectional antenna; planned and ran EER captures"],
@@ -661,7 +661,6 @@ table(s, [
     ["Andrew Yin", "Software; Documentation Lead", "Logger web app and reliability testing; mapped survey points onto the 3D model; Project Definition"],
     ["Abhirit Das", "Software", "Logger web app interface and serial link; CSI logging and live plots; 3D model integration"],
 ], 0.6, 1.5, [2.4, 2.9, 6.83], size=17, row_h=0.8)
-text(s, 0.6, 6.45, 12.13, 0.4, "[DRAFT: team to confirm]", size=14, color=GRAY)
 
 # ================================================================= 21. Conclusion
 s = slide("Conclusion", "Title and Content", notes=(
