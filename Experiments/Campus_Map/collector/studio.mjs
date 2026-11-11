@@ -11,6 +11,39 @@ let view, buildingId, points = [], importedRows = [], imported = [], estimate = 
 let modelMessage = '', demo = [], importInfo = '', currentView = '3d', importing = false;
 let architecture = null, modelFloor = null, selectedRoom = null, loadGeneration = 0;
 
+// Side panel tabs. The chosen tab is a per-viewer convenience, so storage may fail.
+const TABS = ['tabModel', 'tabSignals', 'tabCollect'];
+function selectTab(id, focus = false) {
+  for (const tab of TABS) {
+    const active = tab === id;
+    $(tab).setAttribute('aria-selected', String(active)); $(tab).tabIndex = active ? 0 : -1;
+    $($(tab).getAttribute('aria-controls')).hidden = !active;
+  }
+  if (focus) $(id).focus();
+  try { localStorage.setItem('bevotag.panelTab', id); } catch {}
+}
+function wireTabs() {
+  for (const tab of TABS) $(tab).onclick = () => selectTab(tab);
+  $('tabModel').parentElement.onkeydown = event => {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+    if (!step) return;
+    const index = TABS.indexOf(document.activeElement?.id);
+    if (index >= 0) { event.preventDefault(); selectTab(TABS[(index + step + TABS.length) % TABS.length], true); }
+  };
+  let saved = null;
+  try { saved = localStorage.getItem('bevotag.panelTab'); } catch {}
+  selectTab(TABS.includes(saved) ? saved : 'tabModel');
+}
+
+// Collect tab badge and the first-step guide reflect the live DAQ session.
+function refreshCollect() {
+  const badge = $('collectBadge'), count = S.samples.length;
+  badge.hidden = !count && !S.collecting;
+  badge.textContent = S.collecting ? '●' : String(count);
+  badge.classList.toggle('busy', !!S.collecting);
+  $('collectGuide').hidden = !!S.point;
+}
+
 function refreshHeights() {
   const building = S.buildings[S.building];
   if (!building || !S.floor) return;
@@ -22,7 +55,9 @@ function refreshHeights() {
     ? `Level ${S.floor} elevation unknown · schematic display only`
     : `Level ${S.floor}: ${format(current.elevationFt)} ft · ${labels[current.status].toLowerCase()}`;
   $('heightStatus').classList.toggle('documented', current.status === 'documented');
-  $('sceneTitle').textContent = `${building.id} / ${$('isolateFloor').checked ? `Level ${S.floor}` : Number($('floorSeparation').value) > 1 ? 'Exploded' : 'Whole building'}`;
+  const mode = $('isolateFloor').checked ? 'cameraFloor' : Number($('floorSeparation').value) > 1 ? 'cameraExploded' : 'cameraBuilding';
+  for (const id of ['cameraFloor', 'cameraBuilding', 'cameraExploded']) $(id).setAttribute('aria-pressed', String(id === mode));
+  $('sceneTitle').textContent = `${building.id} / ${mode === 'cameraFloor' ? `Level ${S.floor}` : mode === 'cameraExploded' ? 'Exploded' : 'Whole building'}`;
   $('sceneSubtitle').textContent = `${building.floors.length} levels · ${summary.counts.documented} documented${summary.counts.estimated ? ` · ${summary.counts.estimated} estimated` : ''} · ${summary.counts.assumed} unknown`;
   $('heightEvidence').textContent = current.note;
   $('heightDatum').textContent = typeof summary.datum === 'string' ? summary.datum : summary.datum.description;
@@ -64,7 +99,8 @@ function chooseRoom(room) {
 
 function refreshArchitecture() {
   const floor = architecture?.floors.find(f => f.id === S.floor);
-  $('architectureSummary').textContent = floor ? `${floor.rooms.length} spaces · ${floor.walls.length} wall solids on level ${S.floor}${floor.geometry_exclusions?.length ? ` · ${floor.geometry_exclusions.length} reviewed exclusions` : ''}` : 'No wall geometry loaded for this floor.';
+  $('architectureSummary').textContent = floor ? `${floor.rooms.length} spaces · ${floor.walls.length} walls` : architecture ? 'No geometry on this floor' : 'Loading…';
+  $('architectureSummary').title = floor ? `Level ${S.floor}${floor.geometry_exclusions?.length ? ` · ${floor.geometry_exclusions.length} reviewed exclusions` : ''}` : '';
   $('btnExportModel').disabled = !architecture;
   $('btnExportIFC').disabled = !architecture;
   const review = S.buildings[S.building]?.geometry_review;
@@ -112,8 +148,10 @@ async function loadArchitecture(building) {
 }
 
 function status() {
-  $('modelStatus').textContent = modelMessage || (!points.length ? 'Import survey CSVs or explore the demo to see signal coverage.' : '');
-  $('modelStatus').hidden = !$('modelStatus').textContent;
+  $('modelStatus').textContent = modelMessage;
+  $('modelStatus').hidden = !modelMessage;
+  $('emptyState').hidden = !!modelMessage || points.length > 0 || importing;
+  $('signalLegend').hidden = !points.length || (!$('showHeat').checked && !$('showPoints').checked);
 }
 
 function selectView(mode) {
@@ -122,7 +160,7 @@ function selectView(mode) {
   for (const [id, active] of [['view3d', mode === '3d'], ['view2d', mode === '2d']]) {
     $(id).classList.toggle('active', active); $(id).setAttribute('aria-pressed', String(active));
   }
-  if (mode === '2d') requestAnimationFrame(() => api.fitView()); else view?.resize();
+  if (mode === '2d') { requestAnimationFrame(() => api.fitView()); selectTab('tabCollect'); } else view?.resize();
 }
 
 function clearEstimate(message = 'Collect or import at least 3 survey points to begin.') {
@@ -136,6 +174,8 @@ function controls() {
   $('btnEstimate').textContent = estimating ? 'Matching fingerprints…' : $('surveySource').value === 'demo' ? 'Estimate demo signal' : 'Scan & estimate position';
   $('btnFocusRoom').disabled = !selectedRoom || !view;
   $('btnRoomPoint').disabled = busy || !selectedRoom;
+  $('roomActions').hidden = !selectedRoom;
+  refreshCollect();
 }
 
 function refreshData(reset = true) {
@@ -186,7 +226,21 @@ function options() {
   $('floorSpacing').value = spacing; $('separationValue').value = `${separation}×${separation === 1 ? ' · unexploded' : ' · exploded view'}`;
   view?.setOptions({ spacing, separation, wallHeight, exterior: $('showExterior').checked, roofs: $('showRoofs').checked, walls: $('showWalls').checked, rooms: $('showRooms').checked, plans: $('showPlans').checked, bssid: $('signalSelect').value, heat: $('showHeat').checked, points: $('showPoints').checked, isolate: $('isolateFloor').checked });
   if (isolateChanged || heightsChanged) view.fit();
-  refreshHeights();
+  refreshHeights(); status();
+}
+
+// Single-key shortcuts for the 3D view; ignored while typing or with modifiers.
+function onShortcut(event) {
+  if (event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.('input, select, textarea, [contenteditable]')) return;
+  const key = event.key.toLowerCase();
+  if (key === '[' || key === ']') {
+    const floors = S.buildings[S.building]?.floors || [], index = floors.findIndex(f => f.id === S.floor);
+    const next = floors[index + (key === ']' ? 1 : -1)];
+    if (next) { event.preventDefault(); api.setFloor(next.id); }
+    return;
+  }
+  const action = { i: 'cameraFloor', b: 'cameraBuilding', e: 'cameraExploded', t: 'cameraTop', f: 'cameraFit', p: 'cameraIso' }[key];
+  if (action && currentView === '3d' && !$(action).disabled) { event.preventDefault(); $(action).click(); }
 }
 
 function renderEstimate(result, source) {
@@ -258,9 +312,11 @@ async function importFiles(files) {
 }
 
 async function init() {
+  wireTabs();
   if (!await api.ready) throw new Error('Building metadata failed to load. Serve this folder over HTTP.');
   try {
-    view = new BuildingView($('modelCanvas'), $('floorLabels'), (floor, p) => { if (!S.collecting && !S.locating) { api.setFloor(floor, true); api.setPoint(p.x, p.y); } }, message => { modelMessage = message; status(); }, chooseRoom);
+    view = new BuildingView($('modelCanvas'), $('floorLabels'), (floor, p) => { if (!S.collecting && !S.locating) { api.setFloor(floor, true); api.setPoint(p.x, p.y); } }, message => { modelMessage = message; status(); },
+      room => { chooseRoom(room); if (room) selectTab('tabModel'); });
   } catch (error) {
     $('graphicsNotice').textContent = `3D requires WebGL 2: ${error.message}. The 2D survey, data import, and position estimation remain available.`;
     $('graphicsNotice').hidden = false;
@@ -275,7 +331,12 @@ async function init() {
   };
   $('cameraBuilding').onclick = () => wholeBuilding(1);
   $('cameraExploded').onclick = () => wholeBuilding(3);
-  $('btnDemo').onclick = () => { $('surveySource').value = 'demo'; refreshData(); if (view) selectView('3d'); };
+  $('cameraFloor').onclick = () => { $('isolateFloor').checked = true; $('showRoofs').checked = false; $('floorSeparation').value = 1; options(); selectView('3d'); view?.fit(); };
+  $('btnDemo').onclick = () => { $('surveySource').value = 'demo'; refreshData(); if (view) selectView('3d'); selectTab('tabSignals'); };
+  $('emptyDemo').onclick = () => $('btnDemo').click();
+  $('emptyImport').onclick = () => { selectTab('tabSignals'); $('btnImport').click(); };
+  $('guide2d').onclick = () => selectView('2d');
+  document.addEventListener('keydown', onShortcut);
   $('surveySource').onchange = () => refreshData();
   $('btnImport').onclick = () => $('csvFiles').click();
   $('csvFiles').onchange = event => importFiles([...event.target.files]);
@@ -310,6 +371,8 @@ async function init() {
   window.addEventListener('bevotag:change', event => {
     syncBuilding();
     if (event.detail.kind === 'dataset' && S.floor) refreshData();
+    // Placing a survey point leads straight into labeling and collection.
+    if (event.detail.kind === 'point' && S.point) selectTab('tabCollect');
   });
   window.addEventListener('pagehide', () => view?.destroy(), { once: true });
   syncBuilding();

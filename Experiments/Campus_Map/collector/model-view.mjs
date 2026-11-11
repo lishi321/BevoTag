@@ -31,16 +31,20 @@ export class BuildingView {
     this.floorGroups = new Map(); this.generation = 0; this.points = [];
     this.options = { spacing: 14, separation: 1, wallHeight: 10, exterior: true, roofs: false, walls: true, rooms: true, plans: false, heat: true, points: true, isolate: true, bssid: '*' };
     this.raycaster = new THREE.Raycaster();
+    const pickPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const floorHit = event => {
       const floor = this.floorGroups.get(this.floor);
       if (!floor?.group.visible) return null;
       const rect = this.renderer.domElement.getBoundingClientRect();
       this.raycaster.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2), this.camera);
-      const point = this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -floor.group.position.y), new THREE.Vector3());
+      pickPlane.constant = -floor.group.position.y;
+      const point = this.raycaster.ray.intersectPlane(pickPlane, new THREE.Vector3());
       if (!point) return null;
-      const roofMeshes = [...this.floorGroups.values()].filter(f => f.group.visible && f.roofs.visible).flatMap(f => f.roofs.children);
-      const roofHit = this.raycaster.intersectObjects(roofMeshes, false)[0];
-      if (roofHit && roofHit.distance < this.camera.position.distanceTo(point) - 0.01) return null;
+      if (this.options.roofs) {
+        const roofMeshes = [...this.floorGroups.values()].filter(f => f.group.visible).flatMap(f => f.roofs.children.filter(mesh => mesh.visible));
+        const roofHit = roofMeshes.length && this.raycaster.intersectObjects(roofMeshes, false)[0];
+        if (roofHit && roofHit.distance < this.raycaster.ray.origin.distanceTo(point) - 0.01) return null;
+      }
       const pixel = fromFrame(floor.config, point.x, -point.z), [x0, y0, x1, y1] = floor.config.fit;
       return pixel && pixel.x >= x0 && pixel.x <= x1 && pixel.y >= y0 && pixel.y <= y1 ? { point, pixel, floor } : null;
     };
@@ -196,14 +200,19 @@ export class BuildingView {
       f.exterior.visible = this.options.exterior && !!band;
       f.exterior.scale.y = band?.heightFt || 1;
       f.exteriorBand = band;
-      f.roofSurfaces = roofSurfaces(this.architecture, this.building, id, this.options);
       f.roofs.visible = !!this.options.roofs;
-      for (const mesh of f.roofs.children) {
-        const roof = f.roofSurfaces.find(item => item.id === mesh.userData.roofId);
-        mesh.visible = !!roof;
-        if (roof) {
-          mesh.position.y = roof.baseFt - floorElevation(this.building, id, this.options.spacing);
-          mesh.scale.y = roof.heightFt;
+      // Hidden roofs are skipped; the next layout with roofs on repositions them.
+      if (f.roofs.visible && f.roofs.children.length) {
+        f.roofSurfaces = roofSurfaces(this.architecture, this.building, id, { ...this.options, band });
+        const surfaces = new Map(f.roofSurfaces.map(roof => [roof.id, roof]));
+        const levelFt = floorElevation(this.building, id, this.options.spacing);
+        for (const mesh of f.roofs.children) {
+          const roof = surfaces.get(mesh.userData.roofId);
+          mesh.visible = !!roof;
+          if (roof) {
+            mesh.position.y = roof.baseFt - levelFt;
+            mesh.scale.y = roof.heightFt;
+          }
         }
       }
       f.rooms.visible = this.options.rooms;

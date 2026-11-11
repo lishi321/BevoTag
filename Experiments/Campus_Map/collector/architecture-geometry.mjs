@@ -66,7 +66,7 @@ export function exportArchitectureOBJ(architecture, building, { wallHeight = 10,
         `# ${comment(band.note)}`, `# Envelope top evidence: ${comment(JSON.stringify(band.top))}`);
       floor.envelope.walls.forEach((wall, i) => write(wallGeometry(wall, band.heightFt), `${building.id}_${floor.id}_inferred_envelope_${i + 1}`, band.baseFt));
     }
-    if (roofs) for (const roof of roofSurfaces(architecture, building, floor.id, { wallHeight, spacing })) {
+    if (roofs) for (const roof of roofSurfaces(architecture, building, floor.id, { wallHeight, spacing, band: exterior ? band : undefined })) {
       lines.push(`# Roof surface ${comment(roof.label)}: type=${roof.kind}; surface=${roof.elevationFt} ft; base=${roof.baseFt} ft; display thickness=${roof.heightFt} ft (assumed); geometry=inferred.`,
         `# ${comment(roof.note)}`, `# Roof elevation evidence: ${comment(JSON.stringify(roof.elevation))}`,
         `# Roof geometry review: ${comment(JSON.stringify(roof.review || {}))}`);
