@@ -108,17 +108,15 @@ Item-Tracking Patents That Inform the Design \\
 \section{Introduction}
 %----------------------------------------------------------------------------------------------------
 This Prior Art Report documents the BevoTag team's search of published research and patents related
-to the project and explains how the results have shaped the design.
-BevoTag is a small tag that locates a laptop, bag, or piece of shared equipment on the University
-of Texas at Austin campus by using campus Wi-Fi and a motion sensor. The team's Project Definition
+to the project, and explains how the results have shaped the design.
+BevoTag is a small tag that locates personal belongings or shared equipment on the University
+of Texas at Austin campus by using campus Wi-Fi signals and a motion sensor. The team's Project Definition
 committed to this approach but left four questions open: which Wi-Fi measurement to use, how much
 surveying a building requires, how to combine Wi-Fi with motion data, and which parts of the design
 existing patents already cover. To answer these questions before the system design is finalized,
 the team reviewed five research publications and five U.S. patents. This report first summarizes
 the design problem and then compares each publication and patent with BevoTag's requirements.
-Finally, it explains how the findings have changed the design: signal strength becomes the baseline
-measurement, the survey protocol expands to cover more conditions, the fusion design narrows to two
-filters, and the project's contribution lies in the integrated tag rather than in a new algorithm.
+Finally, it explains how the findings have changed the design.
 
 %----------------------------------------------------------------------------------------------------
 \section{Overview of the Design Problem}
@@ -213,11 +211,11 @@ probabilistic RSSI system \cite{horus}, using the same data.
 
 CSI fingerprints were more accurate than RSSI fingerprints in both test rooms. In a mostly empty
 4~m by 7~m living room, DeepFi's mean error was 0.94~m and Horus's was 1.54~m; in a cluttered 6~m
-by 9~m computer laboratory with few line-of-sight paths, the errors were 1.81~m and 2.60~m
+by 9~m laboratory with few line-of-sight paths, the errors were 1.81~m and 2.60~m
 \cite{deepfi}. These reductions of 39\% and 30\% justify evaluating CSI for BevoTag. The study
 differs from BevoTag in three important ways, however: it used one access point that the authors
-controlled, a laptop card with three antennas rather than BevoTag's single-antenna chip, and rooms
-much smaller than an EER floor.
+controlled, a laptop card with three antennas rather than BevoTag's single-antenna chip, and environments
+much smaller than a typical building floor.
 
 \subsubsection{ESP32 CSI Toolkit: CSI Capture on a Microcontroller}
 Because DeepFi relied on a laptop card, evidence was also needed that BevoTag's own hardware can
@@ -280,9 +278,9 @@ fingerprinting with inertial fusion but leave a single-antenna tag in a changing
 \toprule
 \textbf{Source} & \textbf{Question} & \textbf{Key Finding} & \textbf{Difference from BevoTag} \\
 \midrule
-RADAR \cite{radar} & 2 & 2.94~m median; survey should cover orientations & Dedicated base stations; no motion sensing \\ \addlinespace
+RADAR \cite{radar} & 2 & 2.94~m median; survey should cover different orientations & Dedicated base stations; no motion sensing \\ \addlinespace
 DeepFi \cite{deepfi} & 1 & CSI mean error 30--39\% below RSSI & One controlled access point; three-antenna laptop card \\ \addlinespace
-ESP32 CSI Toolkit \cite{esp32tool} & 1 & Module under \$10 captures 64-subcarrier CSI; passive rate 34.5\% of active & Used for activity sensing, not localization \\ \addlinespace
+ESP32 CSI Toolkit \cite{esp32tool} & 1 & Module under \$10 captures 64-subcarrier CSI; passive capture rate 34.5\% of active & Used for activity sensing, not localization \\ \addlinespace
 Evennou and Marx \cite{evennou} & 3 & Map-aware particle filter with inertial data: 1.53~m mean error & Laptop processing; one survey point per room \\ \addlinespace
 Microsoft competition \cite{msilc} & 2, 3 & Best infrastructure-free system 1.6~m; furniture changes add up to 0.94~m & Two rooms and a hallway; phones, not tags \\
 \bottomrule
@@ -318,7 +316,7 @@ lists the patent's adjusted expiration as September 30, 2026, so its outlier rej
 database updating are now free to adopt.
 
 \subsubsection{US 9,014,718: Location Sensing Using Channel Fading Fingerprinting}
-Whereas Skyhook's patent maps access points, Intel's patent, granted in 2015 to Yang, Yang, and
+Intel's patent, granted in 2015 to Yang, Yang, and
 Guo, claims the core of a CSI fingerprinting system \cite{intel}. A device scans nearby access
 points, measures a ``channel fading profile'' from selected subcarriers, and finds its location by
 matching the profile to a database recorded during a survey, using a minimum-distance or
@@ -334,17 +332,14 @@ surveyor walks between known points while inertial navigation tracks the path an
 signatures are collected continuously; each signature is then assigned a position along a B-spline
 fitted to the path, and the surveyor may adjust the spline's control points on a display. This
 method could survey a floor far faster than stopping at each point. The patent remains in force
-until 2035, however, and BevoTag's survey application currently records scans only at stationary
-points that the surveyor selects, so the team will avoid fitting and editing a spline path unless
-it confirms that its method differs from these claims.
+until 2035, so the team will avoid the method of fitting and editing a spline path.
 
 \subsubsection{US 9,332,476: Correcting Indoor Positioning Using Wi-Fi Handovers}
-Whereas Ricoh's patent uses inertial navigation to build a survey, BlackBerry's patent, granted in
-2016 to Shatsky and Kouznetsov, uses Wi-Fi to correct dead-reckoning drift at the moment a device
-hands over to a new access point \cite{blackberry}. If the dead-reckoning position lies outside a
-``handover spot'' around the new access point, the method of claim~1 resets the position to the
-nearest point on that spot's border. This patent confirms that drift correction from Wi-Fi is a
-recognized need, but it corrects only at handovers and only coarsely. BevoTag will instead correct
+BlackBerry's patent, granted in 2016 to Shatsky and Kouznetsov, uses Wi-Fi to correct dead-reckoning 
+drift when a device hands over to a new access point \cite{blackberry}. If the dead-reckoning
+position lies outside a ``handover spot'' around the new access point, the method of claim~1 resets the 
+position to the nearest point on that spot's border. This patent confirms that drift correction from Wi-Fi
+is a recognized need, but it corrects only at handovers and only coarsely. BevoTag will instead correct
 the inertial estimate at every fingerprint fix with a filter, the approach that Evennou and Marx published in
 2006 \cite{evennou}, and will not reset the estimate to a handover boundary. The patent remains in
 force until 2034.
