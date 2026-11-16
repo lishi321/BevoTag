@@ -3,6 +3,7 @@
   "name": "Engineering Education and Research Center",
   "osm_way": 516282867,
   "default_floor": "2",
+  "features": "features.json",
   "plan": {
     "pdf": "plan.pdf",
     "dpi": 250,

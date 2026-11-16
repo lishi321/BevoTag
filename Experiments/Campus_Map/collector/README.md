@@ -139,6 +139,14 @@ from its actual plan boundaries. The bridge uses `label_source: "plan-review"`; 
 OCR/generated. Level 8 exclusions omit roof structure from the room/wall scope, not certify empty air.
 The review is targeted; other atrium/roof regions still need inspection.
 
+A building may also declare `"features": "features.json"` in `building.json` for hand-traced stairs
+and bridge structure (`features-model.mjs`). EER's file adds the atrium's Stair G (seating stair,
+B to 1), Stair F (1 to 2, with landing), spiral Stair H (B to 2) around its perforated steel tube, and
+the truss rails of bridge 2.705. Plan positions are traced from the registered sheets (about 1 ft);
+riser counts, landing heights and spiral rotation are schematic, and all heights are fractions of the
+displayed floor-to-floor rise. A bridge's `hide_walls_within` mask hides only plan-derived walls lying
+entirely inside it in the 3D view. Features are display-only: OBJ/IFC exports are unchanged.
+
 For EER and ECJ, `exterior_review.py` applies the separate `exterior-review.json` after room/wall
 review. The traces are bound to the source PDF hash and page; original wall and room arrays are
 preserved. It records the assumed shell thickness, source evidence, level roles and any explicit

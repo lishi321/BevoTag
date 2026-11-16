@@ -4,6 +4,25 @@ import { toFrame, fromFrame, floorElevation, interpolate, signalColor, signalAt 
 import { roomAt } from './architecture.mjs';
 import { wallGeometry, roomGeometry } from './architecture-geometry.mjs';
 import { exteriorBand, roofSurfaces } from './exterior-model.mjs';
+import { featureSolids, prismTriangles, hiddenByFeature } from './features-model.mjs';
+
+const FEATURE_COLORS = { stair: '#e8e5dd', wood: '#b88a5c', steel: '#8b989c' };
+
+// Diamond perforations that grow toward the top, as on EER's spiral-stair tube.
+function perforatedTexture() {
+  const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 512;
+  const ctx = canvas.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 64, 512);
+  ctx.globalCompositeOperation = 'destination-out';
+  for (let row = 0, y = 506; y > 0; row++) {
+    const t = 1 - y / 512, h = 6 + 22 * t, w = 8 + 22 * t;
+    for (const x of row % 2 ? [0, 64] : [32]) {
+      ctx.beginPath(); ctx.moveTo(x, y - h / 2); ctx.lineTo(x + w / 2, y); ctx.lineTo(x, y + h / 2); ctx.lineTo(x - w / 2, y); ctx.closePath(); ctx.fill();
+    }
+    y -= h * 0.62 + 3;
+  }
+  const texture = new THREE.CanvasTexture(canvas); texture.wrapS = THREE.RepeatWrapping; texture.repeat.set(8, 1);
+  return texture;
+}
 
 const rgb = values => new THREE.Color(`rgb(${values.join(',')})`);
 const dispose = group => group.traverse(object => {
@@ -102,10 +121,10 @@ export class BuildingView {
     this.building = null; this.architecture = null; this.bounds = null; this.invalidate();
   }
 
-  async setBuilding(building, selectedFloor, architecture) {
+  async setBuilding(building, selectedFloor, architecture, features = null) {
     this.clearBuilding();
     const generation = this.generation;
-    this.building = building; this.floor = selectedFloor; this.architecture = architecture; this.selectedRoom = null;
+    this.building = building; this.floor = selectedFloor; this.architecture = architecture; this.features = features; this.selectedRoom = null;
     const box = new THREE.Box3(); let missing = 0;
     const loads = [];
     for (const floor of building.floors) {
@@ -117,9 +136,10 @@ export class BuildingView {
       const heat = new THREE.Mesh(geometry.clone(), new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, opacity: 0.62 }));
       heat.position.y = 0.18; heat.visible = false;
       const markers = new THREE.Group(), overlay = new THREE.Group();
-      const walls = new THREE.Group(), contextWalls = new THREE.Group(), exterior = new THREE.Group(), roofs = new THREE.Group(), rooms = new THREE.Group(), architectureGroup = new THREE.Group();
+      const walls = new THREE.Group(), contextWalls = new THREE.Group(), exterior = new THREE.Group(), roofs = new THREE.Group(), rooms = new THREE.Group(), features = new THREE.Group(), architectureGroup = new THREE.Group();
       const model = architecture?.floors.find(f => f.id === floor.id);
       for (const wall of model?.walls || []) {
+        if (hiddenByFeature(this.features, floor.id, wall)) continue;
         const geometry = wallGeometry(wall); geometry.rotateX(-Math.PI / 2);
         const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: '#e3e4df', roughness: 0.9 }));
         const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 25), new THREE.LineBasicMaterial({ color: '#7d9191', transparent: true, opacity: 0.6 }));
@@ -148,11 +168,11 @@ export class BuildingView {
         const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: '#d2dcd9', roughness: 1, side: THREE.DoubleSide }));
         mesh.position.y = 0.04; mesh.userData.room = room; rooms.add(mesh);
       }
-      architectureGroup.add(walls, contextWalls, exterior, rooms, roofs);
+      architectureGroup.add(walls, contextWalls, exterior, rooms, roofs, features);
       group.add(plan, outline, architectureGroup, heat, markers, overlay); this.buildingGroup.add(group);
       const label = document.createElement('div'); label.className = 'floor-label'; label.textContent = `LEVEL ${floor.id}`; this.labels.appendChild(label);
       const anchor = toFrame(floor, floor.fit[0], floor.fit[3]);
-      this.floorGroups.set(floor.id, { group, plan, outline, heat, markers, overlay, label, anchor, config: floor, model, walls, contextWalls, exterior, rooms, roofs, architectureGroup });
+      this.floorGroups.set(floor.id, { group, plan, outline, heat, markers, overlay, label, anchor, config: floor, model, walls, contextWalls, exterior, rooms, roofs, features, architectureGroup });
       box.expandByObject(model?.walls.length ? architectureGroup : plan);
       loads.push(new Promise(resolve => {
         const image = new Image();
@@ -215,6 +235,10 @@ export class BuildingView {
           }
         }
       }
+      if (f.features) {
+        f.features.visible = this.options.walls && f.group.visible;
+        if (f.features.visible) this.buildFeatures(id, f);
+      }
       f.rooms.visible = this.options.rooms;
       f.plan.visible = this.options.plans;
       f.outline.visible = this.options.plans;
@@ -228,6 +252,36 @@ export class BuildingView {
     }
     if (this.grid) this.grid.position.y = this.options.isolate ? (this.floorGroups.get(this.floor)?.group.position.y || 0) - 1 : lowest - 1;
     this.drawOverlay(); this.invalidate();
+  }
+
+  // Stairs span floors, so their real heights follow the displayed spacing and separation.
+  // Rebuild only when those heights change.
+  buildFeatures(id, f) {
+    const riseFt = (from, to) => (floorElevation(this.building, to, this.options.spacing) - floorElevation(this.building, from, this.options.spacing)) * this.options.separation;
+    const key = this.features ? this.building.floors.map(floor => floorElevation(this.building, floor.id, this.options.spacing)).join() + `|${this.options.separation}` : '';
+    if (f.featureKey === key) return;
+    f.featureKey = key; dispose(f.features); f.features.clear();
+    if (!this.features) return;
+    const { prisms, lines } = featureSolids(this.features, id, riseFt);
+    const frameToScene = geometry => { geometry.rotateX(-Math.PI / 2); return geometry; };
+    for (const finish of Object.keys(FEATURE_COLORS)) {
+      const solid = prisms.filter(p => p.finish === finish && !p.tube);
+      if (!solid.length) continue;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(prismTriangles(solid), 3));
+      frameToScene(geometry).computeVertexNormals();
+      const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: FEATURE_COLORS[finish], roughness: finish === 'steel' ? 0.45 : 0.85, metalness: finish === 'steel' ? 0.35 : 0, side: THREE.DoubleSide }));
+      f.features.add(mesh, new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 30), new THREE.LineBasicMaterial({ color: '#6f7f80', transparent: true, opacity: 0.45 })));
+    }
+    for (const tube of prisms.filter(p => p.tube)) {
+      const height = tube.z1 - tube.z0, geometry = new THREE.CylinderGeometry(tube.tube.radius, tube.tube.radius, height, 40, 1, true);
+      const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: '#f1f1ee', map: perforatedTexture(), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.5, metalness: 0.2 }));
+      mesh.position.set(tube.tube.center[0], tube.z0 + height / 2, -tube.tube.center[1]); f.features.add(mesh);
+    }
+    for (const line of lines) {
+      const geometry = new THREE.BufferGeometry().setFromPoints(line.points.map(([x, y, z]) => new THREE.Vector3(x, z, -y)));
+      f.features.add(new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: '#4f6264' })));
+    }
   }
 
   setFloor(id, selectedPoint) { const changed = this.floor !== id; this.floor = id; this.selectedPoint = selectedPoint; if (changed) this.selectedRoom = null; this.updateLayout(); if (changed && this.options.isolate) this.fit(this.topView); }

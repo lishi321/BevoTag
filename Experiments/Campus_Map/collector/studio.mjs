@@ -1,6 +1,7 @@
 import { BuildingView } from './model-view.mjs';
 import { parseCSV, importSurvey, surveyPoints, estimatePosition, demoSurvey, demoScan, toFrame, fromFrame } from './signal-model.mjs';
 import { roomAt, validateArchitecture } from './architecture.mjs';
+import { validateFeatures } from './features-model.mjs';
 import { createSimulation, simulateSurvey } from './ap-simulation.mjs';
 import { exportArchitectureOBJ } from './architecture-geometry.mjs';
 import { exportArchitectureIFC } from './architecture-ifc.mjs';
@@ -126,6 +127,19 @@ function refreshArchitecture() {
   chooseRoom(null);
 }
 
+// Optional hand-traced stairs and bridges. Missing or invalid files never block the wall model.
+async function loadFeatures(building) {
+  if (!building.features) return null;
+  try {
+    const response = await fetch(`buildings/${building.id}/${building.features}`, { cache: 'no-cache' });
+    if (!response.ok) return null;
+    return validateFeatures(await response.json(), building);
+  } catch (error) {
+    console.warn(`Stair/bridge features skipped for ${building.id}: ${error.message}`);
+    return null;
+  }
+}
+
 async function loadArchitecture(building) {
   const generation = ++loadGeneration;
   view?.clearBuilding();
@@ -137,7 +151,9 @@ async function loadArchitecture(building) {
     if (generation !== loadGeneration) return;
     architecture = data;
     demo = demoSurvey(building, architecture); simulation = null; simSamples = null;
-    const loading = view?.setBuilding(building, S.floor, architecture);
+    const features = await loadFeatures(building);
+    if (generation !== loadGeneration) return;
+    const loading = view?.setBuilding(building, S.floor, architecture, features);
     options(); refreshArchitecture(); refreshData();
     await loading;
     if (!view) modelMessage = '';

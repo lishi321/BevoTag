@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "building": "EER",
+  "units": "ft",
+  "reviewed": "2026-11-16",
+  "status": "Traced by hand from the registered plan images; plan positions are good to about 1 ft. Riser counts, landing heights and spiral rotation are schematic. Heights are fractions of the floor-to-floor rise, so they follow the building's displayed floor elevations (which are themselves unverified for EER).",
+  "sources": [
+    {"id": "eer-local-plan", "title": "EER source floor plans", "file": "plan.pdf", "evidence": "Pages 1-3 (levels B, 1, 2) show Stair G (wide stair with seat blocks, 1.702), Stair F (two flights with a turning landing), spiral Stair H, and bridge 2.705 crossing the atrium."},
+    {"id": "eer-enr-2018", "title": "ENR Texas & Louisiana Best Projects 2018: EERC", "url": "https://www.enr.com/articles/45410-enr-texas-louisiana-project-of-the-year-2018-tech-goals-drive-design-at-engineering-center", "evidence": "The spiral stair wraps a 45 ft perforated steel tube with diamond-shaped voids that grow toward the roof; the tube was craned in through the roof. Atrium bridge and stair steel is architecturally exposed structural steel."},
+    {"id": "eer-alcalde-2017", "title": "Alcalde: Inside UT's new Engineering Education and Research Center", "url": "https://alcalde.texasexes.org/2017/09/take-a-look-inside-uts-new-430000-square-foot-engineering-education-and-research-center/", "evidence": "Describes white floors in the sunlit lobby, an exposed concrete frame and exposed steel on the skybridge."}
+  ],
+  "stairs": [
+    {
+      "id": "eer-stair-g",
+      "label": "Stair G (1.702): lobby seating stair",
+      "kind": "straight",
+      "from": "B",
+      "to": "1",
+      "source_pages": [1, 2],
+      "note": "Rises westward from the basement lobby to Level 1. Seat blocks fill the middle band; ordinary treads run along both sides. Rooms 0.710-0.712B sit beneath its upper (west) part, so it is modeled as a floating stair rather than a solid mass.",
+      "flights": [
+        {"start": [[173.0, 63.5], [173.0, 71.1]], "end": [[137.8, 63.5], [137.8, 71.1]], "rise": [0, 1], "steps": 30},
+        {"start": [[173.0, 71.1], [173.0, 82.0]], "end": [[137.8, 71.1], [137.8, 82.0]], "rise": [0, 1], "steps": 10, "finish": "wood"},
+        {"start": [[173.0, 82.0], [173.0, 85.0]], "end": [[137.8, 82.0], [137.8, 85.0]], "rise": [0, 1], "steps": 30}
+      ]
+    },
+    {
+      "id": "eer-stair-f",
+      "label": "Stair F: open stair to Level 2",
+      "kind": "straight",
+      "from": "1",
+      "to": "2",
+      "source_pages": [2, 3],
+      "note": "A long flight climbs north from the top of Stair G to a landing, then turns west to the Level 2 slab.",
+      "flights": [
+        {"start": [[120.5, 86.5], [128.2, 86.5]], "end": [[117.9, 105.7], [125.6, 105.7]], "rise": [0, 0.64], "steps": 21},
+        {"start": [[114.5, 120.8], [114.5, 114.0]], "end": [[103.2, 120.8], [103.2, 114.0]], "rise": [0.64, 1], "steps": 12}
+      ],
+      "landings": [
+        {"outline": [[114.5, 114.0], [117.9, 105.7], [125.6, 105.7], [122.6, 120.8], [114.5, 120.8]], "rise": 0.64}
+      ]
+    },
+    {
+      "id": "eer-stair-h",
+      "label": "Stair H: spiral stair around the perforated steel tube",
+      "kind": "spiral",
+      "from": "B",
+      "to": "2",
+      "source_pages": [1, 2, 3],
+      "note": "Center and radii are traced from all three plans (agree within 0.6 ft). Rotation direction and step count are schematic.",
+      "center": [221.0, 114.7],
+      "inner_radius": 2.0,
+      "outer_radius": 6.6,
+      "start_deg": 200,
+      "sweep_deg": -800,
+      "steps": 54,
+      "column": {"radius": 1.9, "to": "3", "above_ft": 3, "perforated": true}
+    }
+  ],
+  "bridges": [
+    {
+      "id": "eer-bridge-2705",
+      "label": "Bridge 2.705: exposed steel truss bridge across the atrium",
+      "floor": "2",
+      "source_pages": [3],
+      "note": "Edges follow the reconstructed 2.705 floor surface; truss panel count follows the cross members drawn on the plan. Plan reconstruction extruded the bridge's edge lines into a full-height wall loop (Level 2 wall 57); the viewer hides walls lying entirely inside hide_walls_within and shows the truss rails instead. Exports keep the original wall.",
+      "edges": [
+        [[189.2, 58.5], [197.8, 126.1]],
+        [[194.8, 58.2], [203.5, 125.8]]
+      ],
+      "rail_height": 3.6,
+      "panels": 18,
+      "hide_walls_within": [[186.85, 55.8], [196.54, 55.8], [205.78, 128.6], [196.09, 128.6]]
+    }
+  ]
+}
