@@ -255,9 +255,11 @@ export class BuildingView {
         const resolution = 100, canvas = document.createElement('canvas'); canvas.width = canvas.height = resolution;
         const ctx = canvas.getContext('2d'), image = ctx.createImageData(resolution, resolution);
         const [x0, y0, x1, y1] = floor.config.fit;
+        // Resolve each point's displayed signal once, not once per pixel.
+        const bssid = this.options.bssid, resolved = supported.map(p => ({ floor: p.floor, x: p.x, y: p.y, aps: [{ bssid, rssi: signalAt(p, bssid) }] }));
         for (let row = 0; row < resolution; row++) for (let col = 0; col < resolution; col++) {
           const p = toFrame(floor.config, x0 + (x1 - x0) * (col + 0.5) / resolution, y0 + (y1 - y0) * (row + 0.5) / resolution);
-          const value = interpolate(local, id, p.x, p.y, this.options.bssid);
+          const value = interpolate(resolved, id, p.x, p.y, bssid);
           if (value == null) continue;
           const color = signalColor(value), offset = (row * resolution + col) * 4;
           image.data.set([...color, 220], offset);

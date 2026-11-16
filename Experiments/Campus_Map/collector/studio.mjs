@@ -1,6 +1,7 @@
 import { BuildingView } from './model-view.mjs';
 import { parseCSV, importSurvey, surveyPoints, estimatePosition, demoSurvey, demoScan, toFrame, fromFrame } from './signal-model.mjs';
 import { roomAt, validateArchitecture } from './architecture.mjs';
+import { createSimulation, simulateSurvey } from './ap-simulation.mjs';
 import { exportArchitectureOBJ } from './architecture-geometry.mjs';
 import { exportArchitectureIFC } from './architecture-ifc.mjs';
 import { elevationInfo, verticalSummary } from './vertical-model.mjs';
@@ -9,6 +10,7 @@ const $ = id => document.getElementById(id);
 const api = window.BevoTag, S = api.S;
 let view, buildingId, points = [], importedRows = [], imported = [], estimate = null, estimating = false;
 let modelMessage = '', demo = [], importInfo = '', currentView = '3d', importing = false;
+let simulation = null, simSamples = null;
 let architecture = null, modelFloor = null, selectedRoom = null, loadGeneration = 0;
 
 // Side panel tabs. The chosen tab is a per-viewer convenience, so storage may fail.
@@ -134,7 +136,7 @@ async function loadArchitecture(building) {
     const data = validateArchitecture(await response.json(), building);
     if (generation !== loadGeneration) return;
     architecture = data;
-    demo = demoSurvey(building, architecture);
+    demo = demoSurvey(building, architecture); simulation = null; simSamples = null;
     const loading = view?.setBuilding(building, S.floor, architecture);
     options(); refreshArchitecture(); refreshData();
     await loading;
@@ -171,18 +173,33 @@ function controls() {
   const busy = S.collecting || S.locating || estimating || importing;
   for (const id of ['btnDemo', 'surveySource', 'btnImport', 'btnClearImport', 'btnEstimateJson']) $(id).disabled = busy;
   $('btnEstimate').disabled = busy || points.length < 3;
-  $('btnEstimate').textContent = estimating ? 'Matching fingerprints…' : $('surveySource').value === 'demo' ? 'Estimate demo signal' : 'Scan & estimate position';
+  const source = $('surveySource').value;
+  $('btnEstimate').textContent = estimating ? 'Matching fingerprints…' : source === 'demo' ? 'Estimate demo signal' : source === 'sim' ? 'Estimate simulated signal' : 'Scan & estimate position';
   $('btnFocusRoom').disabled = !selectedRoom || !view;
   $('btnRoomPoint').disabled = busy || !selectedRoom;
   $('roomActions').hidden = !selectedRoom;
   refreshCollect();
 }
 
+// Built on demand: one assumed AP per modeled space until real AP positions are supplied.
+function simulatedSamples(building) {
+  if (!architecture) return [];
+  simulation ??= createSimulation(building, architecture);
+  simSamples ??= simulateSurvey(building, architecture, simulation);
+  return simSamples;
+}
+
+function simulationNote() {
+  if (!simulation) return 'Room and wall model still loading.';
+  const o = simulation.options;
+  return `Assumed AP at the center of each of ${simulation.aps.length} modeled spaces. Log-distance path loss (${o.p1m} dBm at 1 m) − ${o.wallLoss} dB per wall − ${o.floorLoss} dB per floor; uncalibrated.`;
+}
+
 function refreshData(reset = true) {
   const building = S.buildings[S.building];
   if (!building || !S.floor) return;
-  const synthetic = $('surveySource').value === 'demo';
-  const samples = synthetic ? demo : [...imported, ...S.samples.filter(s => !s.simulated)];
+  const source = $('surveySource').value, synthetic = source !== 'survey';
+  const samples = source === 'demo' ? demo : source === 'sim' ? simulatedSamples(building) : [...imported, ...S.samples.filter(s => !s.simulated)];
   points = surveyPoints(samples, building);
   const aps = new Map();
   for (const p of points) for (const ap of p.aps) aps.set(ap.bssid, ap.ssid);
@@ -192,8 +209,8 @@ function refreshData(reset = true) {
   if (chosen === '*' || aps.has(chosen)) $('signalSelect').value = chosen;
   const floorCount = new Set(points.map(p => p.floor)).size;
   $('surveySummary').textContent = `${points.length} points · ${floorCount} floors · ${aps.size} BSSIDs in ${building.id}. ` +
-    (synthetic ? 'Synthetic example; never added to survey logs.' : importInfo || 'Live hardware scans and imported survey logs.');
-  $('dataBadge').textContent = synthetic ? 'DEMO · SYNTHETIC' : points.length ? `${points.length} SURVEY POINTS` : 'NO SURVEY DATA';
+    (source === 'sim' ? simulationNote() : synthetic ? 'Synthetic example; never added to survey logs.' : importInfo || 'Live hardware scans and imported survey logs.');
+  $('dataBadge').textContent = source === 'sim' ? 'SIMULATION · AP PER ROOM' : synthetic ? 'DEMO · SYNTHETIC' : points.length ? `${points.length} SURVEY POINTS` : 'NO SURVEY DATA';
   $('dataBadge').classList.toggle('demo', synthetic);
   view?.setOptions({ bssid: $('signalSelect').value }); view?.setData(points);
   if (reset) clearEstimate(points.length >= 3 ? 'Ready to match a new scan. The query is kept out of the survey dataset.' : 'Collect or import at least 3 survey points to begin.');
@@ -268,7 +285,7 @@ async function runEstimate(pasted = false) {
   if (estimating || S.collecting || S.locating) return;
   estimating = true; controls();
   try {
-    const synthetic = $('surveySource').value === 'demo';
+    const mode = $('surveySource').value, synthetic = mode !== 'survey';
     let scan, source;
     if (pasted) {
       scan = JSON.parse($('queryScan').value);
@@ -279,8 +296,9 @@ async function runEstimate(pasted = false) {
       const [x0, y0, x1, y1] = floor.fit;
       const room = modelFloor?.rooms[Math.floor(modelFloor.rooms.length / 2)];
       const pixel = S.point || (room && fromFrame(floor, ...room.center)) || { x: x0 + (x1 - x0) * 0.47, y: y0 + (y1 - y0) * 0.51 };
-      const p = toFrame(floor, pixel.x, pixel.y); scan = demoScan(building, S.floor, p.x, p.y);
-      source = 'Synthetic demo query';
+      const p = toFrame(floor, pixel.x, pixel.y);
+      scan = mode === 'sim' ? simulation.scan(S.floor, p.x, p.y) : demoScan(building, S.floor, p.x, p.y);
+      source = mode === 'sim' ? 'Simulated query (AP per room)' : 'Synthetic demo query';
     } else {
       if (S.mode === 'sim' || S.device?.chip === 'SIMULATOR') throw new Error('Simulator scans are excluded from real surveys. Choose the demo source to try estimation.');
       scan = await api.probe(); source = 'New device scan';
