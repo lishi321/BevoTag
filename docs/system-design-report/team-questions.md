@@ -1,8 +1,18 @@
 # System Design Report: Questions for the Team
 
-The System Design Report is due **Fri Dec 4, 5:00 pm**. Please answer these questions on Discord by
-**Sun Nov 22**, and quote the question number in your reply (for example, "Q3: ..."). "Don't know"
-is a fine answer.
+The System Design Report is due **Fri Dec 4, 5:00 pm**. Please answer by **Sun Nov 22**.
+"Don't know" is a fine answer.
+
+**How to answer:** pull `main`, write your answers under each question in **your own file**, then
+commit and push. Each person edits only their own file, so there are no merge conflicts.
+
+| Member | Answer file | Individual risk reduction demo |
+|---|---|---|
+| Ethan Chua | [answers/ethan-chua.md](answers/ethan-chua.md) | Firmware that locates a router by logging the strongest signal strength |
+| Abhirit Das | [answers/abhirit-das.md](answers/abhirit-das.md) | List of WAPs in EER and ECJ |
+| Esteban Martinez | [answers/esteban-martinez.md](answers/esteban-martinez.md) | Display software for parsing data collections |
+| Li Shi | [answers/li-shi.md](answers/li-shi.md) | Web app 3D model and signal map |
+| Andrew Yin | [answers/andrew-yin.md](answers/andrew-yin.md) | Preliminary list of WAP locations |
 
 ## Risk reduction (Section 3.2, the most heavily weighted part)
 
@@ -10,7 +20,7 @@ is a fine answer.
    **median position error**? Where are the raw capture files?
 2. Antenna test: what was the RSSI change across directions for the **PCB antenna** vs. the
    **omnidirectional antenna**? Is the test done, or still planned?
-3. For **your own** individual demo, give:
+3. For **your own** individual demo (see the table above), give:
    - what you built
    - how you tested it
    - the result or numbers

@@ -9,6 +9,8 @@
 | Path | What it is |
 |---|---|
 | `main.tex` | LaTeX skeleton with every required heading and a `TODO` in each section. Build it with `pdflatex main.tex`, run twice. |
+| `team-questions.md` | The 15 questions for the team, plus each member's answer file and risk reduction demo |
+| `answers/` | One file per member (`ethan-chua.md`, `abhirit-das.md`, `esteban-martinez.md`, `li-shi.md`, `andrew-yin.md`). Each person edits only their own file. |
 | `figures/` | Block diagram, test plots, Gantt export, and other figures |
 | `resources/` | Assignment description, rubric, ECE Style Guide, and memo template |
 
