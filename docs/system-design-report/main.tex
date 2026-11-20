@@ -1,0 +1,246 @@
+% BevoTag System Design Report, memo-style report with decimal section numbers.
+% Formatting follows resources/ECE Style Guide.pdf and resources/Template for Memo Style Reports.doc;
+% content follows resources/System Design Report description.pdf and rubric (paths relative to this file).
+% Preamble matches docs/prior-art/main.tex except for the decimal heading numbers this assignment requires.
+% Build: pdflatex main.tex (twice).
+\documentclass[12pt,letterpaper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{newtxtext,newtxmath}              % 12-pt Times
+\usepackage[margin=1in]{geometry}             % 1-in margins on all sides
+\usepackage{setspace}
+\setstretch{1.43}                             % Word "1.5 lines" for 12-pt Times (20.7-pt baselines)
+\usepackage[document]{ragged2e}               % do not justify the right margin
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{array,tabularx,booktabs}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{flafter}                          % a table never appears before the text that cites it
+\usepackage{placeins}
+\usepackage{etoolbox}
+\usepackage[nobottomtitles*]{titlesec}        % never leave a heading on the last line of a page
+\usepackage{varioref}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\renewcommand{\UrlFont}{\normalfont}
+\def\UrlBreaks{\do\/\do\-\do\_\do\=\do\?}  % no break after "." (avoids "doi: 10." line ends)
+
+% Block paragraphs: no indentation, one empty line between paragraphs.
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{\baselineskip}
+\renewcommand{\bottomtitlespace}{0.05\textheight}
+
+% Ragged-right text without hyphenated line breaks.
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+
+% Headings (Style Guide 2.3) with the decimal numbering this assignment requires:
+%   1st level: "1.0 INTRODUCTION" ALL CAPS, bold   2nd level: "3.1 Design Concept" bold
+%   3rd level: "3.1.1 Tag Hardware" bold italic. References and appendixes use starred (unnumbered) forms.
+\setcounter{secnumdepth}{3}
+\renewcommand{\thesection}{\arabic{section}.0}
+\renewcommand{\thesubsection}{\arabic{section}.\arabic{subsection}}
+\renewcommand{\thesubsubsection}{\thesubsection.\arabic{subsubsection}}
+\titleformat{\section}{\normalfont\bfseries}{\thesection}{0.5em}{\MakeUppercase}
+\titleformat{\subsection}{\normalfont\bfseries}{\thesubsection}{0.5em}{}
+\titleformat{\subsubsection}{\normalfont\bfseries\itshape}{\thesubsubsection}{0.5em}{}
+\titlespacing*{\section}{0pt}{0pt}{-\parskip}
+\titlespacing*{\subsection}{0pt}{0pt}{-\parskip}
+\titlespacing*{\subsubsection}{0pt}{0pt}{-\parskip}
+
+
+% Captions (Style Guide 2.4): bold, centered, "Table 1." above tables, "Figure 1." below figures.
+\captionsetup{font={normalsize,bf},labelfont=bf,labelsep=period,justification=centering,singlelinecheck=false}
+\captionsetup[table]{position=above,skip=6pt}
+\captionsetup[figure]{position=below,skip=6pt}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.9}
+\setcounter{topnumber}{3}
+\setcounter{totalnumber}{4}
+% One empty line between a graphic and the text around it.
+\setlength{\textfloatsep}{\baselineskip}
+\setlength{\floatsep}{\baselineskip}
+\setlength{\intextsep}{\baselineskip}
+\makeatletter
+\g@addto@macro\float@endH{\vskip-\parskip\vskip\z@}
+\makeatother
+\setlength{\emergencystretch}{3em}
+% No single line of a paragraph stranded at the top or bottom of a page.
+\widowpenalty=10000
+\clubpenalty=10000
+
+% Indented lists that continue the preceding paragraph (Style Guide 2.5).
+\setlist[itemize]{leftmargin=0.5in,topsep=0pt,itemsep=0pt,parsep=0pt}
+\setlist[enumerate]{leftmargin=0.5in,topsep=0pt,itemsep=0pt,parsep=0pt}
+
+% Single-spaced 12-pt tables.
+\newcolumntype{L}[1]{>{\RaggedRight\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+\newenvironment{spectable}{\setstretch{1.0}\renewcommand{\arraystretch}{1.1}}{}
+
+% Page numbers centered at the bottom, on every page but the first.
+\pagestyle{plain}
+
+\pretocmd{\section}{\FloatBarrier}{}{}
+% Pointer to a graphic that does not share its first reference's page (Style Guide 2.4).
+\vrefwarning
+\renewcommand{\reftextcurrent}{}
+\renewcommand{\reftextafter}{on the next page}
+\renewcommand{\reftextfaceafter}{on the next page}
+\begin{document}
+\thispagestyle{empty}
+
+%----------------------------------------------------------------------------------------------------
+% MEMO HEADING (Style Guide 2.2): must match the template exactly. DATE is the due date.
+%----------------------------------------------------------------------------------------------------
+\begingroup
+\setstretch{1.0}
+\newcommand{\fieldgap}{\\[6.2pt]}
+\noindent\begin{tabular}{@{}p{1.1in}@{}p{\dimexpr\linewidth-1.1in\relax}@{}}
+\textbf{DATE:} & December 4, 2026 \fieldgap
+\textbf{TO:} & Dr.\ Haris Vikalo \\ & Mugdha Jadhao \fieldgap
+\textbf{FROM:} & Ethan Chua \\ & Esteban Martinez \\ & Li Shi \\ & Andrew Yin \\ & Abhirit Das \fieldgap
+\textbf{SUBJECT:} & System Design Report for BevoTag: TODO subtitle \\
+\end{tabular}
+\endgroup
+
+%----------------------------------------------------------------------------------------------------
+\section{Introduction}\label{sec:intro}
+%----------------------------------------------------------------------------------------------------
+% Purpose -> context (Problem Statement, Prior Art Report, Design Review) -> summary of contents.
+% An engineer new to BevoTag should grasp the problem, the design approach, and the 464 plan from
+% this section alone. No design details here (TA complaint on the Project Definition).
+TODO.
+
+%----------------------------------------------------------------------------------------------------
+\section{Design Project Background}\label{sec:background}
+%----------------------------------------------------------------------------------------------------
+% Summary of the Problem Statement, updated; fix every TA comment on reused text.
+% Must cover: the design problem, specifications (for a technical reader), and deliverables.
+% Refer to Appendix A for standards.
+TODO overview paragraph.
+
+\subsection{Design Problem}
+TODO.
+
+\subsection{Specifications}
+TODO (table of measurable specs; reference Appendix~A).
+
+\subsection{Deliverables}
+TODO.
+
+%----------------------------------------------------------------------------------------------------
+\section{System Design}\label{sec:design}
+%----------------------------------------------------------------------------------------------------
+% Updated and expanded Design Review material. Needs an overview paragraph before 3.1.
+TODO overview paragraph.
+
+\subsection{Design Concept}\label{sec:concept}
+% Start with a system-level overview and the block diagram (Figure 1), explained in the text.
+% For EVERY subsystem: how it works, inputs/outputs to other blocks, why chosen
+% (alternatives rejected, test results, calculations/research, which spec it meets).
+% Include the user interface as a subsystem.
+TODO system overview and block diagram.
+
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=\linewidth]{figures/block-diagram.png}
+%   \caption{BevoTag System Block Diagram}
+%   \label{fig:block}
+% \end{figure}
+
+\subsubsection{Tag Hardware}
+TODO.
+
+\subsubsection{Tag Firmware}
+TODO.
+
+\subsubsection{Survey and Fingerprint Database}
+TODO.
+
+\subsubsection{Location Server and Sensor Fusion}
+TODO.
+
+\subsubsection{User Interface}
+TODO (2D/3D map application; meet the Problem Statement's UI requirements).
+
+\subsection{Risk Reduction}\label{sec:risk}
+% Comprehensive: methods, results, and analysis of every lab experiment this semester.
+% Source material: docs/risk-reduction-plan.md, docs/individual-risk-reduction-demos.md.
+TODO.
+
+\subsection{Test Plan}\label{sec:testplan}
+% Key test(s) per block of Figure 1, plus system-level test(s).
+% For each: procedure, data collected, success criterion (tie to the specs in 2.2).
+TODO.
+
+%----------------------------------------------------------------------------------------------------
+\section{Project Management}\label{sec:pm}
+%----------------------------------------------------------------------------------------------------
+% Overview paragraph required. Each subsection summarizes one appendix (B--E) and refers to it.
+TODO overview paragraph.
+
+\subsection{Project Activities}
+TODO (summarize the WBS in Appendix~B, organized around major tasks).
+
+\subsection{Task Assignments}
+TODO (summarize the LRC in Appendix~C; rationale: equitable load and qualifications).
+
+\subsection{Project Schedule}
+TODO (summarize the Gantt chart in Appendix~D chronologically, with milestone dates).
+
+\subsection{Project Budget}
+TODO (summarize the BOM in Appendix~E; material cost goals, organized to match the table).
+
+%----------------------------------------------------------------------------------------------------
+\section{Conclusion}\label{sec:conclusion}
+%----------------------------------------------------------------------------------------------------
+% For a manager who reads nothing else: purpose, main points, and a clear assessment of the
+% team's readiness for EE 464 and its prospects for success. Keep it short.
+TODO.
+
+%----------------------------------------------------------------------------------------------------
+% REFERENCES (IEEE style, required)
+%----------------------------------------------------------------------------------------------------
+\clearpage
+\section*{REFERENCES}
+\begingroup
+\renewcommand{\section}[2]{}%   suppress thebibliography's own heading
+\begin{thebibliography}{10}
+\bibitem{todo}
+TODO: reuse entries from docs/prior-art/main.tex and docs/project-definition/main.tex.
+\end{thebibliography}
+\endgroup
+
+%----------------------------------------------------------------------------------------------------
+% APPENDIXES A--E (all required). Divider page with the title one-third down, content on the next
+% page; page numbers continue from the body (Style Guide 2.7).
+%----------------------------------------------------------------------------------------------------
+\newcommand{\appendixdivider}[1]{%
+  \clearpage\vspace*{0.20\textheight}\begin{center}\textbf{#1}\end{center}\clearpage}
+
+\appendixdivider{APPENDIX A -- RELEVANT STANDARDS}
+% Updated from the Project Definition's appendix; address every TA comment on it.
+TODO.
+
+\appendixdivider{APPENDIX B -- WORK BREAKDOWN STRUCTURE}
+% All activities and major tasks from submission of this report to the EE 464 prototype.
+TODO.
+
+\appendixdivider{APPENDIX C -- LINEAR RESPONSIBILITY CHART}
+% Responsibilities per team member for every WBS task.
+TODO.
+
+\appendixdivider{APPENDIX D -- GANTT CHART}
+% Every WBS activity and milestone, from right after submission to the end of EE 464.
+TODO.
+
+\appendixdivider{APPENDIX E -- BILL OF MATERIALS}
+% Major items only: description, quantity, performance criteria (part numbers if known).
+TODO.
+
+\end{document}
