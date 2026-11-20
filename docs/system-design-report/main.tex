@@ -91,6 +91,9 @@
 \renewcommand{\reftextcurrent}{}
 \renewcommand{\reftextafter}{on the next page}
 \renewcommand{\reftextfaceafter}{on the next page}
+
+% Draft placeholders: every missing fact shows in red in the PDF. Remove before submission.
+\newcommand{\TODO}[1]{\textcolor{red}{[TODO: #1]}}
 \begin{document}
 \thispagestyle{empty}
 
@@ -104,131 +107,830 @@
 \textbf{DATE:} & December 4, 2026 \fieldgap
 \textbf{TO:} & Dr.\ Haris Vikalo \\ & Mugdha Jadhao \fieldgap
 \textbf{FROM:} & Ethan Chua \\ & Esteban Martinez \\ & Li Shi \\ & Andrew Yin \\ & Abhirit Das \fieldgap
-\textbf{SUBJECT:} & System Design Report for BevoTag: TODO subtitle \\
+\textbf{SUBJECT:} & System Design Report for BevoTag: \TODO{subtitle (Q15); for example, ``A Campus Item
+Tag That Combines Wi-Fi Fingerprinting and Motion Sensing''} \\
 \end{tabular}
 \endgroup
 
 %----------------------------------------------------------------------------------------------------
 \section{Introduction}\label{sec:intro}
 %----------------------------------------------------------------------------------------------------
-% Purpose -> context (Problem Statement, Prior Art Report, Design Review) -> summary of contents.
-% An engineer new to BevoTag should grasp the problem, the design approach, and the 464 plan from
-% this section alone. No design details here (TA complaint on the Project Definition).
-TODO.
+% Two paragraphs (writing guide): purpose and context, then a summary of the document.
+% No numbers, acronyms, or citations here.
+This System Design Report presents the design that the BevoTag team will build in the second
+semester of Senior Design and the plan for building it. BevoTag is a small, battery-powered tag that
+helps students, faculty, and staff find a misplaced laptop, bag, or piece of shared equipment on the
+University of Texas at Austin campus, including inside buildings, where satellite positioning fails
+and consumer tags depend on passing phones. Earlier this semester, the team defined the problem and
+its success criteria, reviewed published research and patents, and presented a preliminary design
+and laboratory results at an oral design review. This report combines that work into one design
+that the team is ready to implement.
+
+The report first restates the design problem, the measurable specifications that a successful
+design will meet, and the items that the team will deliver. It then describes the system as a chain
+of subsystems, from the tag's hardware and firmware through a building survey and a location server
+to the user's map, and explains how each subsystem works and why the team chose it. Next, it reports
+the laboratory experiments that reduced the project's largest risks and describes the tests that
+will verify each subsystem and the complete system. The report closes with the team's planned
+activities, task assignments, schedule, and budget for the coming semester, which the appendixes
+detail, and with an assessment of the team's readiness to build the prototype.
 
 %----------------------------------------------------------------------------------------------------
 \section{Design Project Background}\label{sec:background}
 %----------------------------------------------------------------------------------------------------
-% Summary of the Problem Statement, updated; fix every TA comment on reused text.
-% Must cover: the design problem, specifications (for a technical reader), and deliverables.
-% Refer to Appendix A for standards.
-TODO overview paragraph.
+BevoTag is a low-cost tag that locates misplaced items on the University of Texas at Austin (UT)
+campus. Its purpose is to find items where existing trackers fail: inside buildings, on any floor,
+and in empty rooms where no passing phone can report them. The team surveys campus buildings by
+recording Wi-Fi signals at known points, and the system combines the tag's Wi-Fi measurements with
+data from its own motion sensor to estimate its position. This section summarizes the design problem,
+the specifications that define a successful design, and the deliverables that the team will hand over
+at the end of the project. Appendix~A lists the standards that constrain the design.
 
 \subsection{Design Problem}
-TODO.
+Students, faculty, and staff need a way to find misplaced items anywhere on the main campus. Laptops,
+bags, and shared university equipment move between classrooms, laboratories, libraries, and outdoor
+plazas many times a day, so an item left behind can be anywhere among dozens of multistory buildings.
+A useful tracker therefore needs to work indoors, on any floor, and in the narrow outdoor spaces
+between tall buildings, without new infrastructure such as Bluetooth beacons installed in every room.
+
+Existing tracking methods fall short of this need in three ways:
+\begin{enumerate}
+  \item \textbf{Satellite positioning fails indoors.} Global Navigation Satellite Systems (GNSS),
+    including the Global Positioning System (GPS), compute position from faint signals broadcast by
+    satellites about 20,200~km above the Earth \cite{gps}. These signals do not penetrate buildings
+    well \cite{hechan}, and between tall buildings, one experiment with a precise receiver lacking
+    inertial aiding measured root-mean-square errors greater than 9~m \cite{yoder}.
+  \item \textbf{Consumer tags depend on other people's phones.} The Apple AirTag and the Samsung
+    Galaxy SmartTag2 broadcast a short-range Bluetooth signal that only nearby phones from the same
+    manufacturer detect and report \cite{airtag}, \cite{smarttag}. For example, the location of a bag
+    left in an empty laboratory at night stops updating until such a phone passes by.
+  \item \textbf{Wi-Fi signal strength alone is too coarse to identify a room.} Positioning from the
+    received signal strength indicator (RSSI), a measure of how strong each nearby Wi-Fi signal is,
+    typically errs by 1 to 5~m \cite{rssi}, enough to report the wrong room.
+\end{enumerate}
+
+BevoTag answers these three limitations in the same order. First, it uses the campus Wi-Fi network,
+whose access points (APs) already cover the inside of every building. Second, the tag measures and
+reports its own signals over that network, so no passing phone is needed. Third, it improves on
+signal strength alone by fusing Wi-Fi position fixes with a motion sensor and with the building's
+floor plans. An inertial measurement unit (IMU) measures acceleration and rotation, and adding up
+these measurements, a technique called dead reckoning, tracks the tag smoothly between Wi-Fi fixes.
+Used alone, a low-cost IMU drifts by more than 150~m within 60~s \cite{imu}, so each Wi-Fi fix
+corrects the accumulated drift. Some Wi-Fi chips also report channel state information (CSI), the
+response of each of dozens of narrow frequency subcarriers \cite{espcsi}, which forms a more detailed
+fingerprint of a location than RSSI \cite{yangcsi}. In one comparison in the same rooms, CSI
+fingerprints had 30 to 39\% lower mean error than RSSI fingerprints \cite{deepfi}. The team treats RSSI fingerprinting as the
+baseline and evaluates CSI as an addition.
+
+The project covers a working prototype tested in surveyed areas, starting with the Engineering
+Education and Research Center (EER). It excludes cellular connectivity, a campus-wide survey,
+mass-production tooling, and the tracking of people. The main challenges are deciding whether the
+tag or a server computes the position, capturing reliable CSI from signals that vary from moment to
+moment, and correcting IMU drift quickly enough to meet the accuracy targets.
 
 \subsection{Specifications}
-TODO (table of measurable specs; reference Appendix~A).
+A successful BevoTag implementation will identify the room that contains a tagged item in more than
+90\% of trials, keep its median position error under 5~m, update the item's location at least every
+10~s while the item moves, and run at least 24~hours on one battery charge. The team set these
+targets from published Wi-Fi positioning results \cite{rssi} and its judgment of what makes a tracker
+useful. Room identification is the governing target: RSSI fingerprinting already reaches 1 to 5~m
+under favorable conditions \cite{rssi}, so the 5~m median error is only a ceiling.
+Table~\ref{tab:perf} lists these and the other performance targets. \TODO{Confirm whether the team
+keeps every Project Definition target or changes any of them, for example the room-identification
+target, after the simulated results in Section~3.2.6 (Q8)}
+
+\begin{table}[!htb]
+\caption{Performance Specifications}
+\label{tab:perf}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.55in} Y L{0.95in} L{0.5in}@{}}
+\toprule
+\textbf{Parameter} & \textbf{Description} & \textbf{Value or Range} & \textbf{Units} \\
+\midrule
+Room identification & Share of trials in the correct room or outdoor region & $>90$ & \% \\
+Floor identification & Share of indoor trials on the correct floor & $>95$ & \% \\
+Median position error & Median horizontal error from the true position & $<5$ & m \\
+Update interval & Longest time between estimates while moving & $\leq 10$ & s \\
+End-to-end latency & From tag measurement to position on display & $<5$ & s \\
+Time to first fix & From startup to first usable estimate & $<30$ & s \\
+IMU sampling rate & Accelerometer and gyroscope sampling rate & $\geq 100$ & Hz \\
+Battery life & One charge; moving 10\% of the time with 10-s reports, otherwise one report per minute & $\geq 24$ & h \\
+Tag size & Largest dimensions in the enclosure & $\leq 80 \times 50 \times 25$ & mm \\
+Tag mass & Mass with battery and enclosure & $\leq 100$ & g \\
+Parts cost & Component cost for one prototype tag & $\leq 50$ & US\$ \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+The system's inputs are Wi-Fi signals, the tag's motion, and, optionally, GNSS signals outdoors; its
+outputs are the tag's estimated position, the time of that estimate, and the tag's status. The tag
+will measure signals as weak as $-100$~dBm, sample acceleration up to $\pm 8$~g and rotation up to
+$\pm 1000$~degrees/s, and report at least every 10~s while it moves. Its battery charges at 5~V
+through a Universal Serial Bus Type-C (USB-C) port. Table~\ref{tab:io} gives these values, with
+inputs first and outputs second.
+
+\begin{table}[!htb]
+\caption{Input and Output Specifications}
+\label{tab:io}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.75in} Y L{2.0in}@{}}
+\toprule
+\textbf{Input/Output} & \textbf{Description} & \textbf{Value or Range} \\
+\midrule
+Wi-Fi RSSI input & Strength of each Wi-Fi signal & $-100$ to $-30$~dBm \\
+Wi-Fi CSI input & Response per subcarrier \cite{espcsi} & 64 per 20~MHz (52 to 56 active) \\
+Acceleration input & Linear acceleration from IMU & $\pm 8$~g \\
+Angular rate input & Rotation rate from IMU & $\pm 1000$ degrees/s \\
+GNSS input (optional) & Outdoor satellite position & Latitude and longitude \\
+Charging input & Power that charges the battery & 5~V through USB-C \\
+Survey input & Measurements at known points & One or more per room \\
+User input & Tag selection, map controls & Up to five tags per user \\
+\midrule
+Telemetry output & Data sent from tag to server & At most 10~s apart if moving \\
+Location output & Estimated position of the tag & Latitude, longitude, floor \\
+Timestamp output & Time of the latest estimate & Resolution of 1~s \\
+Status output & Battery level, connectivity & Charge; online or offline \\
+Display output & Estimate arrival to display & At most 1~s \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+The user application will let a user select a tag, see its estimated location and the time of that
+estimate on a three-dimensional (3D) campus map, and check its status. It will also accept a direct
+USB-C connection to a tag for configuration and debugging.
+Table~\ref{tab:ui} sets a value for each requirement; the most important is that each new estimate
+appears within 1~s of its arrival in the application. In the team risk reduction plan, the team chose
+a web application rather than a mobile application, so the application platform below lists current
+browsers. \TODO{Confirm that the web-only platform replaces the Project Definition's ``iOS~17 or
+Android~13'' criterion (Q8)}
+
+\begin{table}[!htb]
+\caption{User Interface Specifications}
+\label{tab:ui}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.4in} Y L{2.4in}@{}}
+\toprule
+\textbf{Interface} & \textbf{Requirement} & \textbf{Value or Criterion} \\
+\midrule
+Device location & Show the tag on a 3D campus map & Floor and position within 1~s \\
+Device selection & Select the tag to monitor & Up to five tags per user \\
+Last update time & Show the time of the estimate & Date and time to 1~s \\
+Device status & Show battery level and connectivity & Charge level; online or offline \\
+Map interaction & Pan, zoom, and change floors & Response within 1~s \\
+USB-C connection & Configure and debug a tag & Tag recognized within 5~s \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+BevoTag will operate in the physical conditions of the surveyed campus zones and within the computing
+and network environment that the university and the team provide. Table~\ref{tab:env} sets both.
+Physically, the tag will work at every survey point that receives signals from at least three APs,
+from 0 to 40~\textdegree C, while a person carries it at up to 5~m/s. The tag will join utexas-iot,
+the network that the university provides for Internet of Things devices \cite{utiot}, because the
+main utexas network offers no 2.4~GHz service \cite{utwifi}. The location server will run on a cloud
+Linux virtual machine (VM), for the reasons given in Section~3.1.4.
+
+\begin{table}[!htb]
+\caption{Operating Environment Specifications}
+\label{tab:env}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.55in} Y L{2.55in}@{}}
+\toprule
+\textbf{Condition} & \textbf{Description} & \textbf{Value or Criterion} \\
+\midrule
+Deployment area & Surveyed floors and plazas & Every survey point, starting with EER \\
+Wi-Fi coverage & APs heard per point & At least three above $-80$~dBm \\
+Temperature & Ambient operating temperature & 0 to 40~\textdegree C \\
+Moisture & Water exposure & Dry use only; no rain or immersion \\
+User motion & Speed of the person carrying the tag & 0 to 5~m/s \\
+\midrule
+Tag processor & Microcontroller with Wi-Fi & Firmware uses at most 512~KB of random-access memory (RAM) \\
+Tag network & Network that carries telemetry & utexas-iot at 2.4~GHz with Wi-Fi Protected Access 2 (WPA2) \cite{utiot} \\
+Data transport & Protection of telemetry & Transport Layer Security (TLS) 1.2 or later \\
+Location server host & Machine that runs the server & Cloud Linux VM; two cores, 4~GB memory \\
+Application platform & Devices that run the application & Current desktop and mobile browsers \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
 
 \subsection{Deliverables}
-TODO.
+At the end of EE~464, the team will deliver to Dr.\ Vikalo an integrated prototype that estimates
+and displays the location of a tagged item within the surveyed campus areas, together with the data
+and documentation needed to extend it. The delivery will consist of six items:
+\begin{enumerate}
+  \item \textbf{BevoTag hardware device:} a compact, battery-powered tag in an enclosure that
+    collects Wi-Fi and motion measurements and sends them to the location server.
+  \item \textbf{Embedded firmware:} software on the tag that reads the sensors, timestamps each
+    measurement, monitors device status, and communicates over Wi-Fi.
+  \item \textbf{Campus survey and map:} Wi-Fi survey data and a digital 3D map of the designated
+    test areas that together let the system estimate, display, and evaluate the tag's location.
+  \item \textbf{Location server software:} cloud-hosted software that receives data from each tag,
+    produces or stores its position estimate, and provides the result to the user application.
+  \item \textbf{User application:} a web application in which a user can view a tag's estimated
+    location and status on the 3D campus map.
+  \item \textbf{Documentation:} the source code, the survey procedure, and test results measured
+    against the specifications in this report.
+\end{enumerate}
 
 %----------------------------------------------------------------------------------------------------
 \section{System Design}\label{sec:design}
 %----------------------------------------------------------------------------------------------------
-% Updated and expanded Design Review material. Needs an overview paragraph before 3.1.
-TODO overview paragraph.
+Since the Project Definition, the team has adopted RSSI fingerprinting as the baseline and CSI as an
+addition, revised the survey protocol after the prior-art search, and chosen a web application and a
+cloud-hosted location server. This section first describes
+the design concept and each subsystem, then reports the risk reduction experiments completed this
+semester, and finally presents the test plan for EE~464. \TODO{Summarize what Dr.\ Vikalo and
+Mugdha Jadhao said at the November 10 oral design review and any design change the team agreed to
+(Q5)}
 
 \subsection{Design Concept}\label{sec:concept}
-% Start with a system-level overview and the block diagram (Figure 1), explained in the text.
-% For EVERY subsystem: how it works, inputs/outputs to other blocks, why chosen
-% (alternatives rejected, test results, calculations/research, which spec it meets).
-% Include the user interface as a subsystem.
-TODO system overview and block diagram.
+BevoTag locates an item in two phases, as published Wi-Fi fingerprinting systems do \cite{radar}. In
+an offline survey phase, the team records Wi-Fi measurements at points whose positions are known and
+stores them as fingerprints. In an online tracking phase, the tag measures the same signals and its
+own motion, and the location server matches those measurements against the fingerprints and fuses the
+result with the motion data. Figure~\ref{fig:block} shows the five subsystems that carry out these
+phases and the order in which data pass between them.
 
-% \begin{figure}[htbp]
-%   \centering
-%   \includegraphics[width=\linewidth]{figures/block-diagram.png}
-%   \caption{BevoTag System Block Diagram}
-%   \label{fig:block}
-% \end{figure}
+\begin{figure}[!htb]\setstretch{1.0}
+\centering
+\newcommand{\blk}[1]{\fbox{\parbox[c][0.75in][c]{0.93in}{\centering #1}}}
+\blk{\textbf{Tag\\hardware}\\Wi-Fi radio, IMU, battery}$\rightarrow$%
+\blk{\textbf{Tag\\firmware}\\scan, sample, report}$\rightarrow$%
+\blk{\textbf{Survey and fingerprint database}}$\rightarrow$%
+\blk{\textbf{Location server and fusion}}$\rightarrow$%
+\blk{\textbf{User\\application}\\3D map}\\[4pt]
+\TODO{Replace this placeholder with the final block diagram (Q9). Show the survey collector feeding
+the database, telemetry over utexas-iot and HTTPS, and the location and status links to the
+application.}
+\caption{BevoTag System Block Diagram: Measurements Flow from the Tag Through the Survey Database and
+Location Server to the User Application}
+\label{fig:block}
+\end{figure}
+
+Figure~\ref{fig:block} reads from left to right. The tag hardware senses campus Wi-Fi signals and
+the tag's motion, and the tag firmware turns those signals into timestamped measurements: RSSI, CSI,
+and IMU samples. The firmware sends the measurements over utexas-iot to the location server. The
+survey and fingerprint database, built during the survey phase with the same tag hardware and a
+survey collector application, supplies the reference fingerprints and floor plans that the server
+compares against. The location server matches each Wi-Fi scan to the fingerprints, fuses the result
+with the IMU data, and stores the estimate with the tag's status. The user application then requests
+that estimate and draws it on a 3D model of the building. The following subsections describe each
+block, its inputs and outputs, and the reasons for its design. \TODO{Confirm the five subsystems and
+whether anything is missing from the chain, for example a separate survey collector block (Q9)}
 
 \subsubsection{Tag Hardware}
-TODO.
+The tag hardware senses Wi-Fi signals and motion and powers itself for at least a day. It combines a
+Wi-Fi microcontroller from the ESP32 family, an external 2.4~GHz omnidirectional antenna, an IMU, a
+rechargeable lithium battery with a protection circuit, and a USB-C port for charging and
+configuration. Its inputs are campus Wi-Fi signals, motion, and 5~V charging power; its outputs are
+raw radio and sensor data to the firmware running on the same microcontroller.
+
+The team chose the ESP32 family because it exposes CSI to user firmware \cite{espcsi} at low cost:
+Hernandez and Bulut captured 64-subcarrier CSI on an ESP32 module that costs less than \$10 and
+weighs less than 10~g \cite{esp32tool}. The team's data logger uses an ESP32 development board, and
+every capture reported in Section~3.2 came from it. The ESP32's radio operates only at 2.4~GHz, which
+the utexas-iot network serves \cite{utiot}. \TODO{Final ESP32 variant for the tag, for example the
+ESP32-S3 named in the Project Definition or the board used by the data logger (Q7)}
+
+The team rejected the other positioning signals that it considered. GNSS fails indoors \cite{hechan}, crowdsourced
+Bluetooth tags depend on passing phones \cite{airtag}, \cite{smarttag}, and Bluetooth beacons and
+ultra-wideband anchors would require installing new hardware in every room, which the team cannot do
+on campus. Cellular connections were excluded because they require a paid data plan and a second
+radio that would raise cost and power consumption. A GNSS receiver remains an optional third input
+for open outdoor areas; the team bought a GNSS module for the data logger. \TODO{Decide whether the
+final tag includes the GNSS module (Q7)}
+
+The tag uses an external omnidirectional antenna, connected through a miniature coaxial (u.FL)
+connector, instead of the antenna printed on the ESP32 module. In the antenna experiment of
+Section~3.2.1, the external antenna halved the largest change in an AP's RSSI when the board turned
+from north to east, from 10~dB to 5~dB. A smaller dependence on heading keeps the tag's fingerprints
+closer to the survey's, whichever way a user carries the tag.
+
+The IMU will measure acceleration up to $\pm 8$~g and rotation up to $\pm 1000$~degrees/s at 100~Hz
+or faster (Table~\ref{tab:io}), enough to follow a walking person. The team bought an IMU module for
+the data logger but has not yet recorded IMU data. \TODO{IMU part number and whether it is final
+(Q7)}
+
+The battery sets the tag's size and mass budget. To meet the 24-hour target in Table~\ref{tab:perf},
+the battery's usable capacity $C$ needs to cover the tag's average current over a day. With the tag
+moving a fraction $f_m = 0.1$ of the time,
+\begin{equation}
+  I_{\mathrm{avg}} = f_m I_m + (1 - f_m) I_s
+  \label{eq:iavg}
+\end{equation}
+where $I_m$ is the average current while the tag moves and reports every 10~s, and $I_s$ is the
+average current while it is stationary and reports once a minute. The required capacity is then
+\begin{equation}
+  C \geq k \, (24~\mathrm{h}) \, I_{\mathrm{avg}}
+  \label{eq:cap}
+\end{equation}
+where $k > 1$ is a margin for battery aging and temperature. Equations~(\ref{eq:iavg}) and
+(\ref{eq:cap}) show that the stationary current dominates whenever the tag spends most of the day
+still, so the firmware's sleep behavior matters more than its peak current. \TODO{Measured $I_m$ and
+$I_s$ on the prototype, the chosen margin $k$, and the resulting capacity (not covered by Q1--Q15;
+add to Q7)} \TODO{Battery chemistry and capacity (Q7)} The cell will be certified to International
+Electrotechnical Commission (IEC) standard 62133-2 \cite{iec62133}, and the board will add charge, overcurrent, and short-circuit protection (Appendix~A).
+
+The first prototype may use development boards and modules, with a custom printed circuit board
+(PCB) later. The enclosure will be 3D-printed or purchased, within $80 \times 50 \times 25$~mm and
+100~g. \TODO{Whether the team will build a custom PCB, and the enclosure plan (Q12)}
 
 \subsubsection{Tag Firmware}
-TODO.
+The firmware turns the hardware's raw signals into timestamped measurements and sends them to the
+rest of the system. Its inputs are Wi-Fi frames, scan results, IMU samples, and battery readings; its
+outputs are telemetry reports to the location server and, over USB, survey records to the collector
+application.
+
+The data logger's firmware already performs the survey functions. A computer sends it commands as
+JavaScript Object Notation (JSON) text over a USB serial link at 115200~baud: one command identifies
+the firmware, a second returns one complete Wi-Fi scan with each AP's basic service set identifier
+(BSSID), RSSI, and network name, and a third returns only the strongest AP. Each command carries a
+request number, so the collector can discard late replies. For the survey captures in Section~3.2,
+the firmware ran a 3-minute RSSI phase of about 85 scans followed by a 5-minute CSI phase, writing
+one JSON line per scan or CSI frame.
+
+In EE~464, the firmware will add a tracking mode with five functions:
+\begin{enumerate}
+  \item Sample the IMU at 100~Hz or faster and timestamp every sample.
+  \item Scan Wi-Fi RSSI and, if CSI is kept, capture CSI only from frames that APs transmit.
+  \item Package the measurements, battery level, and connection state into a telemetry report.
+  \item Send each report to the location server over utexas-iot, encrypted with TLS, at least every
+    10~s while moving and once a minute while still.
+  \item Sleep between reports to meet the battery target.
+\end{enumerate}
+
+Several design choices follow from the standards and from the team's data. Following IEEE 1451.0
+\cite{std1451}, a hardware abstraction layer will separate the IMU and Wi-Fi drivers from the
+estimation code, so either sensor can change without rewriting the rest. The filter in function~2
+protects bystanders: in the team's captures, frames from phones and laptops with randomized
+addresses arrived at 2 to 7 frames per second, so the firmware will discard every frame whose
+transmitter is not an AP. Following Apple's lost-and-found patent, the firmware will batch
+measurements so that the processor stays asleep longer \cite{apple}. Telemetry will use the chip's
+hardware Advanced Encryption Standard (AES) accelerator, secure boot will accept only signed images,
+and a factory reset will erase stored credentials and history (Appendix~A).
+
+The largest open firmware question is where the position is computed. Sending raw measurements moves
+the computation to the server but keeps the radio on longer; computing on the tag strains its memory
+and battery. Because a floor-plan-aware particle filter is computationally expensive \cite{evennou},
+the team expects the server to compute the position and the tag to send measurements. The tag will
+keep CSI only if it improves room identification on held-out survey points by a margin comparable to
+the published comparison \cite{deepfi}; otherwise, the design will drop CSI to save processing and
+power. Intel's patent on CSI fingerprint matching has expired, so either outcome is free of patent
+risk \cite{intel}. \TODO{Final
+decision on where fusion runs, and whether the tag keeps CSI or uses RSSI only (Q7)}
 
 \subsubsection{Survey and Fingerprint Database}
-TODO.
+The survey and fingerprint database holds the reference measurements against which the server matches
+every tag scan. Its inputs are labeled survey scans and the campus floor plans; its outputs are a
+fingerprint table to the location server and building geometry to the user application.
+
+The team records the survey with a browser-based collector application, called Signal Studio, that
+the team wrote this semester. An operator connects the data logger to a laptop through the browser's
+serial interface, marks the survey point on the floor plan, and records labeled scans to a
+comma-separated values (CSV) log. The application imports these logs, discards unlabeled or simulated
+rows, removes duplicate imports, and averages repeated scans at each point into a fingerprint: the
+building, floor, horizontal position, heading, time, and the mean RSSI of each BSSID heard, with CSI
+amplitudes kept where captured. UT information technology (IT) staff also supplied the list of campus
+APs, 300 in EER and 103 in Ernest Cockrell Jr.\ Hall (ECJ). Because each AP's name includes the room
+where it is installed, the database can map every BSSID to a building, floor, and room.
+
+The survey method follows the two-phase fingerprinting that Bahl and Padmanabhan established
+\cite{radar}, which needs no new infrastructure. After the prior-art search, the team revised the
+protocol in four ways:
+\begin{enumerate}
+  \item Scans will be recorded facing at least four directions at each survey point, because the
+    median error in that study rose 67\% when the user faced away from the surveyed direction
+    \cite{radar}.
+  \item Each benchmark area will be surveyed at three times of day, including class changes,
+    because furniture and crowds changed the error of leading Wi-Fi systems by up to 0.94~m
+    \cite{msilc}.
+  \item The points from one visit will be held out for testing, so that accuracy figures reflect a
+    survey that has aged.
+  \item The database will be kept current by adapting the outlier rejection and incremental updating
+    of Skyhook's expired patent \cite{skyhook}.
+\end{enumerate}
+The team will record each point by standing still rather than fitting a walked path, which avoids
+the claims of Ricoh's active patent \cite{ricoh}. Every survey session needs two people, one to
+carry the logger and one to operate the collector. \TODO{Survey extent for EE~464, for example which
+floors of EER beyond Level~2, and the number of points per floor (Q13)} \TODO{Database storage
+format and where it is hosted, for example files or a database on the location server (not covered
+by Q1--Q15)}
 
 \subsubsection{Location Server and Sensor Fusion}
-TODO.
+The location server turns each tag's telemetry into a position. Its inputs are telemetry reports and
+the fingerprint table; its outputs are the latest estimate, its timestamp, and the tag's status,
+which it provides to the user application on request.
+
+The server will run on a cloud VM with a public Hypertext Transfer Protocol Secure (HTTPS) endpoint,
+and each tag will open only outbound connections to it. The team rejected a team laptop on the
+campus network as the host. Neither campus network assigns publicly reachable addresses
+\cite{utiot}, \cite{utwifi}, the default security profile blocks every unsolicited inbound connection
+\cite{utprofiles}, and the IT staff of the Department of Electrical and Computer Engineering (ECE)
+require the consent of the university's Information Security Office to run a web service locally
+\cite{eceweb}. A cloud server keeps the tag an ordinary network client,
+as the university's acceptable use policy expects \cite{utaup}, and lets phones on any network open
+the map. Laptops will run the same server for development and for replaying logged scans.
+\TODO{Confirm the cloud VM as final and name the provider and monthly cost (Q7, Q12)}
+
+For each report, the server first matches the Wi-Fi scan against the fingerprints. The baseline
+matcher, already built into Signal Studio, is a weighted $k$-nearest-neighbor ($k$-NN) search. It
+compares up to $N = 32$ of the strongest BSSIDs in the query with each survey point $j$ using the
+root-mean-square RSSI difference
+\begin{equation}
+  d_j = \sqrt{\frac{1}{N} \sum_{i=1}^{N} \left( r_i - r_{ij} \right)^2 }
+  \label{eq:knn}
+\end{equation}
+where $r_i$ is the query's RSSI from BSSID $i$, $r_{ij}$ is the survey RSSI at point $j$, and a BSSID
+missing from either side counts as $-100$~dBm. The matcher requires at least three survey points,
+selects up to five nearest neighbors, votes for the floor, and averages the neighbors' positions on
+the winning floor. Equation~(\ref{eq:knn}) treats every BSSID equally, so it cannot tell that a wall
+separates two points with similar signals; Section~3.2.6 shows that this weakness limits room
+identification.
+
+The server then fuses the Wi-Fi fix with the IMU data, and the team has narrowed the fusion filter to
+two candidates. An extended Kalman filter (EKF) \cite{welch} is light enough to run anywhere but
+cannot easily use walls. A particle filter can discard any position hypothesis that crosses a wall in
+the floor plans; in Evennou and Marx's office building, map-aware particle filtering with inertial
+data reduced the mean error from 3.32~m with nearest-neighbor matching to 1.53~m \cite{evennou}. The
+team will compare the two filters on logged walks in EER before deciding. \TODO{Fusion method:
+EKF, particle filter, or other (Q7)} BevoTag will correct the inertial estimate at every fingerprint
+fix rather than only at AP handovers, which avoids the claims of BlackBerry's active patent
+\cite{blackberry}.
+
+Finally, the server converts the estimate from the building's plan coordinates into latitude,
+longitude, and floor, stores it with the report's timestamp and battery and connection status, and
+returns it to authenticated owners only. Location history will be encrypted in transit, restricted
+to each tag's owner, and deleted at the end of the project. \TODO{Owner authentication method for
+the server and application (not covered by Q1--Q15)}
 
 \subsubsection{User Interface}
-TODO (2D/3D map application; meet the Problem Statement's UI requirements).
+The user application shows each tag's position, floor, update time, and status on a 3D model of the
+building. Its inputs are the estimates and status from the location server, the building geometry,
+and the user's tag selection and map controls; its outputs are the map display and, over USB-C,
+configuration commands to a tag.
+
+The application will grow from the 3D building view of Signal Studio, which already runs in a browser
+on the Three.js graphics library without a build step. That view contains 3D models of EER, ECJ, and
+the Aerospace Engineering Building (ASE), reconstructed from campus floor plans, with assembled and
+exploded views and removable roofs. It already shows survey points, an RSSI heatmap, and a $k$-NN
+position estimate as a marker on the estimated floor (Section~3.2.6). In EE~464, the team will add
+the functions that Table~\ref{tab:ui} requires: a tag list of up to five tags, a marker that updates
+within 1~s of each new estimate, the time of the estimate, the battery level, and the online or
+offline state. The collector's existing browser serial connection will provide the USB-C setup and
+debugging link.
+
+The team chose a web application over a native phone application because it runs on laptops and
+phones without an app store, it reuses a 3D model that the team has already built and tested, and the
+existing view already fits a 390-pixel phone-width screen without horizontal scrolling. The display shows a discrete floor rather than a measured height, so the unknown floor
+heights of EER and ASE affect only the drawing, not the reported floor. \TODO{Whether the
+application keeps a two-dimensional floor-plan view as a fallback, and who owns the application in
+EE~464 (Q11)}
 
 \subsection{Risk Reduction}\label{sec:risk}
-% Comprehensive: methods, results, and analysis of every lab experiment this semester.
-% Source material: docs/risk-reduction-plan.md, docs/individual-risk-reduction-demos.md,
-% and each member's answers in answers/*.md (Q1--Q4).
 % Owner names stay in these comments only; the report text is third person.
-TODO overview paragraph (which risks were tested and why).
+This semester's laboratory work tested the risks most likely to stop the prototype: whether the
+ESP32 hears enough campus APs consistently, whether an antenna change reduces the effect of the tag's
+heading, whether the team can identify and place campus APs, whether survey logs can be parsed and
+displayed reliably, and whether a browser can show a position on the correct floor of a real
+building. The team completed two shared experiments from its risk reduction plan, and each member
+completed one individual activity. The following subsections report the methods, results, and
+analysis of each.
 
 \subsubsection{Wi-Fi Data Collection and Antenna Comparison}
-% Team experiments from docs/risk-reduction-plan.md: room hit rate, median error,
-% PCB vs. omnidirectional antenna RSSI variation.
-TODO.
+% Team experiments from docs/risk-reduction-plan.md, with the captures summarized for the
+% oral design review (docs/oral-design-review/analysis/chart_data.json).
+The first shared experiment tested whether the ESP32 logger and the collector application, running
+together, produce fingerprints that can locate the tag. The planned test surveys 20 points on EER
+Level~2 with ten scans each and then estimates the positions of ten points that are not in the
+survey. It reports the room hit rate against the 90\% target and the median position error against
+the 5~m target. \TODO{Room hit rate and median error from the team survey test, the date it was
+run, and where the raw captures are stored (Q1)}
+
+Before that test, the team recorded captures at four points on October 11 and November 8: the south
+corridor near room 2.813 and a staircase corner near room 2.701 on EER Level~2, each facing north and
+east, and two corners of the plaza beside the Physics, Mathematics and Astronomy Building (PMA).
+Figure~\ref{fig:setup} shows the setup. The logger sat on a tripod at a fixed height and heading,
+connected by USB to a laptop running the collector, while the operator marked the point on the floor
+plan and started the log.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=0.6\linewidth]{figures/capture-setup-tripod.png}
+\caption{Survey Capture Setup: Data Logger on a Tripod, Connected by USB to a Laptop Running the
+Collector}
+\label{fig:setup}
+\end{figure}
+
+Table~\ref{tab:capture} summarizes what these captures show. Signal strength at a fixed point was
+stable, the logger heard enough APs everywhere, and CSI arrived from campus APs at a usable rate.
+\TODO{Confirm these figures, recomputed from the October 11 and November 8 captures for the oral
+design review, with the members who recorded them (Q1)}
+
+\begin{table}[!htb]
+\caption{Results of the EER and Plaza Captures}
+\label{tab:capture}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{2.0in} Y@{}}
+\toprule
+\textbf{Measurement} & \textbf{Result} \\
+\midrule
+RSSI stability at one point & Standard deviation of 0.6 to 1.1~dB for each of the five strongest radios over 81 scans (174~s), 2.813 corridor, November 8 \\ \addlinespace
+APs heard per scan & 29 to 36 indoors on EER Level~2; 101 to 104 on the PMA plaza \\ \addlinespace
+CSI frames from campus APs & 7 to 12 per second indoors; 15 to 18 per second on the plaza \\ \addlinespace
+CSI frames from randomized phone and laptop addresses & 2 to 7 per second \\ \addlinespace
+Floor of the strongest UT APs, 2.813 corridor & Floors 3, 1, 2, 2, and 3 for the five strongest \\ \addlinespace
+Room hit rate (target $>90$\%) & \TODO{Q1} \\ \addlinespace
+Median position error (target $<5$~m) & \TODO{Q1} \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+These results reduce one risk and expose another. The logger hears far more than the three APs that
+Table~\ref{tab:env} requires, and an RSSI that varies by about 1~dB at a fixed point is small compared
+with the change between rooms, so fingerprinting is feasible in EER. CSI arrived at only 7 to
+18~frames per second from campus APs, far below the roughly 600~frames per second that an ESP32
+captured from a transmitter it was connected to \cite{esp32tool}, which confirms that CSI will be
+sparse when the tag listens passively. The floor result is the new risk: at both Level~2 points,
+which lie in EER's open central area, most of the strongest APs are installed on other floors. The
+list of APs heard therefore does not by itself identify the floor, which threatens the 95\%
+floor-identification target. No floor classifier has been run on these data yet, so this finding
+describes the signals, not a measured identification rate.
+
+The second shared experiment tested whether an external omnidirectional antenna reduces the change in
+RSSI when the tag turns. On October 11, the logger used the antenna printed on its module; on
+November 8, it used an external omnidirectional antenna mounted vertically. At the 2.813
+corridor point, the team compared each AP's RSSI facing north with its RSSI facing east. Because the
+October 11 capture had only one scan per direction, the November 8 data were compared one scan
+against one scan as well, and the median over 81 scan pairs was taken. The typical change for the 12
+APs heard in both directions fell from 3~dB with the printed antenna to 2~dB with the external
+antenna, and the largest change fell from 10~dB to 5~dB. The team therefore surveys only with the
+external antenna and will use one on the tag. The comparison mixes two days and covers one point and
+two directions, however, whereas the risk reduction plan called for four points, four directions,
+and 20 scans in each direction with each antenna. \TODO{Whether the full antenna test was run, and
+its RSSI change across directions for each antenna (Q2)} \TODO{Photos of the antenna and the survey
+in EER, if any beyond Figure~\ref{fig:setup} (Q4)}
 
 \subsubsection{Router Localization Firmware}
 % Owner: Ethan Chua. Firmware that locates a router by logging the strongest signal strength.
-TODO.
+Because the database maps BSSIDs to rooms, the team also needed to know whether the tag can locate an
+AP from its own measurements, for example to check a room label or find an unlisted AP. This activity
+extended the logger firmware's strongest-AP command, which returns the address, RSSI, and network name
+of the single strongest AP, to log those readings while the logger moves and to estimate the router's
+position, for example as the point where RSSI peaks. \TODO{What was built and how it was tested:
+building, floor, rooms, date, antenna, and number of walks or trials (Q3)} \TODO{Estimated router
+position compared with its actual position, the error in meters, and how often the strongest AP was
+the nearest one (Q3)} \TODO{What the result means for the design, and what did not work (Q3)}
 
 \subsubsection{Access Point Inventory for EER and ECJ}
 % Owner: Abhirit Das. List of the WAPs in EER and ECJ.
-TODO.
+A raw scan overcounts APs, because one physical AP broadcasts several network names on several bands,
+each with its own BSSID. This activity grouped the BSSIDs that the logger heard in EER and ECJ into
+physical APs and compared the result with the list from UT IT, which records 300 APs in EER and 103
+in ECJ. \TODO{Which scans were used, where and when, and how BSSIDs were grouped into APs (Q3)}
+\TODO{Table of APs with building, floor, room, network names, BSSIDs, and channels, with the number of
+APs per floor and BSSIDs per AP (Q3)} \TODO{How many APs a tag hears per floor and whether that is
+enough for fingerprinting (Q3)}
 
 \subsubsection{Preliminary Access Point Locations}
 % Owner: Andrew Yin. Preliminary list of WAP locations.
-TODO.
+Whereas the inventory identifies which APs exist, this activity estimated where they are. An analysis
+script computes an RSSI-weighted centroid of the survey points at which each AP was heard, and the
+room in each campus AP's name gives a ground truth against which to check the estimate. The
+resulting positions can also replace the assumed positions in the simulation of Section~3.2.6.
+\TODO{Scans used, how positions were estimated, and how they were checked (Q3)} \TODO{Table of
+estimated and actual AP positions, with the error in meters (Q3)} \TODO{What the errors mean for the
+design (Q3)}
 
 \subsubsection{Survey Data Parsing and Display Software}
 % Owner: Esteban Martinez. Display software for parsing data collections.
-TODO.
+Every survey produces CSV logs whose lines hold JSON scan and CSI records, so the team needed a
+reliable offline tool to parse them and inspect the data before using it for fingerprinting. This
+activity built a standalone tool, separate from the collector's own import screen, that reads the
+logs, checks them, and plots them. \TODO{What was built, which data sets were parsed, and how the
+parsing was checked (Q3)} \TODO{Plots and numbers, for example RSSI over position, RSSI distribution
+per AP, scans per point, and rows dropped as bad or duplicate (Q3)} \TODO{What the result means for
+the design (Q3)}
 
 \subsubsection{3D Building Model and Signal Map}
-% Owner: Li Shi. Web app 3D model and signal map.
-TODO.
+% Owner: Li Shi. Web app 3D model and signal map. Source: docs/individual-risk-reduction/li-shi.md.
+The last activity tested two risks at once: whether a browser application can show real campus
+buildings in 3D with Wi-Fi data and a position estimate on the correct floor, and whether survey logs
+can be imported, matched against new scans, and displayed without manual work. To test both, the
+team built the 3D building view of Signal Studio, shown in Figure~\ref{fig:model}.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\linewidth]{figures/app-3d-eer-level2.png}
+\caption{3D Building View of Signal Studio Showing EER Level 2 with Two Imported Survey Points}
+\label{fig:model}
+\end{figure}
+
+The view contains 3D models of three buildings reconstructed from the campus floor-plan drawings: EER
+with 9 levels, ECJ with 15, and ASE with 7, for 31 levels and 3,403 wall and space polygons. It
+imports collector logs, draws survey points and a heatmap of the strongest RSSI or of one chosen
+BSSID, and runs the $k$-NN estimator of Equation~(\ref{eq:knn}). The heatmap interpolates readings
+within 60~ft (18~m) on the same floor and is clipped to rooms. Because real survey data covered only
+a few points, the team also built a simulation that places one AP at the center of every room and
+predicts RSSI with a log-distance path-loss model, a loss of 5~dB for each wall and 15~dB for each
+floor. The models also export to the Industry Foundation Classes (IFC4) and Wavefront object (OBJ)
+formats used by computer-aided design tools.
+
+The team verified the view in five ways:
+\begin{enumerate}
+  \item Ran automated tests of the geometry, exports, CSV import, estimator, and simulation.
+  \item Opened the IFC4 files with the IfcOpenShell library, tessellated every solid, and compared
+    each volume with its footprint area times its height.
+  \item Checked EER and ECJ in a browser in every view, including a 390-pixel phone-width layout,
+    with the browser console open.
+  \item Checked ECJ's floor heights against its 2013 record drawings.
+  \item Ran a held-out accuracy test on simulated data.
+\end{enumerate}
+
+The held-out test, run on November 19, measured how well the estimator identifies the room and floor
+of scans that are not in the survey. The simulation produced a survey of EER Levels~1 to 3 on a 10~ft
+(3.0~m) grid, 1,452 points in all. The team then generated 300 test scans at random positions inside
+Level~2 rooms, off the grid, added Gaussian noise to each RSSI value, and ran each scan through the
+estimator. Three cases bracketed the likely AP density and noise:
+\begin{enumerate}
+  \item One AP in every room (134 on Level~2), with 4~dB of noise.
+  \item APs only in the largest 20\% of rooms (27 on Level~2), closer to real campus density, with
+    4~dB of noise.
+  \item The sparse APs of case~2, with 8~dB of noise.
+\end{enumerate}
+Table~\ref{tab:model} gives the results of these checks and of the held-out test.
+
+\begin{table}[!htb]
+\caption{Verification Results for the 3D Building Model and Signal Map}
+\label{tab:model}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{2.1in} Y@{}}
+\toprule
+\textbf{Check} & \textbf{Result} \\
+\midrule
+Automated tests (November 19) & 80 of 80 JavaScript tests and 19 of 19 Python tests pass \\ \addlinespace
+IFC4 export & 1,906 solids with no schema or solid errors; largest relative volume error $2.7 \times 10^{-10}$ \\ \addlinespace
+Browser checks & No console errors; no horizontal overflow at 390 pixels \\ \addlinespace
+ECJ floor heights & 11 of 15 levels documented, 1 estimated, 3 unknown \\ \addlinespace
+End-to-end pipeline & Survey log, heatmap, estimate, and 3D marker work on synthetic data \\ \addlinespace
+Floor identification, simulated & 100\% in all three cases (300 scans each) \\ \addlinespace
+Median position error, simulated & 1.5~m (AP in every room, 4~dB); 1.8~m (sparse, 4~dB); 2.3~m (sparse, 8~dB) \\ \addlinespace
+Room hit rate, simulated & 72\% (AP in every room, 4~dB); 62\% (sparse, 4~dB); 49\% (sparse, 8~dB) \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+These results reduce two risks and sharpen a third. The user-interface risk is reduced, because a
+working 3D map already shows signals and a position on the correct floor of real campus buildings, so
+the EE~464 application can build on it. The data-pipeline risk is also reduced, because the log
+format, import, matching, and display are built and tested, so real survey data can be loaded without
+new code. In simulation, the estimator found the floor every time and met the 5~m median-error target
+with margin, but it identified the room in only 49 to 72\% of trials, far short of the 90\% target,
+and the gap widened as APs became sparser and noise grew. Room identification, not distance error, is
+therefore the hard goal, which agrees with the prior-art finding that floor-plan constraints improve
+fingerprinting \cite{evennou} and supports a wall-aware fusion filter.
+
+The test also has clear limits. The simulation's path-loss values are uncalibrated assumptions, so
+the numbers show the method's behavior, not field performance. The simulated 15~dB floor loss may also
+explain the perfect floor result, which conflicts with the real captures of Section~3.2.1, where APs
+on other floors were among the strongest. The real captures imported so far cover only two survey
+points, too few to measure accuracy. Floor heights for all of EER and ASE, 19 of the 31 levels, are
+unknown, so vertical placement in the model is schematic. Walls do not yet constrain the estimate, so
+it can land on the wrong side of a wall, and the browser-to-logger loop has not been tested on a
+physical board. The next step is to measure the room hit rate and position error on a real EER Level~2
+survey with held-out points.
 
 \subsection{Test Plan}\label{sec:testplan}
-% Key test(s) per block of Figure 1, plus system-level test(s).
-% For each: procedure, data collected, success criterion (tie to the specs in 2.2).
-TODO.
+The test plan verifies each block of Figure~\ref{fig:block} and then the complete system against the
+specifications in Section~2.2. Table~\ref{tab:subtests} lists the key test for each subsystem, the
+data it collects, and its success criterion, and Table~\ref{tab:systests} lists the system-level
+tests. Each test produces a log that the team keeps with the source code, so that the final report
+can cite measured results.
+
+The subsystem tests check the interfaces of Figure~\ref{fig:block} one at a time, in the order in
+which data flow through them. The tag hardware is tested on the bench with a current meter and a
+known charge, then in the enclosure; the firmware is tested by logging its reports on a laptop before
+the server exists; the database by holding out survey points; the server by replaying logged walks;
+and the application by timing its display of server updates.
+
+\begin{table}[!htb]
+\caption{Key Subsystem Tests}
+\label{tab:subtests}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.0in} Y L{1.25in} L{1.45in}@{}}
+\toprule
+\textbf{Subsystem} & \textbf{Procedure} & \textbf{Data Collected} & \textbf{Success Criterion} \\
+\midrule
+Tag hardware & Measure current while the tag moves with 10-s reports and while it is still with 1-min reports; weigh and measure the enclosed tag & Moving and stationary current; battery capacity; size and mass & Equation~(\ref{eq:cap}) gives at least 24~h; within $80\times50\times25$~mm and 100~g \\ \addlinespace
+Tag firmware & Carry the tag through EER while it reports to a laptop; rotate it on a turntable for the IMU & Report intervals; IMU sample rate; frames kept and discarded & Reports $\leq 10$~s apart while moving; IMU $\geq 100$~Hz; no non-AP addresses stored \\ \addlinespace
+Survey and database & Survey EER Level~2 in four directions at three times of day; hold out one visit & Fingerprints; held-out room and floor results & Database complete for every point; held-out results recorded for system tests \\ \addlinespace
+Location server and fusion & Replay logged EER walks through both filters with known start and end points & Estimated path; error at checkpoints; processing time & Fused median error below fingerprint-only error; processing well under the 5-s latency budget \\ \addlinespace
+User application & Send timed estimates from the server; select tags and change floors on a laptop and a phone & Time from arrival to display; time to recognize a USB-C tag & Display within 1~s; map response within 1~s; tag recognized within 5~s \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+The system-level tests then measure the specifications that only the complete system can meet. For
+the accuracy tests, a person carries the tag to surveyed points whose true positions the team has
+recorded independently of BevoTag, in stationary and moving trials, indoors and outdoors, and at
+different times of day to capture changing conditions such as pedestrian traffic.
+
+\begin{table}[!htb]
+\caption{Key System-Level Tests}
+\label{tab:systests}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.15in} Y L{1.2in} L{1.3in}@{}}
+\toprule
+\textbf{Test} & \textbf{Procedure} & \textbf{Data Collected} & \textbf{Success Criterion} \\
+\midrule
+Stationary accuracy & Place the tag at held-out points in EER at three times of day & Reported room, floor, and position vs.\ truth & Room $>90$\%; floor $>95$\%; median error $<5$~m \\ \addlinespace
+Moving accuracy & Walk set routes in EER, between floors, and onto a plaza at up to 5~m/s & Estimates at timed checkpoints & Same as above; updates $\leq 10$~s apart \\ \addlinespace
+Latency and first fix & Timestamp a scan on the tag and its display in the application; power-cycle the tag & End-to-end delay; startup to first estimate & Latency $<5$~s; first fix $<30$~s \\ \addlinespace
+Battery life & Run the tag from full charge on the 10\% moving duty cycle until it stops reporting & Hours of operation; final battery level & At least 24~h \\ \addlinespace
+Network and privacy compliance & Capture the tag's traffic on utexas-iot; read back memory after a factory reset & Packet capture; memory contents & Only outbound TLS telemetry and ordinary client traffic; no data left after reset \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+\TODO{Number of held-out points and trials per test, and the test dates (Q13)}
 
 %----------------------------------------------------------------------------------------------------
 \section{Project Management}\label{sec:pm}
 %----------------------------------------------------------------------------------------------------
-% Overview paragraph required. Each subsection summarizes one appendix (B--E) and refers to it.
-TODO overview paragraph.
+The team's plan for EE~464 runs from the submission of this report on December 4, 2026, to the
+delivery of the prototype at the end of the spring semester. It is organized around the six
+deliverables of Section~2.3 and is detailed in four appendixes: the work breakdown structure (WBS) in
+Appendix~B, the linear responsibility chart (LRC) in Appendix~C, the Gantt chart in Appendix~D, and
+the bill of materials (BOM) in Appendix~E. The following subsections summarize each one.
+\TODO{Replace the draft tasks, owners, durations, and costs in Appendixes~B to E with the team's
+answers (Q10 to Q13)}
 
 \subsection{Project Activities}
-TODO (summarize the WBS in Appendix~B, organized around major tasks).
+The WBS in Appendix~B divides the work into major tasks. The first five follow the subsystems of
+Figure~\ref{fig:block}: finishing the tag hardware, extending the firmware to its tracking mode,
+surveying the benchmark areas, building the location server and fusion filter, and turning the 3D
+building view into the user application. The sixth task integrates these subsystems and runs the
+tests of Section~3.3, and the seventh produces the course deliverables and the final documentation.
+\TODO{Confirm the major tasks and add any missing ones (Q13)}
 
 \subsection{Task Assignments}
-TODO (summarize the LRC in Appendix~C; rationale: equitable load and qualifications).
+The LRC in Appendix~C assigns a responsible member and supporting members to every WBS task. The
+draft keeps this semester's division of labor: the embedded hardware and firmware sub-team, Esteban
+Martinez and Li Shi, owns the tag; the localization and application software sub-team, Andrew Yin and
+Abhirit Das, owns the survey processing, server, and application; and Ethan Chua, the Project Lead,
+owns the fusion filter, integration, and system testing. Each member leads at least one major task
+and supports others, which spreads the workload evenly and matches each member's coursework and
+experience. \TODO{Each member's preferred role for EE~464, and whether the team keeps this split
+(Q11)}
 
 \subsection{Project Schedule}
-TODO (summarize the Gantt chart in Appendix~D chronologically, with milestone dates).
+The Gantt chart in Appendix~D runs from December 5, 2026, to the end of finals on May 3, 2027. Work
+between semesters will finish component selection and the remaining survey preparation. The spring
+semester begins on January 11, 2027, and the plan places the tag hardware, firmware, and server work
+in the first half of the semester so that integration and system testing can begin by
+\TODO{integration start date (Q13)}. Classes end on April 26, and finals run from April 29 to May 3.
+\TODO{EE~464 demo day, Open House, and final report due dates (Q10)} \TODO{Dates of each major
+activity in chronological order, for example hardware complete, first end-to-end fix, and test
+freeze (Q13)}
 
 \subsection{Project Budget}
-TODO (summarize the BOM in Appendix~E; material cost goals, organized to match the table).
+The BOM in Appendix~E lists the major items for one prototype tag and for the system around it, in
+the same order as the table: the tag electronics, power, circuit board and enclosure, survey
+equipment, and hosting. The team has already bought the ESP32 development board, IMU and GNSS
+modules, and the external antenna used by the data logger. The material cost goal is \$50 or less for
+the parts of one tag (Table~\ref{tab:perf}), separate from one-time costs such as survey equipment
+and server hosting. \TODO{Prices of parts already bought, parts still to order, and the total budget
+(Q12)}
 
 %----------------------------------------------------------------------------------------------------
 \section{Conclusion}\label{sec:conclusion}
 %----------------------------------------------------------------------------------------------------
-% For a manager who reads nothing else: purpose, main points, and a clear assessment of the
-% team's readiness for EE 464 and its prospects for success. Keep it short.
-TODO.
+This report presented the design of BevoTag, a campus tag that locates a misplaced item by matching
+its Wi-Fi measurements against a building survey and fusing them with motion data, and the team's
+plan to build it in EE~464. Laboratory work this semester showed that the tag hears many campus
+access points with stable signals, that an external antenna reduces the effect of the tag's heading,
+and that a working 3D map already shows a position on the correct floor. Simulation showed that the
+median error target is within reach but that identifying the room, and in open areas the floor,
+remains the main technical risk. The team is therefore ready to build the prototype, with wall-aware
+fusion as the main route to the room-identification target. \TODO{Readiness assessment after the
+team survey test (Q1), the design review feedback (Q5), and the open part choices (Q7)} Next, the team
+will measure accuracy on a real EER survey, fix the remaining part choices, and begin the tag
+hardware and location server.
 
 %----------------------------------------------------------------------------------------------------
 % REFERENCES (IEEE style, required)
@@ -236,10 +938,148 @@ TODO.
 \clearpage
 \section*{REFERENCES}
 \begingroup
+\setstretch{1.0}
 \renewcommand{\section}[2]{}%   suppress thebibliography's own heading
 \begin{thebibliography}{10}
-\bibitem{todo}
-TODO: reuse entries from docs/prior-art/main.tex and docs/project-definition/main.tex.
+\setlength{\itemsep}{\baselineskip}
+\bibitem{gps}
+National Coordination Office for Space-Based Positioning, Navigation, and Timing. (n.d.).
+\emph{Space Segment} [Online]. Available: \url{https://www.gps.gov/space-segment}.
+
+\bibitem{hechan}
+S. He and S.-H. G. Chan, ``Wi-Fi fingerprint-based indoor positioning: Recent advances and
+comparisons,'' \emph{IEEE Commun. Surveys Tuts.}, vol.~18, no.~1, pp.~466--490, 1st Quart. 2016,
+doi: \url{10.1109/COMST.2015.2464084}.
+
+\bibitem{yoder}
+J. E. Yoder and T. E. Humphreys, ``Low-cost inertial aiding for deep-urban tightly coupled
+multi-antenna precise GNSS,'' \emph{NAVIGATION}, vol.~70, no.~1, art.~no.~navi.561, Mar. 2023,
+doi: \url{10.33012/navi.561}.
+
+\bibitem{airtag}
+Apple Inc. (2026). \emph{AirTag} [Online]. Available: \url{https://www.apple.com/airtag/}.
+
+\bibitem{smarttag}
+Samsung Electronics Canada. (n.d.). \emph{Galaxy SmartTag2} [Online]. Available:
+\url{https://www.samsung.com/ca/business/mobile-accessories/galaxy-smarttag2-white-ei-t5600bwegca/}.
+
+\bibitem{rssi}
+A. S. Yaro \emph{et al.}, ``A survey of the performance-limiting factors of a
+2-dimensional RSS fingerprinting-based indoor wireless localization system,'' \emph{Sensors},
+vol.~23, no.~5, art.~no.~2545, Feb. 2023, doi: \url{10.3390/s23052545}.
+
+\bibitem{imu}
+O. J. Woodman, ``An introduction to inertial navigation,'' Comput. Lab., Univ. Cambridge,
+Cambridge, U.K., Tech. Rep. UCAM-CL-TR-696, Aug. 2007, doi: \url{10.48456/tr-696}.
+
+\bibitem{espcsi}
+Espressif Systems. (2026). \emph{ESP-IDF Programming Guide (ESP32-S3): Wi-Fi Vendor Features}
+[Online]. Available:
+\url{https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-guides/wifi-driver/wifi-vendor-features.html}.
+
+\bibitem{yangcsi}
+Z. Yang \emph{et al.}, ``From RSSI to CSI: Indoor localization via channel response,''
+\emph{ACM Comput. Surv.}, vol.~46, no.~2, art.~no.~25, pp.~1--32, Nov. 2013,
+doi: \url{10.1145/2543581.2543592}.
+
+\bibitem{deepfi}
+X. Wang \emph{et al.}, ``CSI-based fingerprinting for indoor localization: A deep learning
+approach,'' \emph{IEEE Trans. Veh. Technol.}, vol.~66, pp.~763--776, Jan. 2017,
+doi: \url{10.1109/TVT.2016.2545523}.
+
+\bibitem{utiot}
+The University of Texas at Austin. (2025, Aug.~25). \emph{Connecting to utexas-iot Wi-Fi}
+[Online]. Available: \url{https://ut.service-now.com/kb_view.do?sysparm_article=KB0017215}.
+
+\bibitem{utwifi}
+The University of Texas at Austin. (2026, Sept.~1). \emph{Connecting to utexas Wi-Fi} [Online].
+Available: \url{https://ut.service-now.com/kb_view.do?sysparm_article=KB0010997}.
+
+\bibitem{radar}
+P. Bahl and V. N. Padmanabhan, ``RADAR: An in-building RF-based user location and tracking
+system,'' in \emph{Proc. IEEE INFOCOM 2000}, Tel Aviv, Israel, Mar. 2000, vol.~2, pp.~775--784,
+doi: \url{10.1109/INFCOM.2000.832252}.
+
+\bibitem{esp32tool}
+S. M. Hernandez and E. Bulut, ``Lightweight and standalone IoT based WiFi sensing for active
+repositioning and mobility,'' in \emph{Proc. IEEE 21st Int. Symp. World Wireless, Mobile Multimedia
+Netw. (WoWMoM)}, Cork, Ireland, Aug.--Sept. 2020, pp.~277--286,
+doi: \url{10.1109/WoWMoM49955.2020.00056}.
+
+\bibitem{iec62133}
+\emph{Secondary Cells and Batteries Containing Alkaline or Other Non-Acid Electrolytes---Safety
+Requirements for Portable Sealed Secondary Cells, and for Batteries Made from Them, for Use in
+Portable Applications---Part 2: Lithium Systems}, IEC Standard 62133-2:2017 with Amendment 1:2021, 2021.
+
+\bibitem{std1451}
+\emph{IEEE Standard for a Smart Transducer Interface for Sensors and Actuators---Common Functions,
+Communication Protocols, and Transducer Electronic Data Sheet (TEDS) Formats}, IEEE Standard
+1451.0-2024, Jun. 2024, doi: \url{10.1109/IEEESTD.2024.10571828}.
+
+\bibitem{apple}
+R. Mayor, ``Power management in crowd-sourced lost-and-found service,'' U.S. Patent
+9\,479\,920, Oct. 25, 2016.
+
+\bibitem{evennou}
+F. Evennou and F. Marx, ``Advanced integration of WiFi and inertial navigation systems for indoor
+mobile positioning,'' \emph{EURASIP J. Appl. Signal Process.}, vol.~2006, art.~no.~86706,
+pp.~1--11, 2006, doi: \url{10.1155/ASP/2006/86706}.
+
+\bibitem{intel}
+L. T. Yang \emph{et al.}, ``Location sensing using channel fading fingerprinting,'' U.S.
+Patent 9\,014\,718, Apr. 21, 2015.
+
+\bibitem{msilc}
+D. Lymberopoulos \emph{et al.}, ``Microsoft indoor localization competition: Experiences and
+lessons learned,'' \emph{GetMobile: Mobile Comput. Commun.}, vol.~18, no.~4, pp.~24--31, Oct. 2014,
+doi: \url{10.1145/2721914.2721923}.
+
+\bibitem{skyhook}
+R. K. Jones \emph{et al.}, ``Server for updating location beacon database,'' U.S. Patent
+7\,414\,988, Aug. 19, 2008.
+
+\bibitem{ricoh}
+J. Moraleda and J. J. Hull, ``Using inertial navigation for calibration of indoor positioning
+system,'' U.S. Patent 9\,632\,169, Apr. 25, 2017.
+
+\bibitem{utprofiles}
+The University of Texas at Austin. (2026, Aug.~4). \emph{Network Security Profiles for General
+Networks} [Online]. Available: \url{https://ut.service-now.com/kb_view.do?sysparm_article=KB0020221}.
+
+\bibitem{eceweb}
+Dept. Elect. Comput. Eng., The University of Texas at Austin. (n.d.). \emph{Web Publishing and
+Hosting} [Online]. Available:
+\url{https://cloud.wikis.utexas.edu/wiki/spaces/eceit/pages/37754680/Web+Publishing+and+Hosting}.
+
+\bibitem{utaup}
+The University of Texas at Austin Information Security Office. (2019, Aug.~28). \emph{Acceptable
+Use Policy for University Students} [Online]. Available:
+\url{https://security.utexas.edu/policies/aup}.
+
+\bibitem{welch}
+G. Welch and G. Bishop, ``An introduction to the Kalman filter,'' Dept. Comput. Sci., Univ. North
+Carolina, Chapel Hill, Tech. Rep. TR 95-041, Apr. 2004.
+
+\bibitem{blackberry}
+A. Shatsky and A. Kouznetsov, ``Method and apparatus to correct indoor positioning by utilizing
+Wi-Fi handovers,'' U.S. Patent 9\,332\,476, May 3, 2016.
+
+\bibitem{std80211}
+\emph{IEEE Standard for Information Technology---Telecommunications and Information Exchange
+between Systems---Local and Metropolitan Area Networks---Specific Requirements---Part 11:
+Wireless LAN Medium Access Control (MAC) and Physical Layer (PHY) Specifications}, IEEE Standard
+802.11-2020, Feb. 2021, doi: \url{10.1109/IEEESTD.2021.9363693}.
+
+\bibitem{fcc15}
+\emph{Radio Frequency Devices}, 47 C.F.R. Part 15, 2025.
+
+\bibitem{nist80088}
+R. Chandramouli and E. A. Hibbard, ``Guidelines for media sanitization,'' Nat. Inst. Standards
+Technol., Gaithersburg, MD, NIST Special Publication 800-88 Rev.~2, Sept. 2025,
+doi: \url{10.6028/NIST.SP.800-88r2}.
+
+\bibitem{fips1403}
+\emph{Security Requirements for Cryptographic Modules}, FIPS PUB 140-3, Mar. 2019.
 \end{thebibliography}
 \endgroup
 
@@ -252,22 +1092,296 @@ TODO: reuse entries from docs/prior-art/main.tex and docs/project-definition/mai
 
 \appendixdivider{APPENDIX A -- RELEVANT STANDARDS}
 % Updated from the Project Definition's appendix; address every TA comment on it.
-TODO.
+The standards and policies in this appendix lead BevoTag to use a Wi-Fi chip that exposes CSI
+and a pre-certified radio module, to separate its sensor drivers from its estimation code, to
+encrypt its telemetry and erase its memory on reset, to use a certified and protected lithium
+battery, and to use the campus network only as an ordinary client. For each standard, a table lists
+the clauses that affect BevoTag, and the paragraph before the table states how the team will verify
+compliance. \TODO{Address any remaining TA comments on the Project Definition's Appendix~A (Q6)}
+
+\subsection*{IEEE 802.11: Wi-Fi Physical and Medium Access Control Layers}
+IEEE 802.11 \cite{std80211} determines both how BevoTag can measure CSI and how it may join campus
+networks. Table~\ref{tab:a80211} shows that the physical-layer clauses decide which chips can report
+CSI, whereas the frame, management, and security clauses decide how the tag listens and
+authenticates. The team will verify CSI capture by comparing recorded subcarrier data from orthogonal
+frequency-division multiplexing (OFDM) frames of known APs across repeated visits to the same survey
+point. A packet capture will confirm that the tag sends only ordinary client traffic, and connection
+logs on utexas-iot will confirm network association.
+
+\begin{table}[H]
+\caption{IEEE 802.11 Requirements Affecting BevoTag}
+\label{tab:a80211}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.7in} Y Y@{}}
+\toprule
+\textbf{Clause} & \textbf{Requirement} & \textbf{Effect on Design} \\
+\midrule
+Clauses 17, 18, and 19 (OFDM, extended-rate, and high-throughput physical layers) & Define the subcarrier structure and the training fields at the start of each OFDM frame & The Wi-Fi chip exposes per-subcarrier CSI from these training fields \cite{espcsi} \\
+Clause 9 (frame formats) & Defines frame headers, including the transmitter address & Firmware keeps only header fields, such as the AP address \\
+Clause 11 (management) & Defines scanning and association & Tag scans and associates as an ordinary client \\
+Clause 12 (security) & Defines robust security network association, including pre-shared keys & Tag authenticates with the WPA2 pre-shared key that utexas-iot issues \cite{utiot} \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+\subsection*{FCC 47 C.F.R. Part 15: Radio Frequency Devices}
+Federal Communications Commission (FCC) rules in Title 47 of the Code of Federal Regulations
+(C.F.R.), Part 15 \cite{fcc15}, limit both intentional transmissions and unintended emissions from
+the tag's digital circuits. As Table~\ref{tab:afcc} shows, a pre-certified Wi-Fi module already
+satisfies the transmitter and restricted-band limits, which leaves the team responsible mainly for
+board layout and labeling. The team will verify conducted output power on a bench spectrum analyzer
+and check the board for unintended emissions with a near-field probe, rather than performing full
+certification testing.
+
+\begin{table}[H]
+\caption{FCC Part 15 Requirements Affecting BevoTag}
+\label{tab:afcc}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.7in} Y Y@{}}
+\toprule
+\textbf{Section} & \textbf{Requirement} & \textbf{Effect on Design} \\
+\midrule
+\S15.109 (unintentional radiators) & Radiated emission limits for Class B digital devices & Processor clocks, sensor buses, and power conversion need careful layout and decoupling \\
+\S15.247(b) (intentional radiators) & Conducted output power of at most 1~W (30~dBm) in the 2400--2483.5~MHz band, with antenna gain up to 6~dBi & Use a pre-certified Wi-Fi module whose output stays within this limit \\
+\S15.205, \S15.209, and \S15.247(d) (restricted bands) & Limits on harmonics, band-edge, and spurious emissions & Rely on the certified module's filtering and follow its antenna layout rules \\
+\S15.19 and \S15.212 (labeling) & Part 15 compliance statement and a ``Contains FCC ID'' label for a modular radio & Enclosure carries the compliance statement and the module's FCC identifier \\
+\S15.21 (information to user) & Warning that unapproved changes void the user's authority to operate & Documentation includes the required warning \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+\subsection*{IEEE 1451.0: Smart Transducer Interface}
+IEEE 1451.0 \cite{std1451} guides how the firmware separates sensor hardware from the processing that
+uses its data. Table~\ref{tab:a1451} shows that the team will adopt the standard's data model and
+data sheet structure rather than its full command set, which would use more memory than the tag can
+spare. The team will check compliance through firmware review and unit tests confirming that
+calibration data load correctly at startup.
+
+\begin{table}[H]
+\caption{IEEE 1451.0 Guidelines Affecting BevoTag}
+\label{tab:a1451}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.7in} Y Y@{}}
+\toprule
+\textbf{Provision} & \textbf{Guideline} & \textbf{Effect on Design} \\
+\midrule
+Transducer channel model & Each sensor appears to the processor as a set of standard channels & A hardware abstraction layer separates the IMU and Wi-Fi drivers from the fusion algorithm \\
+Transducer electronic data sheets (TEDS) & Each sensor carries self-describing identification and calibration data & Firmware stores IMU scale factors and bias offsets in flash in a defined format \\
+Common communication functions & Sensors exchange data and status through defined message formats & Telemetry reports carry IMU, Wi-Fi, and battery data in a defined format \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+\subsection*{NIST SP 800-88 and FIPS 140-3: Data Sanitization and Cryptography}
+National Institute of Standards and Technology (NIST) Special Publication (SP) 800-88
+\cite{nist80088} and Federal Information Processing Standard (FIPS) 140-3 \cite{fips1403} govern how
+the tag protects and erases the credentials and location history it stores. Table~\ref{tab:anist}
+shows that a factory reset will both overwrite stored data and destroy the encryption keys, and that
+telemetry and firmware will rely only on approved algorithms, although the team will not seek formal
+module validation. To verify these measures, the team will read back flash memory through a debug
+probe after a factory reset, check encryption against published NIST test vectors, and attempt to
+load an unsigned firmware image to confirm that secure boot rejects it.
+
+\begin{table}[H]
+\caption{Data Security Requirements Affecting BevoTag}
+\label{tab:anist}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.7in} Y Y@{}}
+\toprule
+\textbf{Section} & \textbf{Requirement} & \textbf{Effect on Design} \\
+\midrule
+SP 800-88 Clear & Protect against simple recovery through the device's normal interface, for example by a reset to factory state & Factory reset overwrites stored credentials, location history, and survey tables \\
+SP 800-88 Purge by cryptographic erase & Sanitize the keys that encrypt stored data so that no one can decrypt the data & Reset erases the keys held in the chip's secure storage \\
+FIPS 140-3 approved security functions & Use approved algorithms, such as AES and Secure Hash Algorithm 256 (SHA-256) & Firmware encrypts telemetry with AES using the chip's hardware accelerator \\
+FIPS 140-3 software and firmware security & Verify firmware integrity with an approved technique, such as a digital signature & Secure boot accepts only signed firmware images \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+\subsection*{IEC 62133-2: Lithium Battery Safety}
+International Electrotechnical Commission (IEC) standard 62133-2 \cite{iec62133} sets safety
+requirements for the lithium cell and battery that power the tag. Table~\ref{tab:aiec} shows that its
+tests target overcharge, short circuit, and overheating, so the team will buy a cell already certified
+to the standard and add charge and short-circuit protection on the tag's board. The team will verify
+that protection on the bench by checking the charge cutoff voltage, the short-circuit cutoff, and the
+charge current against the cell's datasheet limits.
+
+\begin{table}[H]
+\caption{IEC 62133-2 Requirements Affecting BevoTag}
+\label{tab:aiec}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.7in} Y Y@{}}
+\toprule
+\textbf{Provision} & \textbf{Requirement} & \textbf{Effect on Design} \\
+\midrule
+Overcharging of battery (7.3.6) & No fire or explosion when a charger exceeds the battery's limits & Charger limits voltage and current to the cell's rated values \\
+External short circuit (7.3.1, 7.3.2) & No fire or explosion when the cell or battery terminals short & Protection circuit disconnects the cell on overcurrent \\
+Thermal abuse (7.3.4) & No fire or explosion at elevated temperature & Board layout keeps the cell away from heat sources \\
+Certified cells & Cells pass the standard's type tests & Only cells certified to IEC 62133-2 are purchased \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+\subsection*{University of Texas at Austin Network Policies}
+The university's acceptable use policy (AUP) \cite{utaup} and its registration rules for utexas-iot
+\cite{utiot} govern how the tag uses the campus network, and ECE IT's rule on local web services
+\cite{eceweb} governs where the location server runs. Table~\ref{tab:aaup} shows that these limits
+match the tag's design as an ordinary network client and the choice of a cloud server. The utexas-iot
+key is issued per registering person rather than per device, so every tag registered by one member
+shares that member's key \cite{utiot}. The team will verify compliance by reviewing the firmware's
+network functions against the policy and by confirming with a packet capture that the tag sends only
+its own telemetry and ordinary client traffic.
+
+\begin{table}[H]
+\caption{University Network Policy Provisions Affecting BevoTag}
+\label{tab:aaup}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.7in} Y Y@{}}
+\toprule
+\textbf{Provision} & \textbf{Requirement} & \textbf{Effect on Design} \\
+\midrule
+AUP Sec.~5.10 (scanning) & Never deliberately scan or probe an information resource without prior authorization & Tag never sends traffic that probes network security \\
+AUP Sec.~5.7 (shared resources) & Do not interfere with the activities of others or use a disproportionate share of information resources & Tag sends only small, periodic telemetry reports \\
+utexas-iot registration & Register each device's hardware address through the university's network portal & Each tag is registered, with address randomization disabled \\
+ECE IT web hosting rule & Running a web service locally requires the consent of the Information Security Office & Location server runs on a cloud VM; tags connect outbound only \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
 
 \appendixdivider{APPENDIX B -- WORK BREAKDOWN STRUCTURE}
 % All activities and major tasks from submission of this report to the EE 464 prototype.
-TODO.
+Table~\ref{tab:wbs} lists the major tasks and activities from the submission of this report to the
+delivery of the EE~464 prototype. The tasks follow the subsystems of Figure~\ref{fig:block} and the
+deliverables of Section~2.3. \TODO{Confirm and complete the activities under each task (Q13)}
+
+\begin{table}[H]
+\caption{Work Breakdown Structure}
+\label{tab:wbs}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{0.45in} L{1.9in} Y@{}}
+\toprule
+\textbf{ID} & \textbf{Major Task} & \textbf{Activities} \\
+\midrule
+1 & Tag hardware & 1.1 Select final ESP32 variant, IMU, and battery; 1.2 measure current and size the battery; 1.3 design and order the circuit board, if any; 1.4 build the enclosure; 1.5 bench-test charging and protection \\ \addlinespace
+2 & Tag firmware & 2.1 Add IMU sampling and timestamps; 2.2 add the AP-only frame filter; 2.3 add utexas-iot association and TLS telemetry; 2.4 add sleep and batching; 2.5 add secure boot and factory reset \\ \addlinespace
+3 & Survey and database & 3.1 Survey EER Level~2 in four directions at three times of day; 3.2 extend the survey to further floors; 3.3 build the fingerprint database and AP map; 3.4 add outlier rejection and updating \\ \addlinespace
+4 & Location server and fusion & 4.1 Deploy the cloud server; 4.2 receive and store telemetry; 4.3 port the $k$-NN matcher; 4.4 compare the EKF and particle filter on logged walks; 4.5 integrate the chosen filter \\ \addlinespace
+5 & User application & 5.1 Add the tag list and live marker; 5.2 add time and status display; 5.3 add owner sign-in; 5.4 add USB-C setup \\ \addlinespace
+6 & Integration and testing & 6.1 Run the subsystem tests of Table~\ref{tab:subtests}; 6.2 integrate end to end; 6.3 run the system tests of Table~\ref{tab:systests}; 6.4 fix and retest \\ \addlinespace
+7 & Documentation and course deliverables & 7.1 Weekly status reports; 7.2 demonstration and Open House preparation; 7.3 final report; 7.4 source code, survey procedure, and test results \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
 
 \appendixdivider{APPENDIX C -- LINEAR RESPONSIBILITY CHART}
 % Responsibilities per team member for every WBS task.
-TODO.
+Table~\ref{tab:lrc} assigns each WBS task to a responsible member (R) and supporting members (S). All
+members take part in the system tests. The draft assignments carry over the roles from the Project
+Definition. \TODO{Confirm each member's role for EE~464 and complete the chart down to the activity
+level (Q11)}
+
+\begin{table}[H]
+\caption{Linear Responsibility Chart (R = Responsible, S = Supports)}
+\label{tab:lrc}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}Y *{5}{>{\centering\arraybackslash}p{0.72in}}@{}}
+\toprule
+\textbf{WBS Task} & \textbf{Ethan Chua} & \textbf{Esteban Martinez} & \textbf{Li Shi} & \textbf{Andrew Yin} & \textbf{Abhirit Das} \\
+\midrule
+1 Tag hardware & & R & S & & \\
+2 Tag firmware & & S & R & & \\
+3 Survey and database & S & & & R & S \\
+4 Location server and fusion & R & & & S & \\
+5 User application & & & S & & R \\
+6 Integration and testing & R & S & S & S & S \\
+7 Documentation & S & S & S & R & S \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
 
 \appendixdivider{APPENDIX D -- GANTT CHART}
 % Every WBS activity and milestone, from right after submission to the end of EE 464.
-TODO.
+Table~\ref{tab:gantt} lays out the WBS tasks and milestones by week, from the submission of this
+report to the end of finals. Week~1 begins on Monday, January 11, 2027, the first class day; the last
+class day, April 26, falls in week~16; and finals run from April 29 to May 3. The column ``Pre''
+covers December 5, 2026, to January 10, 2027, and the column ``Fin'' covers finals. Weeks~1 to 16
+begin on the Mondays from January 11 to April 26, 2027. A bullet marks a known milestone.
+\TODO{Bars for each task and activity (Q13)} \TODO{Spring break week (Q10)}
+
+\begin{table}[H]
+\caption{Gantt Chart for EE 464 by Week of the Spring Semester}
+\label{tab:gantt}
+\centering
+\begin{spectable}\setlength{\tabcolsep}{1.5pt}\footnotesize
+\begin{tabularx}{\linewidth}{@{}Y *{18}{>{\centering\arraybackslash}p{0.185in}}@{}}
+\toprule
+\textbf{Activity} & \textbf{Pre} & \textbf{1} & \textbf{2} & \textbf{3} & \textbf{4} & \textbf{5} & \textbf{6} & \textbf{7} & \textbf{8} & \textbf{9} & \textbf{10} & \textbf{11} & \textbf{12} & \textbf{13} & \textbf{14} & \textbf{15} & \textbf{16} & \textbf{Fin} \\
+\midrule
+1 Tag hardware & & & & & & & & & & & & & & & & & & \\
+2 Tag firmware & & & & & & & & & & & & & & & & & & \\
+3 Survey and database & & & & & & & & & & & & & & & & & & \\
+4 Server and fusion & & & & & & & & & & & & & & & & & & \\
+5 User application & & & & & & & & & & & & & & & & & & \\
+6 Integration and testing & & & & & & & & & & & & & & & & & & \\
+7 Documentation & & & & & & & & & & & & & & & & & & \\
+\midrule
+Report submitted (12/4) & $\bullet$ & & & & & & & & & & & & & & & & & \\
+First class day (1/11) & & $\bullet$ & & & & & & & & & & & & & & & & \\
+Last class day (4/26) & & & & & & & & & & & & & & & & & $\bullet$ & \\
+Finals (4/29 to 5/3) & & & & & & & & & & & & & & & & & & $\bullet$ \\
+Demo day & \multicolumn{18}{l}{\TODO{date (Q10)}} \\
+Open House & \multicolumn{18}{l}{\TODO{date (Q10)}} \\
+Final report due & \multicolumn{18}{l}{\TODO{date (Q10)}} \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
 
 \appendixdivider{APPENDIX E -- BILL OF MATERIALS}
 % Major items only: description, quantity, performance criteria (part numbers if known).
-TODO.
+Table~\ref{tab:bom} lists the major items that contribute to the cost of the prototype, in four
+groups: the tag electronics, power, circuit board and enclosure, and survey equipment and hosting.
+Small passive components are omitted. \TODO{Quantities, part numbers, unit prices, and purchase
+status for every row, and the total (Q12)}
+
+\begin{table}[H]
+\caption{Bill of Materials}
+\label{tab:bom}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.25in} Y L{0.65in} L{1.25in}@{}}
+\toprule
+\textbf{Item} & \textbf{Performance Criteria} & \textbf{Qty} & \textbf{Part Number, Status, and Cost} \\
+\midrule
+ESP32 Wi-Fi microcontroller board & 2.4~GHz Wi-Fi with CSI output \cite{espcsi}; firmware within 512~KB RAM; external antenna connector & \TODO{Q12} & Board in hand for the data logger; final variant \TODO{Q7} \\ \addlinespace
+Omnidirectional antenna & 2.4~GHz; connects to the board's u.FL connector & \TODO{Q12} & Linx antenna in hand; part number \TODO{Q12} \\ \addlinespace
+IMU module & $\pm 8$~g, $\pm 1000$~degrees/s, at least 100~Hz & \TODO{Q12} & Module in hand; part number \TODO{Q7} \\ \addlinespace
+GNSS module (optional) & Latitude and longitude outdoors & \TODO{Q12} & Module in hand; use in final tag \TODO{Q7} \\ \addlinespace
+Rechargeable lithium battery & Certified to IEC 62133-2; capacity from Equation~(\ref{eq:cap}) & \TODO{Q12} & \TODO{Q7} \\ \addlinespace
+Charger and protection circuit & 5~V USB-C input; overcharge, overcurrent, and short-circuit protection & \TODO{Q12} & \TODO{Q12} \\ \addlinespace
+Circuit board & Fits the enclosure; follows the module's antenna layout rules & \TODO{Q12} & Custom PCB or not \TODO{Q12} \\ \addlinespace
+Enclosure & At most $80 \times 50 \times 25$~mm; tag at most 100~g & \TODO{Q12} & 3D-printed or purchased \TODO{Q12} \\ \addlinespace
+Survey tripod & Holds the logger at a fixed height and heading & \TODO{Q12} & In use \TODO{Q12} \\ \addlinespace
+Cloud server hosting & Linux VM with two cores and 4~GB memory; public HTTPS endpoint & 1 & Provider and monthly cost \TODO{Q7, Q12} \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
 
 \end{document}
