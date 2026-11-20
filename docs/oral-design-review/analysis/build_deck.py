@@ -293,22 +293,34 @@ body(s, 0.6, 1.45, 12.13, 5.3, [
 # ================================================================= 5. Requirements
 s = slide("Requirements and Key Specifications", notes=(
     "Explain how the product meets the need: it works indoors on every floor, it needs no beacons installed "
-    "in rooms, and it does not depend on a passerby's phone. Then walk the table briefly. The first four rows "
-    "are accuracy and timeliness; the last four are battery, size, mass, and cost, which constrain the tag "
-    "hardware. All values come from the Project Definition; we will confirm them with Dr. Vikalo before "
-    "detailed design."))
+    "in rooms, and it does not depend on a passerby's phone. The left table is location performance: how "
+    "accurately and how quickly BevoTag reports where the item is. Time to first fix is how long the tag takes "
+    "after power-on to report its first usable location. The right table is the tag hardware: battery, size, "
+    "mass, and cost. The bottom line says where the targets apply. The tag must hear at least three Wi-Fi "
+    "access points stronger than −80 dBm, because weaker signals are too noisy to match; our EER captures "
+    "heard about 30 per scan. 0 to 40 °C is the range the lithium battery and electronics are specified for. "
+    "5 m/s is a fast run; at that speed the item moves 50 m between 10-second updates, so the motion sensor "
+    "has to fill the gap. All values come from the Project Definition."))
 text(s, 0.6, 1.4, 12.13, 0.9, [
     "Need: find an item indoors, on any floor, with no new infrastructure and no passing phones.",
 ], size=20)
 table(s, [
-    ["Parameter", "Target", "Parameter", "Target"],
-    ["Room identification", "> 90% of trials", "Time to first fix", "< 30 s"],
-    ["Floor identification", "> 95% of indoor trials", "Battery life", "≥ 24 h per charge"],
-    ["Median position error", "< 5 m", "Tag size", "≤ 80 × 50 × 25 mm"],
-    ["Update interval while moving", "≤ 10 s", "Tag mass", "≤ 100 g"],
-    ["End-to-end latency", "< 5 s", "Parts cost", "≤ $50 per tag"],
-], 0.6, 2.2, [3.4, 2.8, 2.8, 3.1], size=18, row_h=0.62)
-text(s, 0.6, 6.15, 12.13, 0.6, "Operating conditions: surveyed EER floors and plazas first; at least three access points above −80 dBm; 0 to 40 °C; walking speed up to 5 m/s.", size=16)
+    ["Location performance", "Target"],
+    ["Room identification", "> 90% of trials"],
+    ["Floor identification", "> 95% of indoor trials"],
+    ["Median position error", "< 5 m"],
+    ["Update interval while moving", "≤ 10 s"],
+    ["Measurement to display (latency)", "< 5 s"],
+    ["Power-on to first location", "< 30 s"],
+], 0.6, 2.1, [4.1, 2.8], size=18, row_h=0.55)
+table(s, [
+    ["Tag hardware", "Target"],
+    ["Battery life", "≥ 24 h per charge"],
+    ["Tag size", "≤ 80 × 50 × 25 mm"],
+    ["Tag mass", "≤ 100 g"],
+    ["Parts cost", "≤ $50 per tag"],
+], 7.83, 2.1, [2.4, 2.5], size=18, row_h=0.55)
+text(s, 0.6, 6.1, 12.13, 0.7, "Where the targets apply: surveyed EER floors and nearby plazas; the tag hears at least 3 Wi-Fi access points stronger than −80 dBm; 0 to 40 °C; carried at up to 5 m/s (a fast run).", size=16)
 source(s, "Source: BevoTag Project Definition, Oct. 2026 (Performance and Operating Environment Specifications).")
 
 # ================================================================= 6. Standards
