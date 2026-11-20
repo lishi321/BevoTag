@@ -37,6 +37,7 @@ The **3D building** tab of Signal Studio (`Experiments/Campus_Map/collector/`), 
 - **Browser checks:** EER and ECJ in whole-building and exploded views, roofs on and off, top view, and a 390 px phone-width layout, with the console checked for errors.
 - **Floor heights:** ECJ levels checked against the 2013 record drawings.
 - **End-to-end run:** synthetic survey (demo and simulation), then heatmap, then position estimate, then the 3D marker.
+- **Held-out accuracy test (Nov 19):** the AP simulation produced a survey of EER Levels 1–3 on a 10 ft grid (1,452 points). Then 300 test scans were taken at random positions inside Level 2 rooms, not on the grid, with Gaussian RSSI noise added, and each was run through the position estimator. Three cases: one AP in every room (134 on Level 2) with 4 dB noise; sparse APs in the largest 20% of rooms (27 on Level 2), closer to real campus density, with 4 dB noise; and the sparse case with 8 dB noise.
 
 ## 4. Results
 
@@ -48,15 +49,23 @@ The **3D building** tab of Signal Studio (`Experiments/Campus_Map/collector/`), 
 | Browser checks | No console errors; no horizontal overflow at 390 px |
 | ECJ floor heights | 11 of 15 levels documented, 1 estimated, 3 unknown |
 | End-to-end pipeline | Works on synthetic data: estimate lands on the correct floor |
-| **Positioning accuracy on real data** | **Not measured yet** (TODO) |
+| **Held-out accuracy, simulated EER Level 2** (300 scans each) | Floor correct **100%**. Median error **1.5 m** (AP in every room, 4 dB noise), **1.8 m** (sparse APs, 4 dB), **2.3 m** (sparse APs, 8 dB). Room hit rate **72% / 62% / 49%** |
+| Real ESP32 data | Only 4 RSSI scans at 3 points in EER 2.701 and 2.813 (Oct 11); too few to measure accuracy |
 
-Screenshots: `docs/oral-design-review/assets/screenshots/` (`app-3d-default.png`, `app-3d-exploded.png`, `app-3d-data.png`, `app-3d-floor2-top.png`).
+Figure 1 shows the EER model in the exploded view, and Figure 2 shows real ESP32 survey data from Level 2 loaded into the web app.
+
+![Figure 1. EER 3D model in the exploded view: 9 levels reconstructed from the campus floor plans](figures/li-3d-exploded.png)
+
+![Figure 2. Signal Studio 3D workspace on EER Level 2 with real ESP32 survey data imported (2 survey points, 53 BSSIDs)](figures/li-3d-real-survey.png)
+
+More screenshots are in `docs/oral-design-review/assets/screenshots/`.
 
 ## 5. What the results mean for the design
 
 - **User-interface risk reduced:** a working 3D map shows signals and a position estimate on the right floor of real campus buildings, so the EE 464 user app can build on it instead of starting from scratch.
 - **Data-pipeline risk reduced:** the survey CSV format, import, fingerprint matching and display are built and tested, so real survey data can be dropped in.
-- **Remaining risk identified:** accuracy on real data. Better geometry alone does not prove accuracy; that needs a real survey with held-out test points.
+- **Accuracy targets:** in simulation, the estimator finds the floor every time and meets the **5 m median-error target** with margin (1.5 to 2.3 m). It falls well short of the **90% room identification target** (49 to 72%), and the gap widens as APs get sparser and noise grows. Room identification, not distance error, is the hard goal. This matches the Prior Art finding and supports adding wall-aware fusion (for example, a particle filter that uses the floor plans).
+- **Remaining risk identified:** accuracy on real data. The simulation's path-loss values are uncalibrated, so these numbers show the method's behavior, not field performance. A real survey with held-out test points is still needed.
 
 ## 6. Limitations and next steps
 

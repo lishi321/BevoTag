@@ -3,9 +3,13 @@
 A working guide for every BevoTag report (Prior Art Report, System Design Report, Final Report, and
 any resubmission). It combines three sources:
 
-1. **The TA's own comments** on the Project Definition (Mugdha Jadhao): 21 inline comments in
-   `docs/project-definition/annotated-SP11_Project_Definition.pdf`, her summary in
-   `docs/project-definition/TA_Feedback.txt`, and the rubric marks in `docs/project-definition/SP11.doc`.
+1. **The TA's own comments** (Mugdha Jadhao):
+   - Project Definition: 21 inline comments in
+     `docs/project-definition/annotated-SP11_Project_Definition.pdf`, her summary in
+     `docs/project-definition/TA_Feedback.txt`, and the rubric marks in `docs/project-definition/SP11.doc`.
+   - Prior Art Report: 8 inline comments in `docs/prior-art/annotated-main.pdf` and her Canvas
+     summary (Nov 16, 2026). The rubric marks are in an `SP11.docx` on Canvas, which this guide has
+     not seen yet.
 2. **The course rules**: the ECE Writing Style Guide and the memo-style report template in
    `docs/prior-art/resources/`.
 3. **What worked** when revising the Prior Art Report against all of the above.
@@ -14,8 +18,9 @@ Rules marked **[TA]** come straight from her comments. Rules marked **[Guide]** 
 guide or template. Rules marked **[Inferred]** are reasonable readings of her taste. Treat those as
 strong defaults, not certainties.
 
-> The source files listed above (the annotated PDF, `TA_Feedback.txt`, `SP11.doc`, and the course
-> handouts) stay local and are not in the repo. Ask a teammate for copies.
+> The Prior Art Report's annotated PDF and course handouts are in the repo. The Project Definition's
+> feedback files (`annotated-SP11_Project_Definition.pdf`, `TA_Feedback.txt`, and `SP11.doc`) stay
+> local; ask a teammate for copies.
 
 ---
 
@@ -33,15 +38,39 @@ strong defaults, not certainties.
 Most lost points came from **voice, structure, and citations**, not from technical content. Those
 are the cheapest points to win back.
 
+## How the Prior Art Report was graded
+
+Her summary: "Good effort on the report. I see a **logical flow and cohesion** issue and a **writing
+mechanics** issue in some sections, which are hampering smooth readability."
+
+The fixes from the Project Definition worked: she flagged no first person, no "must," and no
+citation format problems. Her 8 comments were all about **flow** and **phrasing**, and 6 of the 8
+were on page 1 (memo heading, Introduction, and the first paragraph of the Overview). **Page 1
+gets her closest reading.**
+
+| Where | What she marked | Her comment | Rule |
+|---|---|---|---|
+| SUBJECT line | "…Inertial Fusion, and Item-Tracking Patents That Inform the Design" | "incomplete title" | [Subject line](#subject-line-ta) |
+| Introduction | "The team's Project Definition committed to this approach but left…" | "weird phrasing" | [Documents do not act](#documents-do-not-act-ta) |
+| End of the Introduction | The document-summary sentences | "this should be in the second paragraph" | [Introduction](#introduction-ta-guide) |
+| Overview, paragraph 1 | "…[2], [3], so the location of a bag left in an empty lab at night stops updating." | "add phrase like 'for example' here so no confusion happens" | [Signal examples](#signal-examples-ta) |
+| Overview, paragraph 1 | "Customers therefore need a tag that…" after three limitations | "only summarized 2 out of 3 limitations" | [Map problems to solutions](#map-every-problem-to-its-solution-ta) |
+| Overview, paragraph 1 | Same sentence | "the flow is a bit choppy… unable to correlate… which of the solution here is for which limitation" | [Map problems to solutions](#map-every-problem-to-its-solution-ta) |
+| RADAR review | "RADAR's results inform BevoTag's survey design more than its accuracy targets." | "confusing phrasing" | [Comparisons](#avoid-weird-or-ambiguous-phrasing-ta) |
+| DeepFi review | "…and was published in *IEEE Transactions on Vehicular Technology* [8]." | "not a very necessary info needed to mention in the summary" | [Venues stay in the references](#define-every-abbreviation-at-first-use-ta-guide) |
+
+**Flagged on both reports:** flow between ideas, and weird or confusing phrasing. Treat these as her
+top two concerns.
+
 ---
 
-## The 12 rules that matter most
+## The 16 rules that matter most
 
 1. **No first person.** Never use *we*, *our*, or *us*, even in the subject line. **[TA]**
 2. **Do not use "must."** Say what the design *will* do, or what a successful design achieves. **[TA]**
 3. **Write formally.** No idioms, no casual verbs, no contractions. **[TA]** **[Guide]**
-4. **Keep the Introduction high-level:** purpose, context, and a summary of the document. No
-   numbers, acronyms, or technical detail. **[TA]**
+4. **Keep the Introduction high-level:** purpose and context in the first paragraph, and the
+   summary of the document in a **second paragraph**. No numbers, acronyms, or technical detail. **[TA]**
 5. **Keep the Conclusion short:** one paragraph (about 8 to 10 lines) that summarizes and says what
    comes next. **[TA]**
 6. **Tell a story.** Do not chop a short section into one-paragraph subheadings. **[TA]**
@@ -53,6 +82,13 @@ are the cheapest points to win back.
 11. **Use a numbered list** whenever the text announces a count ("four changes," "five measures"). **[TA]**
 12. **Place each figure or table right after the paragraph that introduces it**, and do not crowd
     tables. **[TA]** **[Guide]**
+13. **Map every problem to its solution.** If a paragraph lists three limitations, the "therefore"
+    sentence answers all three, in the same order. **[TA]**
+14. **People act; documents do not.** Not "the Project Definition committed to…," but "in the
+    Project Definition, the team chose…" **[TA]**
+15. **Signal examples** with "for example" or "such as," so a scenario is not read as a claim. **[TA]**
+16. **Keep publication details out of the text.** Journal names, venues, and author lists belong in
+    the reference list. **[TA]**
 
 ---
 
@@ -105,10 +141,18 @@ Her comments: "dont [put] many technical details for introductory para"; "try to
 two statements into one … further details mention in the next sections"; the second paragraph
 "does not belong there"; and "a summary of [the] document … is expected in this section."
 
-**Template (one paragraph):**
-1. **Purpose:** what this document does.
-2. **Context:** one sentence on what BevoTag is, plus where the project stands.
-3. **Summary of the document:** the essential idea of each section, not just a list of headings.
+On the Prior Art Report, which put everything in one paragraph, she marked the document-summary
+sentences at the end: "this should be in the second paragraph."
+
+**Template (two short paragraphs):**
+1. **Paragraph 1, purpose and context:** what this document does, one sentence on what BevoTag is,
+   and where the project stands.
+2. **Paragraph 2, summary of the document:** the essential idea of each section, not just a list of
+   headings.
+
+The whole Introduction stays short. Together the two paragraphs should be about the length of the
+old single paragraph. (Her comment is a short marginal note, so "second paragraph" is read here as
+"split the summary into its own paragraph." If a later comment disagrees, follow the later one.)
 
 **Do not put in the Introduction:** statistics, acronyms (CSI, RSSI, IMU), citations, requirements,
 team roles, or design details. Save them for the body.
@@ -123,6 +167,22 @@ She wanted it to:
 She also said "there is not a need for these subheadings… present these paragraphs in a cohesive
 flow… like you are telling a story about your design's development." A section of two or three
 paragraphs should have **no subheadings**. A good order is **need, approach, targets**.
+
+### Map every problem to its solution [TA]
+The Prior Art Overview listed three limitations of existing trackers (GPS fails indoors, consumer
+tags need a nearby phone, and signal-strength positioning errs by 1 to 5 m). The next sentence
+("Customers therefore need a tag that reports its own location… without a passing phone and without
+new infrastructure…") answered only two, and one of them (new infrastructure) was not on the list.
+She wrote that she was "unable to correlate correctly which of the solution here is for which
+limitation."
+
+- When a paragraph lists problems, the conclusion of that paragraph answers **each one**, in the
+  **same order**, with matching words.
+- Do not bring in a new requirement in the "therefore" sentence. Introduce it as a problem first.
+- Count both sides before submitting: three limitations, then three needs.
+
+Example: *Customers therefore need a tag that works indoors, reports its own location without a
+nearby phone, and identifies the correct room.*
 
 ### Subheadings [TA] [Guide]
 - Use them only where a section is long enough to need navigation (for example, one per reviewed
@@ -148,6 +208,21 @@ had three paragraphs.
   - "Each study above tested one system in a space of the authors' choosing. In contrast…"
 - One idea per paragraph (paragraph unity).
 - Vary sentence length. Avoid long chains of clauses joined by "and" and ", so."
+- She flagged flow on **both** reports ("ideas did not flow" on the Project Definition; "logical flow
+  and cohesion issue" on the Prior Art Report). Read each section aloud and check that every
+  sentence follows from the one before it.
+
+### Subject line [TA]
+She marked the Prior Art subject line, "Prior Art Report for BevoTag: Wi-Fi Fingerprinting,
+Inertial Fusion, and Item-Tracking Patents That Inform the Design," as an **"incomplete title."**
+She did not say what was missing. The likely problem is that it mixes two kinds of items (two
+research topics and one kind of patent) and does not say what the report does with them.
+- Make the subject a complete title that names the document type, the project, and what the
+  document does: for example, *Prior Art Report for BevoTag: Published Research and Patents on Wi-Fi
+  and Inertial Indoor Positioning*.
+- Keep the items in any list parallel.
+- If unsure, ask her before submitting the next report. (This is **[Inferred]**; only "incomplete
+  title" is her wording.)
 
 ---
 
@@ -166,12 +241,33 @@ ask: *Is that literally what it does?*
 On "infrastructure we cannot control" she wrote "sounds a bit vague. Give example or more details."
 Write: *without new infrastructure such as Bluetooth beacons installed in every room.*
 
+### Signal examples [TA]
+In "…update an item's location only when a nearby phone… detects them [2], [3], so the location of
+a bag left in an empty lab at night stops updating," she wrote "add phrase like 'for example' here
+so no confusion happens in understanding." Without the signal, an illustration reads like a claim
+from the cited sources.
+- Mark an illustration explicitly: *For example, the location of a bag left in an empty lab at night
+  stops updating.*
+- Give an example its own sentence instead of attaching it with ", so."
+
+### Documents do not act [TA]
+She highlighted "The team's Project Definition committed to this approach but left four questions
+open" as **"weird phrasing."** A document cannot commit to something or leave questions open; the
+team does.
+- Not this: *The Project Definition committed to… / This report decides… / The search answered…*
+- Write: *In the Project Definition, the team chose this approach but left four questions open.*
+- "This report presents / describes / summarizes" is fine. Those are things a document does.
+
 ### Define every abbreviation at first use [TA] [Guide]
 She wrote "do not use abbreviations before giving full forms."
 - Expand at first use, then use the short form: *channel state information (CSI)*.
 - This includes "obvious" ones: *Global Positioning System (GPS)*, *wireless local area network (WLAN)*.
 - Avoid unexplained conference acronyms in the text (INFOCOM, WoWMoM). Write "presented in 2000"
   and leave the venue to the reference list.
+- **Keep publication details out of the text** [TA]. On "…and was published in *IEEE Transactions
+  on Vehicular Technology* [8]" she wrote "not a very necessary info needed to mention in the
+  summary." Journal names, conference names, and full author lists belong in the reference list.
+  In the text, name the system or the lead author and give the year if it matters.
 - After an abbreviation is defined, use it consistently.
 
 ### Support every claim [TA]
@@ -188,6 +284,15 @@ incorrect grammar. Watch for:
 - "The other three" without saying three of what.
 - Elliptical clauses ("as BevoTag will to hear…").
 - Pronouns ("it," "they," "this") with unclear antecedents.
+- **Comparisons with a hidden second half.** She called "RADAR's results inform BevoTag's survey
+  design more than its accuracy targets" **"confusing phrasing."** It is unclear whether "its" means
+  RADAR's or BevoTag's, and "more than" compares two things the reader has not been told about.
+  Write: *RADAR's results are more useful for planning BevoTag's survey than for setting its accuracy
+  targets.*
+
+On the Prior Art Report she also marked "weird phrasing" (a document acting) and "confusing
+phrasing" (a comparison). Phrasing was flagged on **both** reports, so reread every sentence that
+she could stumble on.
 
 ---
 
@@ -258,7 +363,8 @@ On "We commit to five measures: …" she wrote "the measures can be mentioned in
   - **SUBJECT** names the document type and topic, in third person.
 - No heading alone at the bottom of a page, and no single line of a paragraph alone at the top or
   bottom of a page.
-- No decimal section numbers in memo-style reports.
+- No decimal section numbers in memo-style reports, **except the System Design Report**, whose
+  assignment requires them (1.0, 2.0, 3.1).
 - Appendixes: a divider page titled "APPENDIX A — Title," referenced in the text, continuing the
   page numbers.
 
@@ -267,7 +373,10 @@ On "We commit to five measures: …" she wrote "the measures can be mentioned in
 ## 7. Length
 
 - Prior Art Report: **6 to 10 pages**, plus extra space for figures, tables, references, and
-  appendixes. Other reports have their own limits; check each assignment.
+  appendixes.
+- System Design Report: **about 15 to 20 pages** of written text, not counting figures, tables,
+  references, and appendixes.
+- Other reports have their own limits; check each assignment.
 - Practical target: **the Conclusion should end no later than page 10 plus the space the tables
   take.** For the Prior Art Report, that meant ending on page 11 with about 0.8 page of tables.
 - Easy places to cut: the same fact or decision stated in both the review and the impact or
@@ -287,8 +396,10 @@ Search the source (`main.tex`) or the PDF text before every submission.
 - [ ] No contractions, idioms, or casual phrasing
 
 **Structure**
-- [ ] Introduction is one paragraph: purpose, context, and summary of the document, with no numbers,
-      acronyms, or citations
+- [ ] Introduction: purpose and context in paragraph 1, summary of the document in paragraph 2, with
+      no numbers, acronyms, or citations
+- [ ] Memo SUBJECT reads as a complete title (document type, project, and what the document does)
+- [ ] Every "therefore" or "customers need" sentence answers each problem listed before it, in order
 - [ ] No section split into one-paragraph subheadings; at least two subheadings per level
 - [ ] An introductory paragraph under every heading that has subheadings
 - [ ] Conclusion is one paragraph of about 8 to 10 lines that ends with next steps
@@ -297,7 +408,11 @@ Search the source (`main.tex`) or the PDF text before every submission.
 - [ ] Every abbreviation is expanded at first use (search for runs of two or more capital letters)
 - [ ] Every claim about other work has a citation
 - [ ] Every sentence about what BevoTag "does" is literally true
-- [ ] Vague terms have an example
+- [ ] Vague terms have an example, and examples are signaled with "for example" or "such as"
+- [ ] No document as the actor ("the Project Definition committed…," "the search decided…")
+- [ ] No comparison with an unclear second half or an "its" that could mean two things
+- [ ] No journal or conference names in the text; they stay in the references
+- [ ] Page 1 reread slowly; it gets her closest reading
 
 **Citations and references**
 - [ ] Only plain `[n]` in the text (search for `\cite[`)
