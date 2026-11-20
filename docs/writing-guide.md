@@ -18,8 +18,9 @@ Rules marked **[TA]** come straight from her comments. Rules marked **[Guide]** 
 guide or template. Rules marked **[Inferred]** are reasonable readings of her taste. Treat those as
 strong defaults, not certainties.
 
-> The source files listed above (the annotated PDF, `TA_Feedback.txt`, `SP11.doc`, and the course
-> handouts) stay local and are not in the repo. Ask a teammate for copies.
+> The Prior Art Report's annotated PDF and course handouts are in the repo. The Project Definition's
+> feedback files (`annotated-SP11_Project_Definition.pdf`, `TA_Feedback.txt`, and `SP11.doc`) stay
+> local; ask a teammate for copies.
 
 ---
 
