@@ -10,7 +10,7 @@
 |---|---|
 | `main.tex` | LaTeX skeleton with every required heading and a `TODO` in each section. Build it with `pdflatex main.tex`, run twice. |
 | `figures/` | Block diagram, test plots, Gantt export, and other figures |
-| `resources/` | Assignment description, rubric, ECE Style Guide, and memo template. These are course handouts, so `.gitignore` keeps them **local only** (the repo is public). |
+| `resources/` | Assignment description, rubric, ECE Style Guide, and memo template |
 
 ## How this report differs from the earlier ones
 
