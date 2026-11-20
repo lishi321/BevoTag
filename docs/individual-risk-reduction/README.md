@@ -4,6 +4,9 @@ Due **Fri Nov 20, 2026, 5:00 pm**. Each student completes one activity; the Tech
 from 0 to 10 on whether it (1) follows the guidelines, (2) is done before the deadline, and
 (3) achieves useful, significant results. It counts for 10% of the individual final grade.
 
+Word versions are in [docx/](docx/). They are generated from the `.md` files, so edit the
+Markdown and regenerate them (or edit the `.docx` directly if you only need the Word copy).
+
 Each member writes up their own activity in their own file. Fill in every **TODO**, then commit
 and push. These write-ups also feed Section 3.2 of the System Design Report.
 
