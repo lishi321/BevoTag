@@ -396,9 +396,12 @@ raw radio and sensor data to the firmware running on the same microcontroller.
 The team chose the ESP32 family because it exposes CSI to user firmware \cite{espcsi} at low cost:
 Hernandez and Bulut captured 64-subcarrier CSI on an ESP32 module that costs less than \$10 and
 weighs less than 10~g \cite{esp32tool}. The team's data logger uses an ESP32 development board, and
-every capture reported in Section~3.2 came from it. The ESP32's radio operates only at 2.4~GHz, which
-the utexas-iot network serves \cite{utiot}. \TODO{Final ESP32 variant for the tag, for example the
-ESP32-S3 named in the Project Definition or the board used by the data logger (Q7)}
+every capture reported in Section~3.2 came from it. The first logger used a 2.4~GHz-only ESP32, which
+hears only the 2.4~GHz band that the utexas-iot network serves \cite{utiot}. In late November, the
+firmware moved to the ESP32-C5 (ESP32-C5-WROOM-1U module), which scans both 2.4~GHz and 5~GHz and
+still exposes CSI. The 5~GHz band adds APs that a 2.4~GHz radio cannot hear, and 5~GHz signals are
+attenuated more by walls, which should make neighboring rooms easier to tell apart. The team plans to
+use the ESP32-C5 in the tag. \TODO{Confirm the ESP32-C5 as final (Q7)}
 
 The team rejected the other positioning signals that it considered. GNSS fails indoors \cite{hechan}, crowdsourced
 Bluetooth tags depend on passing phones \cite{airtag}, \cite{smarttag}, and Bluetooth beacons and
@@ -613,8 +616,9 @@ The first shared experiment tested whether the ESP32 logger and the collector ap
 together, produce fingerprints that can locate the tag. The planned test surveys 20 points on EER
 Level~2 with ten scans each and then estimates the positions of ten points that are not in the
 survey. It reports the room hit rate against the 90\% target and the median position error against
-the 5~m target. \TODO{Room hit rate and median error from the team survey test, the date it was
-run, and where the raw captures are stored (Q1)}
+the 5~m target. This test has not yet been run. The first real-data check of a position estimator,
+at two points on EER Level~1, is reported in Section~3.2.2. The raw captures are stored on the team's
+shared drive rather than in the code repository, because they contain AP hardware addresses.
 
 Before that test, the team recorded captures at four points on October 11 and November 8: the south
 corridor near room 2.813 and a staircase corner near room 2.701 on EER Level~2, each facing north and
@@ -650,8 +654,8 @@ APs heard per scan & 29 to 36 indoors on EER Level~2; 101 to 104 on the PMA plaz
 CSI frames from campus APs & 7 to 12 per second indoors; 15 to 18 per second on the plaza \\ \addlinespace
 CSI frames from randomized phone and laptop addresses & 2 to 7 per second \\ \addlinespace
 Floor of the strongest UT APs, 2.813 corridor & Floors 3, 1, 2, 2, and 3 for the five strongest \\ \addlinespace
-Room hit rate (target $>90$\%) & \TODO{Q1} \\ \addlinespace
-Median position error (target $<5$~m) & \TODO{Q1} \\
+Room hit rate (target $>90$\%) & Not yet measured on a held-out survey; 64\% of scans at two EER Level~1 points (Section~3.2.2) \\ \addlinespace
+Median position error (target $<5$~m) & Not yet measured on a held-out survey; 7.2~m and 20.4~m at the same two points \\
 \bottomrule
 \end{tabularx}
 \end{spectable}
@@ -678,40 +682,118 @@ APs heard in both directions fell from 3~dB with the printed antenna to 2~dB wit
 antenna, and the largest change fell from 10~dB to 5~dB. The team therefore surveys only with the
 external antenna and will use one on the tag. The comparison mixes two days and covers one point and
 two directions, however, whereas the risk reduction plan called for four points, four directions,
-and 20 scans in each direction with each antenna. \TODO{Whether the full antenna test was run, and
-its RSSI change across directions for each antenna (Q2)} \TODO{Photos of the antenna and the survey
-in EER, if any beyond Figure~\ref{fig:setup} (Q4)}
+and 20 scans in each direction with each antenna. The full test has not yet been run, so the
+antenna result is preliminary, and the team will repeat it with the tag's final antenna before the
+EE~464 survey.
 
 \subsubsection{Router Localization Firmware}
 % Owner: Ethan Chua. Firmware that locates a router by logging the strongest signal strength.
-Because the database maps BSSIDs to rooms, the team also needed to know whether the tag can locate an
-AP from its own measurements, for example to check a room label or find an unlisted AP. This activity
-extended the logger firmware's strongest-AP command, which returns the address, RSSI, and network name
-of the single strongest AP, to log those readings while the logger moves and to estimate the router's
-position, for example as the point where RSSI peaks. \TODO{What was built and how it was tested:
-building, floor, rooms, date, antenna, and number of walks or trials (Q3)} \TODO{Estimated router
-position compared with its actual position, the error in meters, and how often the strongest AP was
-the nearest one (Q3)} \TODO{What the result means for the design, and what did not work (Q3)}
+This activity tested the simplest way to locate a tag from known routers: assume that the strongest
+APs are the nearest ones. The logger firmware was updated to stream every scan with each AP's
+address, RSSI, network name, and channel, and an analysis script ranks each scan in three ways. The
+five strongest physical APs each vote for the floor written in their names; each room is scored by the
+strongest AP heard in it; and a particle estimate keeps the candidate points whose nearest positioned
+APs appear in the same order as the strongest ones heard. Because one AP broadcasts several network
+names, each on its own BSSID, the script first groups BSSIDs into physical APs by their first 11 hex
+digits.
+
+On November 9, the logger, using a 2.4~GHz-only ESP32 and the external antenna, recorded 98 scans in
+the middle of EER room 1.504 and 55 scans next to the presenter table in room 1.512. The script was run
+on every scan with the EER AP list, in which 32 APs had measured positions at the time.
+Table~\ref{tab:rank} gives the results.
+
+\begin{table}[!htb]
+\caption{Strongest-AP Ranking on Two EER Level~1 Points}
+\label{tab:rank}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.9in} L{0.55in} Y Y Y@{}}
+\toprule
+\textbf{Point} & \textbf{Scans} & \textbf{Floor correct} & \textbf{Room correct} & \textbf{Position error} \\
+\midrule
+Middle of room 1.504 & 98 & 9\% & 100\% & 7.2~m \\ \addlinespace
+Room 1.512, presenter table & 55 & 0\% & 0\% & 20.4~m \\ \addlinespace
+Both points & 153 & 6\% & 64\% & -- \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+The room in 1.504 was correct in every scan because that room's AP was always the strongest heard. The
+AP listed for room 1.512 never appeared in any scan, so the strongest AP heard there was always in a
+different room. The floor vote failed at both points because basement APs, heard through the floor
+slab, outnumbered Level~1 APs among the five strongest. With only the three strongest APs voting, the
+floor at 1.512 was correct in 67\% of scans, but the floor at 1.504 dropped to 0\%. Only two of the
+positioned APs were heard at either point, so the particle estimate landed near the same spot in
+nearly every scan, and its error mainly reflects the distance between that spot and each test point.
+
+These results come from two points, and scans at one point are nearly identical, so they are a first
+check, not an accuracy measurement. They still support two design decisions. First, the strongest AP
+is not always the nearest AP or on the same floor, which agrees with the Level~2 captures of
+Section~3.2.1 and rules out a simple strongest-AP or voting rule for the floor. The location server
+therefore needs fingerprint matching or a floor classifier trained on surveyed points, not AP names
+alone. Second, position estimates need many positioned APs, which the AP locations of Section~3.2.4
+provide. The firmware has since moved to the ESP32-C5, and its 5~GHz scans have not yet been
+evaluated. \TODO{Confirm and add any other tests of the firmware and estimator (Q3)}
 
 \subsubsection{Access Point Inventory for EER and ECJ}
 % Owner: Abhirit Das. List of the WAPs in EER and ECJ.
 A raw scan overcounts APs, because one physical AP broadcasts several network names on several bands,
-each with its own BSSID. This activity grouped the BSSIDs that the logger heard in EER and ECJ into
-physical APs and compared the result with the list from UT IT, which records 300 APs in EER and 103
-in ECJ. \TODO{Which scans were used, where and when, and how BSSIDs were grouped into APs (Q3)}
-\TODO{Table of APs with building, floor, room, network names, BSSIDs, and channels, with the number of
-APs per floor and BSSIDs per AP (Q3)} \TODO{How many APs a tag hears per floor and whether that is
-enough for fingerprinting (Q3)}
+each with its own BSSID. This activity built the team's list of physical APs in EER and ECJ from the
+list provided by UT IT, which gives each AP's name and base hardware address. Each name encodes the
+building, floor, and room; for example, an AP named for EER-2-601 is in room 2.601. The list records
+301 APs in EER and 104 in ECJ. Table~\ref{tab:inventory} gives the EER APs by floor; 22 EER APs have
+no floor or room in their names.
+
+\begin{table}[!htb]
+\caption{EER Access Points by Floor, from the UT IT List}
+\label{tab:inventory}
+\centering
+\begin{spectable}
+\begin{tabularx}{\linewidth}{@{}L{1.3in} *{9}{Y}@{}}
+\toprule
+\textbf{Floor} & \textbf{B} & \textbf{1} & \textbf{2} & \textbf{3} & \textbf{4} & \textbf{5} & \textbf{6} & \textbf{7} & \textbf{Total} \\
+\midrule
+APs on the list & 58 & 77 & 25 & 22 & 24 & 25 & 24 & 24 & 279 \\
+Heard from Level~2 & 5 & 6 & 3 & 3 & 0 & 0 & 0 & 2 & 19 \\
+\bottomrule
+\end{tabularx}
+\end{spectable}
+\end{table}
+
+The team matched the BSSIDs in the ten EER Level~2 survey logs (October 11 and November 8) against the
+list, grouping BSSIDs that share their first five address bytes into one AP. Of the 200 BSSIDs heard,
+69 belonged to 23 listed APs, and the rest were phone hotspots, printers, and other networks that do
+not belong to the campus. Each listed AP therefore appears as about three BSSIDs, so the fingerprint
+database can store one entry per physical AP. From Level~2, the logger heard 19 floor-labeled APs on
+five floors and four APs with no floor in their names. Twenty-three campus APs is well above the three
+that Table~\ref{tab:env} requires, so fingerprinting has enough signals, but most of the APs heard are
+on other floors, which again shows that the floor must be inferred from the whole fingerprint.
+\TODO{How the list was obtained and checked (Q3)}
 
 \subsubsection{Preliminary Access Point Locations}
 % Owner: Andrew Yin. Preliminary list of WAP locations.
-Whereas the inventory identifies which APs exist, this activity estimated where they are. An analysis
-script computes an RSSI-weighted centroid of the survey points at which each AP was heard, and the
-room in each campus AP's name gives a ground truth against which to check the estimate. The
-resulting positions can also replace the assumed positions in the simulation of Section~3.2.6.
-\TODO{Scans used, how positions were estimated, and how they were checked (Q3)} \TODO{Table of
-estimated and actual AP positions, with the error in meters (Q3)} \TODO{What the errors mean for the
-design (Q3)}
+Whereas the inventory identifies which APs exist, this activity recorded where they are. For each
+listed AP in EER, the operator stood directly under it with the logger on the tripod and started a
+capture in the collector. The operator confirmed the AP by checking that the strongest BSSID matched
+that AP's hardware address, then recorded the floor-plan coordinates that the collector showed for
+that position. A script converts the resulting sheet into a table of each AP's floor, room,
+floor-plan coordinates, and building coordinates, and matches every BSSID in a survey log to a listed
+AP.
+
+The activity located 299 of the 301 EER APs, covering 167 rooms on eight floors, and 57 of those rooms
+have two or more APs. Two listed APs could not be found. In rooms 1.504 and 1.516, only one of the
+listed APs in each room could be heard from the floor, so the others may be disabled or mounted above
+the ceiling; this agrees with the missing 1.512 AP in Section~3.2.2. Because each position was
+measured directly under the AP, its error is set by how accurately the operator marked the point on
+the plan, not by an estimation method, so no error distance was computed.
+
+The list gives the location server each AP's floor, which the floor results of Sections~3.2.1 and
+3.2.2 show it needs. It also replaces the simulation's assumption of one AP in the center of every
+room (Section~3.2.6) with measured positions, and it lets the team check fingerprint estimates on
+every floor of EER. ECJ, with 104 listed APs, has not yet been located. \TODO{Upload the
+299-position list to the shared drive: the shared AP sheet had positions for only 32 APs on
+November~27, so Section~3.2.2 used those 32 (Q3)}
 
 \subsubsection{Survey Data Parsing and Display Software}
 % Owner: Esteban Martinez. Display software for parsing data collections.
@@ -1371,8 +1453,8 @@ status for every row, and the total (Q12)}
 \toprule
 \textbf{Item} & \textbf{Performance Criteria} & \textbf{Qty} & \textbf{Part Number, Status, and Cost} \\
 \midrule
-ESP32 Wi-Fi microcontroller board & 2.4~GHz Wi-Fi with CSI output \cite{espcsi}; firmware within 512~KB RAM; external antenna connector & \TODO{Q12} & Board in hand for the data logger; final variant \TODO{Q7} \\ \addlinespace
-Omnidirectional antenna & 2.4~GHz; connects to the board's u.FL connector & \TODO{Q12} & Linx antenna in hand; part number \TODO{Q12} \\ \addlinespace
+ESP32-C5 board (WROOM-1U module) & 2.4 and 5~GHz Wi-Fi with CSI output \cite{espcsi}; firmware within 512~KB RAM; external antenna connector & \TODO{Q12} & Board in hand; firmware ported \\ \addlinespace
+Omnidirectional antenna & 2.4~GHz, plus 5~GHz for the ESP32-C5; connects to the board's u.FL connector & \TODO{Q12} & 2.4~GHz Linx antenna in hand; dual-band part \TODO{Q12} \\ \addlinespace
 IMU module & $\pm 8$~g, $\pm 1000$~degrees/s, at least 100~Hz & \TODO{Q12} & LSM9DS1 module in hand \\ \addlinespace
 GNSS module (optional) & Latitude and longitude outdoors & \TODO{Q12} & Module in hand; use in final tag \TODO{Q7} \\ \addlinespace
 Rechargeable lithium battery & Certified to IEC 62133-2; capacity from Equation~(\ref{eq:cap}) & \TODO{Q12} & \TODO{Q7} \\ \addlinespace
