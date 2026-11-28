@@ -415,9 +415,11 @@ from north to east, from 10~dB to 5~dB. A smaller dependence on heading keeps th
 closer to the survey's, whichever way a user carries the tag.
 
 The IMU will measure acceleration up to $\pm 8$~g and rotation up to $\pm 1000$~degrees/s at 100~Hz
-or faster (Table~\ref{tab:io}), enough to follow a walking person. The team bought an IMU module for
-the data logger but has not yet recorded IMU data. \TODO{IMU part number and whether it is final
-(Q7)}
+or faster (Table~\ref{tab:io}), enough to follow a walking person. The team chose the LSM9DS1, a
+nine-axis IMU with an accelerometer, a gyroscope, and a magnetometer. Its $\pm 8$~g accelerometer
+range and $\pm 2000$~degrees/s gyroscope range cover these inputs, and the magnetometer can add a
+compass heading for the fusion filter. The team bought an LSM9DS1 module for the data logger but has
+not yet recorded IMU data.
 
 The battery sets the tag's size and mass budget. To meet the 24-hour target in Table~\ref{tab:perf},
 the battery's usable capacity $C$ needs to cover the tag's average current over a day. With the tag
@@ -1371,7 +1373,7 @@ status for every row, and the total (Q12)}
 \midrule
 ESP32 Wi-Fi microcontroller board & 2.4~GHz Wi-Fi with CSI output \cite{espcsi}; firmware within 512~KB RAM; external antenna connector & \TODO{Q12} & Board in hand for the data logger; final variant \TODO{Q7} \\ \addlinespace
 Omnidirectional antenna & 2.4~GHz; connects to the board's u.FL connector & \TODO{Q12} & Linx antenna in hand; part number \TODO{Q12} \\ \addlinespace
-IMU module & $\pm 8$~g, $\pm 1000$~degrees/s, at least 100~Hz & \TODO{Q12} & Module in hand; part number \TODO{Q7} \\ \addlinespace
+IMU module & $\pm 8$~g, $\pm 1000$~degrees/s, at least 100~Hz & \TODO{Q12} & LSM9DS1 module in hand \\ \addlinespace
 GNSS module (optional) & Latitude and longitude outdoors & \TODO{Q12} & Module in hand; use in final tag \TODO{Q7} \\ \addlinespace
 Rechargeable lithium battery & Certified to IEC 62133-2; capacity from Equation~(\ref{eq:cap}) & \TODO{Q12} & \TODO{Q7} \\ \addlinespace
 Charger and protection circuit & 5~V USB-C input; overcharge, overcurrent, and short-circuit protection & \TODO{Q12} & \TODO{Q12} \\ \addlinespace
